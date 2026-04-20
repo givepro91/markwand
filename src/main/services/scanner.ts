@@ -18,7 +18,7 @@ function normalizeUpdated(value: unknown): number | undefined {
   return undefined
 }
 
-async function parseFrontmatter(absPath: string): Promise<DocFrontmatter | undefined> {
+export async function parseFrontmatter(absPath: string): Promise<DocFrontmatter | undefined> {
   try {
     const fd = await fs.promises.open(absPath, 'r')
     try {

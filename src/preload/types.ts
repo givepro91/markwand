@@ -51,6 +51,7 @@ export interface ReadDocResult {
 export interface FsChangeEvent {
   type: 'add' | 'change' | 'unlink'
   path: string
+  frontmatter?: DocFrontmatter
 }
 
 export interface ClaudeCheckResult {
