@@ -55,6 +55,35 @@ export interface ClaudeOpenResult {
   reason?: string
 }
 
+// Composer — 선택 doc들을 임시 파일로 concat 후 Claude/Codex CLI에 전달
+export type ComposerTarget = 'claude' | 'codex'
+
+export interface ComposerSendInput {
+  paths: string[]
+  target: ComposerTarget
+  projectDir: string
+  terminal: TerminalType
+  instruction?: string
+}
+
+export interface ComposerSendResult {
+  ok: boolean
+  contextFile?: string
+  reason?: string
+  fallbackCopied?: boolean // AppleScript 실패 시 클립보드 폴백 알림
+}
+
+export interface ComposerEstimate {
+  bytes: number
+  estimatedTokens: number
+  missing: string[] // workspace 내에 없거나 stat 실패한 경로
+}
+
+export interface CodexCheckResult {
+  available: boolean
+  version?: string
+}
+
 // window.api 타입 정의 (renderer에서 사용)
 export interface WindowApi {
   workspace: {
@@ -76,6 +105,13 @@ export interface WindowApi {
   claude: {
     check: () => Promise<ClaudeCheckResult>
     open: (dir: string, terminal: TerminalType) => Promise<ClaudeOpenResult>
+  }
+  codex: {
+    check: () => Promise<CodexCheckResult>
+  }
+  composer: {
+    send: (input: ComposerSendInput) => Promise<ComposerSendResult>
+    estimateTokens: (paths: string[]) => Promise<ComposerEstimate>
   }
   shell: {
     openExternal: (url: string) => Promise<void>

@@ -17,6 +17,10 @@ export const ALLOWED_PREFS_KEYS = new Set([
   'activeWorkspaceId',
   'readDocs',
   'viewLayout',
+  // Composer (v0.2)
+  'composerOnboardingSeen',
+  'composerAutoClear',
+  'lastSelectedDocPaths',
 ])
 
 // ── parse 함수들 ──────────────────────────────────────────────
@@ -79,6 +83,28 @@ export function parsePrefsSetInput(raw: unknown): { key: string; value: unknown 
 
 export function parseShellShowItemInput(raw: unknown): { path: string } {
   return z.object({ path: PathInput }).parse(raw)
+}
+
+// Composer ──────────────────────────────────────────────────
+
+const ComposerPathList = z.array(PathInput).min(1).max(200)
+const ComposerTarget = z.enum(['claude', 'codex'])
+const TerminalEnum = z.enum(['Terminal', 'iTerm2', 'Ghostty'])
+
+export function parseComposerSendInput(raw: unknown) {
+  return z
+    .object({
+      paths: ComposerPathList,
+      target: ComposerTarget,
+      projectDir: PathInput,
+      terminal: TerminalEnum,
+      instruction: z.string().max(2048).optional(),
+    })
+    .parse(raw)
+}
+
+export function parseComposerEstimateInput(raw: unknown): { paths: string[] } {
+  return z.object({ paths: ComposerPathList }).parse(raw)
 }
 
 export function parseShellOpenExternalInput(raw: unknown): { url: string } {
