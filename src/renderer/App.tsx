@@ -40,6 +40,8 @@ export default function App() {
   const setComposerOnboardingSeen = useAppStore((s) => s.setComposerOnboardingSeen)
   const [terminal, setTerminal] = useState<TerminalType>('Terminal')
   const [codexAvailable, setCodexAvailable] = useState(false)
+  // P1.5 — 마지막 선택 복원 상태 플래그. 복원은 첫 워크스페이스 스캔 직후 1회만.
+  const [pendingRestore, setPendingRestore] = useState<string[] | null>(null)
 
   // viewMode 초기값 복원 + terminal + 온보딩 + codex 검출
   useEffect(() => {
@@ -67,6 +69,12 @@ export default function App() {
     window.api.codex.check().then((r) => setCodexAvailable(r.available)).catch(() => {
       setCodexAvailable(false)
     })
+    // P1.5 — 마지막 선택 스냅샷 로드. 실제 복원은 첫 docs 스캔 직후에 stale 필터링 후 실행.
+    window.api.prefs.get('lastSelectedDocPaths').then((stored) => {
+      if (Array.isArray(stored) && stored.every((v) => typeof v === 'string')) {
+        setPendingRestore(stored as string[])
+      }
+    })
   }, [])
 
   // Composer — docs가 바뀌면 stale 경로 제거.
@@ -82,6 +90,39 @@ export default function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docs])
+
+  // P1.5 — docs가 처음 로드되는 시점에 lastSelectedDocPaths를 stale 필터 후 복원 (1회).
+  useEffect(() => {
+    if (pendingRestore === null) return
+    if (docs.length === 0) return
+    const available = new Set<string>(docs.map((d) => d.path))
+    const surviving = pendingRestore.filter((p) => available.has(p))
+    setPendingRestore(null)
+    if (surviving.length === 0) return
+    useAppStore.getState().replaceDocSelection(surviving)
+    const removed = pendingRestore.length - surviving.length
+    const msg =
+      removed > 0
+        ? `마지막 선택 ${surviving.length}개 복원됨 (${removed}개 누락)`
+        : `마지막 선택 ${surviving.length}개 복원됨`
+    toast.info(msg, {
+      action: {
+        label: 'Clear',
+        onClick: () => useAppStore.getState().clearDocSelection(),
+      },
+      durationMs: 6000,
+    })
+  }, [docs, pendingRestore])
+
+  // 선택이 바뀔 때마다 prefs에 저장(앱 종료 전에 유실 방지). debounce 500ms.
+  const selectedDocPaths = useAppStore((s) => s.selectedDocPaths)
+  useEffect(() => {
+    const arr = Array.from(selectedDocPaths)
+    const t = setTimeout(() => {
+      void window.api.prefs.set('lastSelectedDocPaths', arr)
+    }, 500)
+    return () => clearTimeout(t)
+  }, [selectedDocPaths])
 
   const handleDismissOnboarding = useCallback(() => {
     setComposerOnboardingSeen(true)
