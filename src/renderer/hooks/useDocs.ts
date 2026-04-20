@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../state/store'
-import type { FsChangeEvent } from '../../preload/types'
+import type { Doc, FsChangeEvent } from '../../preload/types'
 
 export function useDocs(projectId: string | null) {
   const docs = useAppStore((s) => s.docs)
@@ -14,31 +14,41 @@ export function useDocs(projectId: string | null) {
     [docs, projectId]
   )
 
+  // Returns an unsubscribe fn so callers (and the effect cleanup) can cancel early.
   const scanDocs = useCallback(
-    async (pid: string) => {
+    (pid: string): (() => void) => {
       setDocs([])
-      try {
-        // invoke 결과로 전체 docs 반환
-        const result = await window.api.project.scanDocs(pid)
-        appendDocs(result)
-      } catch (err) {
-        console.error('문서 스캔 실패:', err)
-      }
+
+      const unsub = window.api.project.onDocsChunk((_event: unknown, chunk: Doc[]) => {
+        const relevant = chunk.filter((d) => d.projectId === pid)
+        if (relevant.length > 0) appendDocs(relevant)
+      })
+
+      window.api.project
+        .scanDocs(pid)
+        .then((result) => {
+          console.log(`[useDocs] ${pid}: ${result.length} docs`)
+        })
+        .catch((err) => {
+          console.error('문서 스캔 실패:', err)
+        })
+        .finally(() => unsub())
+
+      return unsub
     },
     [setDocs, appendDocs]
   )
 
   useEffect(() => {
     if (!projectId) return
-    scanDocs(projectId)
+    const unsub = scanDocs(projectId)
+    return unsub
   }, [projectId, scanDocs])
 
   useEffect(() => {
-    // fs:change 이벤트로 실시간 업데이트
     const unsubscribe = window.api.fs.onChange(
       (_event: unknown, data: FsChangeEvent) => {
         if (!data.path.endsWith('.md')) return
-
         if (data.type === 'unlink') {
           removeDoc(data.path)
         } else if (data.type === 'change') {
