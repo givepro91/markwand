@@ -22,18 +22,29 @@ const FinderIcon = () => (
 export const ProjectCard = memo(function ProjectCard({ project, onOpen }: ProjectCardProps) {
   const docCount = project.docCount
   const driftReports = useAppStore((s) => s.driftReports)
+  const ignoredDriftRefs = useAppStore((s) => s.ignoredDriftRefs)
 
-  // 이 프로젝트에 속한 리포트만 합산. docs 전체 스캔이 아닌 리포트 맵만 훑어 O(R).
+  // 이 프로젝트에 속한 리포트만 합산, 무시된 참조는 제외.
   const driftCounts = useMemo(() => {
     let missing = 0
     let stale = 0
     for (const r of Object.values(driftReports)) {
       if (r.projectRoot !== project.root) continue
-      missing += r.counts.missing
-      stale += r.counts.stale
+      const ignored = ignoredDriftRefs[r.docPath]
+      if (!ignored || ignored.length === 0) {
+        missing += r.counts.missing
+        stale += r.counts.stale
+        continue
+      }
+      const ignoredSet = new Set(ignored)
+      for (const ref of r.references) {
+        if (ignoredSet.has(ref.resolvedPath)) continue
+        if (ref.status === 'missing') missing++
+        else if (ref.status === 'stale') stale++
+      }
     }
     return { missing, stale }
-  }, [driftReports, project.root])
+  }, [driftReports, ignoredDriftRefs, project.root])
 
   const hasDrift = driftCounts.missing > 0 || driftCounts.stale > 0
 

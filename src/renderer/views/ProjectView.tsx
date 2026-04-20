@@ -4,6 +4,7 @@ import { MarkdownViewer } from '../components/MarkdownViewer'
 import { ClaudeButton } from '../components/ClaudeButton'
 import { FilterBar } from '../components/FilterBar'
 import { TableOfContents } from '../components/TableOfContents'
+import { DriftPanel } from '../components/DriftPanel'
 import { EmptyState, IconButton } from '../components/ui'
 import { useDocs } from '../hooks/useDocs'
 import { useAppStore, type MetaFilter } from '../state/store'
@@ -467,12 +468,15 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
             </div>
           )}
           {selectedDoc ? (
-            <MarkdownViewer
-              content={docContent}
-              basePath={selectedDoc.path}
-              onDocNavigate={handleDocNavigate}
-              onHeadings={setHeadings}
-            />
+            <>
+              <DriftPanel docPath={selectedDoc.path} projectRoot={projectRoot} />
+              <MarkdownViewer
+                content={docContent}
+                basePath={selectedDoc.path}
+                onDocNavigate={handleDocNavigate}
+                onHeadings={setHeadings}
+              />
+            </>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
               <EmptyState
