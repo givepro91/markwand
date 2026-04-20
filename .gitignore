@@ -36,3 +36,7 @@ yarn-error.log*
 # 캐시
 .eslintcache
 .cache/
+
+# Nova Orbit — agent worktrees (do not commit)
+.nova-worktrees/
+.claude/worktrees/
