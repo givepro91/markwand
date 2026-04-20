@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { InboxItem } from '../components/InboxItem'
 import { EmptyState, StatusMessage, Button } from '../components/ui'
 import { useAppStore } from '../state/store'
-import type { Doc } from '../../../src/preload/types'
+import type { Doc } from '../../preload/types'
 
 type DateGroup = 'today' | 'yesterday' | 'thisWeek' | 'earlier'
 type ReadFilter = 'all' | 'read' | 'unread'
@@ -64,9 +64,8 @@ export function InboxView({ workspaceId, onOpenDoc }: InboxViewProps) {
     })
   }, [])
 
-  // App.tsx가 채운 projects가 도착하면 docs를 수집한다.
-  // workspace.scan은 App.tsx 중앙 useEffect가 담당 — 여기선 호출 안 함.
-  // scanDocs는 동시성 5로 throttle해 메인 스레드 블로킹을 방지한다.
+  // App.tsx가 채운 projects가 도착하면 docs를 스트리밍으로 수집한다.
+  // onDocsChunk를 먼저 구독한 뒤 scanDocs를 invoke해 첫 청크부터 즉시 렌더한다.
   useEffect(() => {
     if (!workspaceId || projects.length === 0) {
       setAllDocs([])
@@ -76,28 +75,41 @@ export function InboxView({ workspaceId, onOpenDoc }: InboxViewProps) {
     let cancelled = false
     setLoading(true)
     setError(null)
+    setAllDocs([])
 
-    async function fetchDocsThrottled() {
+    const projectMap = new Map(projects.map((p) => [p.id, p]))
+
+    const unsub = window.api.project.onDocsChunk((_event: unknown, chunk: Doc[]) => {
+      if (cancelled) return
+      const incoming: InboxDoc[] = []
+      for (const doc of chunk) {
+        const project = projectMap.get(doc.projectId)
+        if (!project) continue
+        incoming.push({
+          ...doc,
+          projectName: project.name,
+          title: (doc.frontmatter?.title as string | undefined) ?? doc.name.replace(/\.md$/, ''),
+          isRead: false,
+        })
+      }
+      if (incoming.length > 0) {
+        setAllDocs((prev) => [...prev, ...incoming])
+      }
+    })
+
+    async function runScans() {
       try {
         const CONCURRENCY = 5
         const queue = [...projects]
-        const results: InboxDoc[] = []
+        let totalCount = 0
 
         async function worker() {
           while (queue.length > 0) {
             if (cancelled) return
             const project = queue.shift()!
             try {
-              const docs = await window.api.project.scanDocs(project.id)
-              if (cancelled) return
-              for (const doc of docs) {
-                results.push({
-                  ...doc,
-                  projectName: project.name,
-                  title: (doc.frontmatter?.title as string | undefined) ?? doc.name.replace(/\.md$/, ''),
-                  isRead: false,
-                })
-              }
+              const result = await window.api.project.scanDocs(project.id)
+              totalCount += result.length
             } catch {
               // 개별 프로젝트 실패는 silent
             }
@@ -105,19 +117,22 @@ export function InboxView({ workspaceId, onOpenDoc }: InboxViewProps) {
         }
 
         await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()))
-        if (cancelled) return
-        setAllDocs(results)
+        if (!cancelled) {
+          console.log(`[InboxView] scanDocs complete: ${totalCount} docs`)
+        }
       } catch (err) {
-        if (cancelled) return
-        setError(err instanceof Error ? err.message : String(err))
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err))
       } finally {
+        unsub()
         if (!cancelled) setLoading(false)
       }
     }
 
-    fetchDocsThrottled()
+    runScans()
+
     return () => {
       cancelled = true
+      unsub()
     }
   }, [workspaceId, projects])
 
@@ -210,7 +225,7 @@ export function InboxView({ workspaceId, onOpenDoc }: InboxViewProps) {
         />
       )}
 
-      {!loading && !error && GROUP_ORDER.map((group) => {
+      {!error && GROUP_ORDER.map((group) => {
         const items = grouped[group]
         if (items.length === 0) return null
         return (
