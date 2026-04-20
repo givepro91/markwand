@@ -1,14 +1,41 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { FileTree } from '../components/FileTree'
 import { MarkdownViewer } from '../components/MarkdownViewer'
 import { ClaudeButton } from '../components/ClaudeButton'
+import { FilterBar } from '../components/FilterBar'
 import { TableOfContents } from '../components/TableOfContents'
 import { EmptyState, IconButton } from '../components/ui'
 import { useDocs } from '../hooks/useDocs'
-import { useAppStore } from '../state/store'
+import { useAppStore, type MetaFilter } from '../state/store'
 import { createFindController, type FindController } from '../lib/findInContainer'
 import type { Doc } from '../../../src/preload/types'
 import type { Heading } from '../components/TableOfContents'
+
+function applyMetaFilter(docs: Doc[], filter: MetaFilter): Doc[] {
+  let result = docs
+  if (filter.tags.length > 0)
+    result = result.filter((d) => filter.tags.some((t) => d.frontmatter?.tags?.includes(t)))
+  if (filter.statuses.length > 0)
+    result = result.filter(
+      (d) => d.frontmatter?.status != null && filter.statuses.includes(d.frontmatter.status)
+    )
+  if (filter.sources.length > 0)
+    result = result.filter(
+      (d) =>
+        d.frontmatter?.source != null &&
+        filter.sources.includes(d.frontmatter.source as string)
+    )
+  if (filter.updatedRange !== 'all') {
+    const now = Date.now()
+    const ms: Record<string, number> = {
+      today: 86_400_000,
+      '7d': 604_800_000,
+      '30d': 2_592_000_000,
+    }
+    result = result.filter((d) => d.mtime >= now - (ms[filter.updatedRange] ?? 0))
+  }
+  return result
+}
 
 interface ProjectViewProps {
   projectId: string
@@ -43,6 +70,19 @@ const ChevronRightIcon = () => (
 
 export function ProjectView({ projectId, projectRoot, projectName, initialDocPath }: ProjectViewProps) {
   const { docs } = useDocs(projectId)
+  const metaFilter = useAppStore((s) => s.metaFilter)
+
+  const isFilterActive =
+    metaFilter.tags.length > 0 ||
+    metaFilter.statuses.length > 0 ||
+    metaFilter.sources.length > 0 ||
+    metaFilter.updatedRange !== 'all'
+
+  const filteredDocs = useMemo(
+    () => (isFilterActive ? applyMetaFilter(docs, metaFilter) : docs),
+    [docs, metaFilter, isFilterActive]
+  )
+
   const [selectedDoc, setSelectedDoc] = useState<Doc | null>(null)
   const [docContent, setDocContent] = useState<string>('')
   const [initialExpanded, setInitialExpanded] = useState<string[]>([])
@@ -276,6 +316,8 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      {/* FilterBar */}
+      <FilterBar docs={docs} />
       {/* 검색 toolbar */}
       {showFind && (
         <div
@@ -378,7 +420,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
               key={projectId}
               projectId={projectId}
               rootPath={projectRoot}
-              docs={docs}
+              docs={filteredDocs}
               onSelect={loadDoc}
               initialExpanded={initialExpanded}
               onExpandChange={handleExpandChange}
