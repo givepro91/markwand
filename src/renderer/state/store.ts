@@ -19,6 +19,8 @@ interface AppState {
   readDocs: Record<string, number>
   // F3: 인박스에서 특정 doc을 열도록 요청하는 일회성 신호 (메모리만, 영속화 X)
   pendingDocOpen: { projectId: string; path: string } | null
+  // ⌘K 커맨드 팔레트 열림 상태
+  commandPaletteOpen: boolean
   // F4: 프로젝트별 마지막으로 본 문서 경로 (메모리만, 영속화 X)
   lastViewedDocs: Record<string, string>
 
@@ -49,6 +51,10 @@ interface AppState {
   markDocRead: (path: string) => void
   setPendingDocOpen: (pending: { projectId: string; path: string } | null) => void
   setLastViewedDoc: (projectId: string, path: string) => void
+  openCommandPalette: () => void
+  closeCommandPalette: () => void
+  // 커맨드 팔레트에서 문서 선택 시: 해당 프로젝트 뷰로 이동 + 팔레트 닫기
+  openDoc: (projectId: string, path: string) => void
 
   // Composer 액션 — Set은 반드시 new Set(...)으로 불변 교체(Zustand shallow equality)
   toggleDocSelection: (absPath: string) => void
@@ -76,6 +82,7 @@ export const useAppStore = create<AppState>((set) => ({
   readDocs: {},
   pendingDocOpen: null,
   lastViewedDocs: {},
+  commandPaletteOpen: false,
   selectedDocPaths: new Set<string>(),
   composerCollapsed: false,
   composerAutoClear: false,
@@ -111,6 +118,15 @@ export const useAppStore = create<AppState>((set) => ({
   setPendingDocOpen: (pending) => set({ pendingDocOpen: pending }),
   setLastViewedDoc: (projectId, path) =>
     set((state) => ({ lastViewedDocs: { ...state.lastViewedDocs, [projectId]: path } })),
+  openCommandPalette: () => set({ commandPaletteOpen: true }),
+  closeCommandPalette: () => set({ commandPaletteOpen: false }),
+  openDoc: (projectId, path) =>
+    set({
+      pendingDocOpen: { projectId, path },
+      activeProjectId: projectId,
+      viewMode: 'project' as ViewMode,
+      commandPaletteOpen: false,
+    }),
 
   // Composer 액션 — Set 불변 교체 패턴 강제 (shallow equality로 리렌더 보장)
   toggleDocSelection: (absPath) =>
