@@ -1,10 +1,12 @@
-import { useEffect, useCallback, lazy, Suspense } from 'react'
+import { useEffect, useCallback, useState, lazy, Suspense } from 'react'
 import { Sidebar } from './components/Sidebar'
-import { EmptyState, StatusMessage } from './components/ui'
+import { EmptyState, StatusMessage, ToastHost, toast } from './components/ui'
+import { ComposerTray } from './components/ComposerTray'
+import { ComposerOnboarding } from './components/ComposerOnboarding'
 import { useWorkspace } from './hooks/useWorkspace'
 import { useViewMode } from './hooks/useViewMode'
 import { useAppStore } from './state/store'
-import type { Doc, Project } from '../../src/preload/types'
+import type { Doc, Project, TerminalType } from '../../src/preload/types'
 
 // 뷰는 lazy 로드 — startup에서 shiki/react-arborist/mermaid를 미리 로드하지 않는다.
 const AllProjectsView = lazy(() =>
@@ -31,14 +33,60 @@ export default function App() {
   const setActiveProjectId = useAppStore((s) => s.setActiveProjectId)
   const projects = useAppStore((s) => s.projects)
 
-  // viewMode 초기값 복원
+  // Composer — 전역 선택 상태 + 설정 prefs
+  const docs = useAppStore((s) => s.docs)
+  const pruneStaleDocSelection = useAppStore((s) => s.pruneStaleDocSelection)
+  const composerOnboardingSeen = useAppStore((s) => s.composerOnboardingSeen)
+  const setComposerOnboardingSeen = useAppStore((s) => s.setComposerOnboardingSeen)
+  const [terminal, setTerminal] = useState<TerminalType>('Terminal')
+  const [codexAvailable, setCodexAvailable] = useState(false)
+
+  // viewMode 초기값 복원 + terminal + 온보딩 + codex 검출
   useEffect(() => {
     window.api.prefs.get('viewMode').then((stored) => {
       if (stored === 'all' || stored === 'inbox' || stored === 'project') {
         useAppStore.getState().setViewMode(stored)
       }
     })
+    window.api.prefs.get('terminal').then((stored) => {
+      if (stored === 'Terminal' || stored === 'iTerm2' || stored === 'Ghostty') {
+        setTerminal(stored)
+      }
+    })
+    window.api.prefs.get('composerOnboardingSeen').then((stored) => {
+      if (stored === true) {
+        useAppStore.getState().setComposerOnboardingSeen(true)
+      }
+    })
+    window.api.prefs.get('composerAutoClear').then((stored) => {
+      if (stored === true) {
+        useAppStore.getState().setComposerAutoClear(true)
+      }
+    })
+    // Codex CLI 검출 (Phase 2)
+    window.api.codex.check().then((r) => setCodexAvailable(r.available)).catch(() => {
+      setCodexAvailable(false)
+    })
   }, [])
+
+  // Composer — docs가 바뀌면 stale 경로 제거.
+  // deps는 docs만 — pruneStaleDocSelection이 바뀌지 않는 store 액션이고,
+  // selectedDocPaths를 deps에 넣으면 pruning → state 변화 → effect 재실행의 의존 싸이클 유발.
+  useEffect(() => {
+    if (useAppStore.getState().selectedDocPaths.size === 0) return
+    if (docs.length === 0) return
+    const available = new Set<string>(docs.map((d) => d.path))
+    const removed = pruneStaleDocSelection(available)
+    if (removed > 0) {
+      toast.info(`${removed}개 문서가 더 이상 존재하지 않아 선택에서 제거되었습니다`)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docs])
+
+  const handleDismissOnboarding = useCallback(() => {
+    setComposerOnboardingSeen(true)
+    void window.api.prefs.set('composerOnboardingSeen', true)
+  }, [setComposerOnboardingSeen])
 
   const refreshKey = useAppStore((s) => s.refreshKey)
 
@@ -152,6 +200,14 @@ export default function App() {
     ? projects.find((p) => p.id === activeProjectId) ?? null
     : null
 
+  // Composer Send 시 사용할 projectDir — 활성 프로젝트 우선, 없으면 활성 워크스페이스.
+  const composerProjectDir =
+    activeProject?.root ??
+    workspaces.find((w) => w.id === activeWorkspaceId)?.root ??
+    null
+
+  const showOnboarding = !composerOnboardingSeen && workspaces.length > 0
+
   // 워크스페이스가 없을 때 메인 영역에 1차 CTA
   if (workspaces.length === 0) {
     return (
@@ -213,44 +269,53 @@ export default function App() {
         onViewModeChange={setViewMode}
       />
 
-      <main style={{ flex: 1, overflow: 'hidden' }}>
-        <Suspense fallback={<ViewFallback />}>
-          {viewMode === 'all' && (
-            <AllProjectsView
-              workspaceId={activeWorkspaceId}
-              onOpenProject={handleOpenProject}
-            />
+      <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        {showOnboarding && <ComposerOnboarding onDismiss={handleDismissOnboarding} />}
+        <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
+          <Suspense fallback={<ViewFallback />}>
+            {viewMode === 'all' && (
+              <AllProjectsView
+                workspaceId={activeWorkspaceId}
+                onOpenProject={handleOpenProject}
+              />
+            )}
+            {viewMode === 'inbox' && (
+              <InboxView
+                workspaceId={activeWorkspaceId}
+                onOpenDoc={handleOpenDocFromInbox}
+              />
+            )}
+            {viewMode === 'project' && activeProject && (
+              <ProjectView
+                key={activeProject.id}
+                projectId={activeProject.id}
+                projectRoot={activeProject.root}
+                projectName={activeProject.name}
+              />
+            )}
+          </Suspense>
+          {viewMode === 'project' && !activeProject && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+              <EmptyState
+                icon="📂"
+                title="프로젝트를 선택하세요"
+                description="프로젝트 목록에서 원하는 프로젝트를 클릭하면 여기서 문서를 탐색할 수 있습니다."
+                cta={{
+                  label: '전체 프로젝트 보기',
+                  onClick: () => setViewMode('all'),
+                  variant: 'primary',
+                }}
+              />
+            </div>
           )}
-          {viewMode === 'inbox' && (
-            <InboxView
-              workspaceId={activeWorkspaceId}
-              onOpenDoc={handleOpenDocFromInbox}
-            />
-          )}
-          {viewMode === 'project' && activeProject && (
-            <ProjectView
-              key={activeProject.id}
-              projectId={activeProject.id}
-              projectRoot={activeProject.root}
-              projectName={activeProject.name}
-            />
-          )}
-        </Suspense>
-        {viewMode === 'project' && !activeProject && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-            <EmptyState
-              icon="📂"
-              title="프로젝트를 선택하세요"
-              description="프로젝트 목록에서 원하는 프로젝트를 클릭하면 여기서 문서를 탐색할 수 있습니다."
-              cta={{
-                label: '전체 프로젝트 보기',
-                onClick: () => setViewMode('all'),
-                variant: 'primary',
-              }}
-            />
-          </div>
-        )}
+        </div>
+        <ComposerTray
+          projectDir={composerProjectDir}
+          terminal={terminal}
+          codexAvailable={codexAvailable}
+        />
       </main>
+      <ToastHost />
     </div>
   )
 }

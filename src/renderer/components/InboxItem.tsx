@@ -1,3 +1,6 @@
+import { useAppStore } from '../state/store'
+import { Checkbox } from './ui'
+
 interface InboxItemProps {
   path: string
   projectName: string
@@ -12,7 +15,9 @@ function formatTime(ts: number): string {
   return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
 }
 
-export function InboxItem({ projectName, title, mtime, isRead, onClick }: InboxItemProps) {
+export function InboxItem({ path, projectName, title, mtime, isRead, onClick }: InboxItemProps) {
+  const composerChecked = useAppStore((s) => s.selectedDocPaths.has(path))
+  const toggleDocSelection = useAppStore((s) => s.toggleDocSelection)
   return (
     <button
       onClick={onClick}
@@ -25,19 +30,28 @@ export function InboxItem({ projectName, title, mtime, isRead, onClick }: InboxI
         borderRadius: 'var(--r-md)',
         opacity: isRead ? 0.6 : 1,
         transition: 'opacity var(--duration-normal), background var(--duration-fast) var(--ease-standard)',
-        background: 'transparent',
+        background: composerChecked ? 'var(--color-success-bg)' : 'transparent',
         border: 'none',
         width: '100%',
         textAlign: 'left',
         fontFamily: 'inherit',
       }}
       onMouseEnter={(e) => {
-        ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)'
+        if (!composerChecked)
+          (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)'
       }}
       onMouseLeave={(e) => {
-        ;(e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+        if (!composerChecked)
+          (e.currentTarget as HTMLButtonElement).style.background = 'transparent'
       }}
     >
+      <Checkbox
+        checked={composerChecked}
+        size="sm"
+        stopPropagation
+        aria-label={`${title} Composer 선택`}
+        onChange={() => toggleDocSelection(path)}
+      />
       {/* unread indicator */}
       <span
         style={{

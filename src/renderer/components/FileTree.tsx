@@ -2,6 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Tree } from 'react-arborist'
 import type { NodeApi, TreeApi } from 'react-arborist'
 import type { Doc } from '../../../src/preload/types'
+import { useAppStore } from '../state/store'
+import { Checkbox } from './ui'
 
 interface TreeNode {
   id: string
@@ -100,6 +102,12 @@ const FileIcon = () => (
 function FileTreeNode({ node, style }: { node: NodeApi<TreeNode>; style: React.CSSProperties }) {
   const isDir = !!node.data.children || node.isInternal
   const isSelected = node.isSelected
+  const docPath = node.data.doc?.path
+  const composerChecked = useAppStore((s) =>
+    docPath ? s.selectedDocPaths.has(docPath) : false
+  )
+  const toggleDocSelection = useAppStore((s) => s.toggleDocSelection)
+  const isComposerPicked = !isDir && composerChecked
 
   return (
     <div
@@ -113,7 +121,16 @@ function FileTreeNode({ node, style }: { node: NodeApi<TreeNode>; style: React.C
         height: '30px',
         cursor: 'pointer',
         borderRadius: 'var(--r-sm)',
-        background: isSelected ? 'var(--bg-hover)' : 'transparent',
+        // arborist isSelected가 배경 우선, Composer 체크는 좌측 border로 보조 표시
+        // → "지금 보는 파일이 Composer에도 담겨있음"이 시각적으로 소실되지 않음.
+        background: isSelected
+          ? 'var(--bg-hover)'
+          : isComposerPicked
+            ? 'var(--color-success-bg)'
+            : 'transparent',
+        borderLeft: isComposerPicked
+          ? '2px solid var(--color-success)'
+          : '2px solid transparent',
         color: 'var(--text)',
         fontSize: 'var(--fs-sm)',
         fontWeight: isDir ? 'var(--fw-medium)' : 'var(--fw-normal)',
@@ -128,6 +145,17 @@ function FileTreeNode({ node, style }: { node: NodeApi<TreeNode>; style: React.C
         else node.select()
       }}
     >
+      {!isDir && docPath ? (
+        <Checkbox
+          checked={composerChecked}
+          size="sm"
+          stopPropagation
+          aria-label={`${node.data.name} Composer 선택`}
+          onChange={() => toggleDocSelection(docPath)}
+        />
+      ) : (
+        <span style={{ width: 14, flexShrink: 0 }} />
+      )}
       <span
         style={{
           color: isDir ? 'var(--accent)' : 'var(--text-muted)',
