@@ -182,19 +182,28 @@ export function ComposerTray({ projectDir, terminal, codexAvailable }: ComposerT
         >
           {sendingTarget === 'claude' ? '전송 중…' : 'Send to Claude Code'}
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => handleSendClick('codex')}
-          disabled={sendingTarget !== null || !projectDir || !codexAvailable}
-          aria-label={
+        <span
+          title={
             codexAvailable
               ? '대화형 세션이 아닌 비대화형 codex exec으로 단발 실행됩니다'
-              : 'codex CLI가 설치되어 있지 않습니다'
+              : 'codex CLI가 설치되어 있지 않습니다 — https://github.com/openai/codex'
           }
+          style={{ display: 'inline-flex' }}
         >
-          {sendingTarget === 'codex' ? '전송 중…' : 'Send to Codex (단발 응답)'}
-        </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleSendClick('codex')}
+            disabled={sendingTarget !== null || !projectDir || !codexAvailable}
+            aria-label={
+              codexAvailable
+                ? '대화형 세션이 아닌 비대화형 codex exec으로 단발 실행됩니다'
+                : 'codex CLI가 설치되어 있지 않습니다'
+            }
+          >
+            {sendingTarget === 'codex' ? '전송 중…' : 'Send to Codex (단발 응답)'}
+          </Button>
+        </span>
       </div>
 
       {tokenModal && (
