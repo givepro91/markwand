@@ -24,19 +24,26 @@ pnpm lint
 pnpm dist:mac
 ```
 
-## macOS Gatekeeper 우회 (첫 실행)
+## macOS 설치 (unsigned dmg)
 
-코드사이닝이 없는 unsigned 빌드이므로 첫 실행 시 Gatekeeper가 차단할 수 있다.
+코드사이닝이 없는 unsigned 빌드이므로 첫 실행 시 Gatekeeper가 차단됩니다.
+아래 4단계로 설치하거나 [상세 가이드](docs/install-macos.md)를 참고하세요.
 
-**방법 1 — 우클릭 열기**
-1. Finder에서 md-viewer.app 우클릭
-2. "열기" 선택
-3. "그래도 열기" 클릭
-
-**방법 2 — 터미널 quarantine 제거**
 ```bash
-xattr -d com.apple.quarantine "/Applications/md-viewer.app"
+# 1. dmg 마운트
+hdiutil attach ~/Downloads/Markwand-*.dmg
+
+# 2. /Applications 복사
+cp -R /Volumes/Markwand/Markwand.app /Applications/
+
+# 3. quarantine 속성 재귀 제거
+xattr -dr com.apple.quarantine /Applications/Markwand.app
+
+# 4. 실행
+open /Applications/Markwand.app
 ```
+
+> 대안: Finder에서 `Markwand.app` 우클릭 → **열기** → **그래도 열기**
 
 ## 요구사항
 
