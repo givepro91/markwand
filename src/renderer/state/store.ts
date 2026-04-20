@@ -43,6 +43,7 @@ interface AppState {
   composerAutoClear: boolean // prefs 동기화. true면 Send 성공 시 자동 Clear.
   composerOnboardingSeen: boolean // prefs 동기화. 첫 실행 말풍선 노출 여부.
   cmdkHintSeen: boolean // prefs 동기화. 인덱싱 완료 후 ⌘K 힌트 토스트 1회 노출 여부.
+  trackReadDocs: boolean // prefs 동기화. false면 읽음 이력 비활성.
 
   setWorkspaces: (workspaces: Workspace[]) => void
   addWorkspace: (workspace: Workspace) => void
@@ -78,6 +79,7 @@ interface AppState {
   setComposerAutoClear: (autoClear: boolean) => void
   setComposerOnboardingSeen: (seen: boolean) => void
   setCmdkHintSeen: (seen: boolean) => void
+  setTrackReadDocs: (v: boolean) => void
   pruneStaleDocSelection: (availablePaths: Set<string>) => number
 }
 
@@ -106,6 +108,7 @@ export const useAppStore = create<AppState>((set) => ({
   composerAutoClear: false,
   composerOnboardingSeen: false,
   cmdkHintSeen: false,
+  trackReadDocs: true,
 
   setWorkspaces: (workspaces) => set({ workspaces }),
   addWorkspace: (workspace) =>
@@ -161,6 +164,7 @@ export const useAppStore = create<AppState>((set) => ({
   setComposerAutoClear: (composerAutoClear) => set({ composerAutoClear }),
   setComposerOnboardingSeen: (composerOnboardingSeen) => set({ composerOnboardingSeen }),
   setCmdkHintSeen: (cmdkHintSeen) => set({ cmdkHintSeen }),
+  setTrackReadDocs: (trackReadDocs) => set({ trackReadDocs }),
   pruneStaleDocSelection: (available) => {
     let removed = 0
     set((s) => {

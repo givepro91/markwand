@@ -51,18 +51,13 @@ const EMPTY_MESSAGES: Record<ReadFilter, string> = {
 
 export function InboxView({ workspaceId, onOpenDoc }: InboxViewProps) {
   const projects = useAppStore((s) => s.projects)
-  const [readDocs, setReadDocs] = useState<Record<string, number>>({})
+  const readDocs = useAppStore((s) => s.readDocs)
+  const markDocRead = useAppStore((s) => s.markDocRead)
+  const trackReadDocs = useAppStore((s) => s.trackReadDocs)
   const [allDocs, setAllDocs] = useState<InboxDoc[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [readFilter, setReadFilter] = useState<ReadFilter>('all')
-
-  // readDocs 복원
-  useEffect(() => {
-    window.api.prefs.get('readDocs').then((stored) => {
-      setReadDocs((stored as Record<string, number> | null) ?? {})
-    })
-  }, [])
 
   // App.tsx가 채운 projects가 도착하면 docs를 스트리밍으로 수집한다.
   // onDocsChunk를 먼저 구독한 뒤 scanDocs를 invoke해 첫 청크부터 즉시 렌더한다.
@@ -136,10 +131,10 @@ export function InboxView({ workspaceId, onOpenDoc }: InboxViewProps) {
     }
   }, [workspaceId, projects])
 
-  // readDocs 반영
+  // readDocs 반영 (trackReadDocs=false면 항상 unread)
   const enrichedDocs = useMemo<InboxDoc[]>(
-    () => allDocs.map((d) => ({ ...d, isRead: !!readDocs[d.path] })),
-    [allDocs, readDocs]
+    () => allDocs.map((d) => ({ ...d, isRead: trackReadDocs ? !!readDocs[d.path] : false })),
+    [allDocs, readDocs, trackReadDocs]
   )
 
   // 필터 적용
@@ -151,12 +146,14 @@ export function InboxView({ workspaceId, onOpenDoc }: InboxViewProps) {
 
   const handleClick = useCallback(
     async (doc: InboxDoc) => {
-      const updated = { ...readDocs, [doc.path]: Date.now() }
-      setReadDocs(updated)
-      await window.api.prefs.set('readDocs', updated)
+      if (trackReadDocs) {
+        const updated = { ...readDocs, [doc.path]: Date.now() }
+        markDocRead(doc.path)
+        await window.api.prefs.set('readDocs', updated)
+      }
       onOpenDoc(doc, doc.projectId)
     },
-    [readDocs, onOpenDoc]
+    [trackReadDocs, readDocs, markDocRead, onOpenDoc]
   )
 
   // 날짜 그룹별로 분류 + 각 그룹 내 mtime 내림차순 정렬

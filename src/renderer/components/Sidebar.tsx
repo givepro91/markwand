@@ -1,5 +1,6 @@
 import { WorkspacePicker } from './WorkspacePicker'
 import { ThemeToggle } from './ThemeToggle'
+import { Settings } from './Settings'
 import { useTheme } from '../hooks/useTheme'
 import type { Workspace, ViewMode } from '../../../src/preload/types'
 
@@ -94,8 +95,11 @@ export function Sidebar({
         })}
       </div>
 
-      <div style={{ marginLeft: 'auto', WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+      <div
+        style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+      >
         <ThemeToggle value={theme} onChange={setTheme} />
+        <Settings />
       </div>
     </header>
   )
