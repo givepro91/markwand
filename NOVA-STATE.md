@@ -1,9 +1,9 @@
 # Nova State
 
 ## Current
-- **Goal**: v0.2 플래그십 — Context Composer (Copy @ref 단일 흐름, 자동 런칭 철회)
-- **Phase**: built — 사용자 실기 검증 완료, v0.2.0 릴리스 준비
-- **Blocker**: hard-block — fs:read-doc 파일 크기 무제한 (ipc/fs.ts:20)
+- **Goal**: v0.2 문서↔코드 drift 감지 — goal 진행률 100% (12/12 태스크 done)
+- **Phase**: built — headless smoke 6/6 PASS, GUI 실기는 사용자 확인 대기
+- **Blocker**: none — 이전 hard-block (fs:read-doc 상한) 이 drift 작업 중 해소됨
 - **Remote**: git@github-givepro91:givepro91/markwand.git (main) — 13 commits ahead, push 대기
 - **Active Plan**: docs/plans/markwand-context-composer-mvp.md (일부 스코프 피벗됨)
 - **Active Design**: docs/designs/markwand-context-composer.md (일부 스코프 피벗됨)
@@ -76,7 +76,10 @@
 > --emergency 플래그 사용 또는 Evaluator 건너뛸 때 반드시 기록. 미기록 = Hard-Block.
 
 ## Last Activity
-- feat(drift): 문서↔코드 드리프트 감지 IPC 통합 + UI 배지 (`ac70842`) — extractor dead-code 해소, drift:verify 핸들러(2MB 상한·ok/missing/stale 판정), useDrift 백그라운드 훅(debounce 400ms·concurrency 4), DriftBadge · ProjectCard 집계. Hard-block 2건(fs:read-doc 상한·IPC 미통합) + Soft-block 2건(preload raw event 노출) 동시 해소. Nova Orbit 블록된 태스크 6개 done 처리 (goal 진행률 13%→63%) | 2026-04-21T
+- test(drift): headless smoke 6/6 PASS (`69a94e2`) — scripts/drift-smoke.ts 로 mixed/resolve/2MB/hint/inline/no-refs. Nova Orbit drift goal 12/12 done, progress 100% | 2026-04-21T
+- fix(drift): 코드 리뷰 Top 3 반영 (`8532165`) — useDrift 언마운트 가드, CSS 토큰 정합, 타입 이중선언 해소 (preload → lib/drift re-export), mtime Known Limitations 주석
+- feat(drift): DriftPanel — 뷰어 상단 참조 리스트 + 재검증/무시 UI (`913d0f4`) — ignoredDriftRefs 세션 스코프, 집계 반영
+- feat(drift): 문서↔코드 드리프트 감지 IPC 통합 + UI 배지 (`ac70842`) — extractor dead-code 해소, drift:verify 핸들러(2MB 상한·ok/missing/stale 판정), useDrift 백그라운드 훅, DriftBadge · ProjectCard 집계. Hard-block 2건 + Soft-block 2건 동시 해소 | 2026-04-21T
 - /nova:review --fast → CONDITIONAL — IPC 정합성+회귀. Soft-block 2(preload WindowApi 미단언·Settings prefs 비원자), Known Gaps 2항목 제거(docs-chunk 스트리밍·markDocRead 가드) | 2026-04-21T09:00Z
 - QA: 스트리밍+GC 통합 검증 → FAIL(T3 GC 미구현) + WARN(T4 store guard 누락) + PASS(T2 race) + BLOCKED(T1 GUI) — 10 tests added, docs/verifications/qa-streaming-gc.md | 2026-04-21T03:34Z
 - /nova:review --fast → FAIL — IPC 보안·성능·정합성 리뷰. Hard-block 1(fs:read-doc 크기 무제한), Soft-block 3(preload event 노출·청크 이중전송·prefs value 무제한) | 2026-04-21T00:00Z
