@@ -1,5 +1,6 @@
-import { memo } from 'react'
+import { memo, useMemo } from 'react'
 import { Card, StatusMessage } from './ui'
+import { useAppStore } from '../state/store'
 import type { Project } from '../../../src/preload/types'
 
 interface ProjectCardProps {
@@ -20,6 +21,21 @@ const FinderIcon = () => (
 
 export const ProjectCard = memo(function ProjectCard({ project, onOpen }: ProjectCardProps) {
   const docCount = project.docCount
+  const driftReports = useAppStore((s) => s.driftReports)
+
+  // 이 프로젝트에 속한 리포트만 합산. docs 전체 스캔이 아닌 리포트 맵만 훑어 O(R).
+  const driftCounts = useMemo(() => {
+    let missing = 0
+    let stale = 0
+    for (const r of Object.values(driftReports)) {
+      if (r.projectRoot !== project.root) continue
+      missing += r.counts.missing
+      stale += r.counts.stale
+    }
+    return { missing, stale }
+  }, [driftReports, project.root])
+
+  const hasDrift = driftCounts.missing > 0 || driftCounts.stale > 0
 
   return (
     <Card padding="sm" interactive onClick={() => onOpen(project)}>
@@ -82,11 +98,30 @@ export const ProjectCard = memo(function ProjectCard({ project, onOpen }: Projec
 
         {/* 문서 수 + 날짜 */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--sp-2)' }}>
-          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
+          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
             {docCount < 0 ? (
               <StatusMessage variant="loading" inline>분석 중</StatusMessage>
             ) : (
-              `문서 ${docCount}개`
+              <span>문서 {docCount}개</span>
+            )}
+            {hasDrift && (
+              <span
+                title={`${driftCounts.missing}개 missing · ${driftCounts.stale}개 stale — 문서 내 참조가 실제 코드와 불일치`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: 'var(--fs-xs)',
+                  fontWeight: 'var(--fw-medium)',
+                  padding: '1px 6px',
+                  borderRadius: '10px',
+                  background: driftCounts.missing > 0 ? 'var(--color-danger-bg, #fee4e2)' : 'var(--color-warning-bg, #fef0c7)',
+                  color: driftCounts.missing > 0 ? 'var(--color-danger-fg, #b42318)' : 'var(--color-warning-fg, #b54708)',
+                  lineHeight: 1.3,
+                }}
+              >
+                {driftCounts.missing > 0 ? `⚠ ${driftCounts.missing + driftCounts.stale}` : `${driftCounts.stale} stale`}
+              </span>
             )}
           </div>
           <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>

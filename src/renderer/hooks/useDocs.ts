@@ -19,7 +19,7 @@ export function useDocs(projectId: string | null) {
     (pid: string): (() => void) => {
       setDocs([])
 
-      const unsub = window.api.project.onDocsChunk((_event: unknown, chunk: Doc[]) => {
+      const unsub = window.api.project.onDocsChunk((chunk: Doc[]) => {
         const relevant = chunk.filter((d) => d.projectId === pid)
         if (relevant.length > 0) appendDocs(relevant)
       })
@@ -46,16 +46,14 @@ export function useDocs(projectId: string | null) {
   }, [projectId, scanDocs])
 
   useEffect(() => {
-    const unsubscribe = window.api.fs.onChange(
-      (_event: unknown, data: FsChangeEvent) => {
-        if (!data.path.endsWith('.md')) return
-        if (data.type === 'unlink') {
-          removeDoc(data.path)
-        } else if (data.type === 'change') {
-          updateDoc(data.path, { mtime: Date.now() })
-        }
+    const unsubscribe = window.api.fs.onChange((data: FsChangeEvent) => {
+      if (!data.path.endsWith('.md')) return
+      if (data.type === 'unlink') {
+        removeDoc(data.path)
+      } else if (data.type === 'change') {
+        updateDoc(data.path, { mtime: Date.now() })
       }
-    )
+    })
     return unsubscribe
   }, [updateDoc, removeDoc])
 

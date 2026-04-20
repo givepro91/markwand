@@ -54,6 +54,33 @@ export interface FsChangeEvent {
   frontmatter?: DocFrontmatter
 }
 
+// Drift Verifier — src/lib/drift/types.ts 와 형태 일치.
+// renderer에 IPC 결과 전달용으로 preload에서 재선언 (순환 의존 방지).
+export type DriftStatus = 'ok' | 'missing' | 'stale'
+
+export interface VerifiedReference {
+  raw: string
+  resolvedPath: string
+  kind: 'at' | 'hint' | 'inline'
+  line: number
+  col: number
+  status: DriftStatus
+  targetMtime?: number
+}
+
+export interface DriftReport {
+  docPath: string
+  docMtime: number
+  projectRoot: string
+  references: VerifiedReference[]
+  counts: {
+    ok: number
+    missing: number
+    stale: number
+  }
+  verifiedAt: number
+}
+
 export interface ClaudeCheckResult {
   available: boolean
   version?: string
@@ -84,11 +111,14 @@ export interface WindowApi {
   project: {
     scanDocs: (projectId: string) => Promise<Doc[]>
     getDocCount: (projectId: string) => Promise<number>
-    onDocsChunk: (cb: (_event: unknown, data: Doc[]) => void) => () => void
+    onDocsChunk: (cb: (data: Doc[]) => void) => () => void
   }
   fs: {
     readDoc: (path: string) => Promise<ReadDocResult>
-    onChange: (cb: (_event: unknown, data: FsChangeEvent) => void) => () => void
+    onChange: (cb: (data: FsChangeEvent) => void) => () => void
+  }
+  drift: {
+    verify: (docPath: string, projectRoot: string) => Promise<DriftReport>
   }
   claude: {
     check: () => Promise<ClaudeCheckResult>

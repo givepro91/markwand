@@ -10,6 +10,7 @@ import { registerFsHandlers } from './ipc/fs'
 import { registerPrefsHandlers } from './ipc/prefs'
 import { registerClaudeHandlers } from './ipc/claude'
 import { registerComposerHandlers } from './ipc/composer'
+import { registerDriftHandlers } from './ipc/drift'
 import { getStore } from './services/store'
 import { parseShellShowItemInput } from './security/validators'
 
@@ -78,6 +79,7 @@ async function initializeApp(): Promise<void> {
   registerPrefsHandlers()
   registerClaudeHandlers()
   registerComposerHandlers()
+  registerDriftHandlers()
   registerShellHandlers()
 
   // 저장된 워크스페이스 루트로 프로토콜 allowlist 초기화

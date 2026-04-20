@@ -74,7 +74,7 @@ export function InboxView({ workspaceId, onOpenDoc }: InboxViewProps) {
 
     const projectMap = new Map(projects.map((p) => [p.id, p]))
 
-    const unsub = window.api.project.onDocsChunk((_event: unknown, chunk: Doc[]) => {
+    const unsub = window.api.project.onDocsChunk((chunk: Doc[]) => {
       if (cancelled) return
       const incoming: InboxDoc[] = []
       for (const doc of chunk) {

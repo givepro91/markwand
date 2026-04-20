@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Workspace, Project, Doc, ViewMode, SortOrder, ViewLayout } from '../../../src/preload/types'
+import type { Workspace, Project, Doc, ViewMode, SortOrder, ViewLayout, DriftReport } from '../../../src/preload/types'
 
 export type UpdatedRange = 'today' | '7d' | '30d' | 'all'
 
@@ -45,6 +45,9 @@ interface AppState {
   cmdkHintSeen: boolean // prefs 동기화. 인덱싱 완료 후 ⌘K 힌트 토스트 1회 노출 여부.
   trackReadDocs: boolean // prefs 동기화. false면 읽음 이력 비활성.
 
+  // Drift Verifier (v0.2) — docPath → 최신 리포트. 영속화 X, 세션 스코프.
+  driftReports: Record<string, DriftReport>
+
   setWorkspaces: (workspaces: Workspace[]) => void
   addWorkspace: (workspace: Workspace) => void
   removeWorkspace: (id: string) => void
@@ -81,6 +84,10 @@ interface AppState {
   setCmdkHintSeen: (seen: boolean) => void
   setTrackReadDocs: (v: boolean) => void
   pruneStaleDocSelection: (availablePaths: Set<string>) => number
+
+  setDriftReport: (docPath: string, report: DriftReport) => void
+  clearDriftReport: (docPath: string) => void
+  pruneDriftReports: (availablePaths: Set<string>) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -109,6 +116,7 @@ export const useAppStore = create<AppState>((set) => ({
   composerOnboardingSeen: false,
   cmdkHintSeen: false,
   trackReadDocs: true,
+  driftReports: {},
 
   setWorkspaces: (workspaces) => set({ workspaces }),
   addWorkspace: (workspace) =>
@@ -177,4 +185,24 @@ export const useAppStore = create<AppState>((set) => ({
     })
     return removed
   },
+
+  setDriftReport: (docPath, report) =>
+    set((s) => ({ driftReports: { ...s.driftReports, [docPath]: report } })),
+  clearDriftReport: (docPath) =>
+    set((s) => {
+      if (!(docPath in s.driftReports)) return {}
+      const next = { ...s.driftReports }
+      delete next[docPath]
+      return { driftReports: next }
+    }),
+  pruneDriftReports: (available) =>
+    set((s) => {
+      const next: Record<string, DriftReport> = {}
+      let changed = false
+      for (const [p, r] of Object.entries(s.driftReports)) {
+        if (available.has(p)) next[p] = r
+        else changed = true
+      }
+      return changed ? { driftReports: next } : {}
+    }),
 }))

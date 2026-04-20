@@ -5,6 +5,8 @@ import { getStore } from '../services/store'
 import { parseReadDocInput, assertInWorkspace } from '../security/validators'
 import type { ReadDocResult } from '../../preload/types'
 
+const MAX_READ_BYTES = 2 * 1024 * 1024
+
 export function registerFsHandlers(): void {
   ipcMain.handle('fs:read-doc', async (_event, raw: unknown): Promise<ReadDocResult> => {
     const t0 = Date.now()
@@ -17,8 +19,10 @@ export function registerFsHandlers(): void {
 
     assertInWorkspace(docPath, roots)
 
-    const raw_content = await fs.promises.readFile(docPath, 'utf-8')
     const stat = await fs.promises.stat(docPath)
+    if (stat.size > MAX_READ_BYTES) throw new Error('FILE_TOO_LARGE')
+
+    const raw_content = await fs.promises.readFile(docPath, 'utf-8')
 
     const parsed = matter(raw_content)
     process.stderr.write(`[ipc] fs:read-doc done ${docPath} (${Date.now() - t0}ms, ${raw_content.length}B)\n`)

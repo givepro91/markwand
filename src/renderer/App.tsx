@@ -6,6 +6,7 @@ import { ComposerOnboarding } from './components/ComposerOnboarding'
 import { CommandPalette } from './components/CommandPalette'
 import { useWorkspace } from './hooks/useWorkspace'
 import { useViewMode } from './hooks/useViewMode'
+import { useDrift } from './hooks/useDrift'
 import { useAppStore } from './state/store'
 import type { Doc, Project } from '../../src/preload/types'
 
@@ -37,6 +38,9 @@ export default function App() {
   // Composer — 전역 선택 상태 + 설정 prefs
   const docs = useAppStore((s) => s.docs)
   const pruneStaleDocSelection = useAppStore((s) => s.pruneStaleDocSelection)
+
+  // Drift Verifier — 모든 로드된 docs 를 백그라운드에서 검증 (projects 루트 조회 필요)
+  useDrift(docs, projects)
   const composerOnboardingSeen = useAppStore((s) => s.composerOnboardingSeen)
   const setComposerOnboardingSeen = useAppStore((s) => s.setComposerOnboardingSeen)
   // P1.5 — 마지막 선택 복원 상태 플래그. 복원은 첫 워크스페이스 스캔 직후 1회만.

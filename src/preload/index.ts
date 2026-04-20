@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { ThemeType, TerminalType } from './types'
+import type { ThemeType, TerminalType, Doc, FsChangeEvent } from './types'
 
 // ipcRenderer 객체를 직접 노출하지 않는다.
 // invoke 래퍼만 contextBridge를 통해 노출한다. (보안 P0)
@@ -15,18 +15,26 @@ contextBridge.exposeInMainWorld('api', {
   project: {
     scanDocs: (projectId: string) => ipcRenderer.invoke('project:scan-docs', { projectId }),
     getDocCount: (projectId: string) => ipcRenderer.invoke('project:get-doc-count', { projectId }),
-    onDocsChunk: (cb: (event: Electron.IpcRendererEvent, data: unknown) => void) => {
-      ipcRenderer.on('project:docs-chunk', cb)
-      return () => ipcRenderer.off('project:docs-chunk', cb)
+    // raw IpcRendererEvent 노출 차단 — data-only wrapper
+    onDocsChunk: (cb: (data: Doc[]) => void) => {
+      const wrapper = (_event: Electron.IpcRendererEvent, data: Doc[]) => cb(data)
+      ipcRenderer.on('project:docs-chunk', wrapper)
+      return () => ipcRenderer.off('project:docs-chunk', wrapper)
     },
   },
 
   fs: {
     readDoc: (path: string) => ipcRenderer.invoke('fs:read-doc', { path }),
-    onChange: (cb: (event: Electron.IpcRendererEvent, data: unknown) => void) => {
-      ipcRenderer.on('fs:change', cb)
-      return () => ipcRenderer.off('fs:change', cb)
+    onChange: (cb: (data: FsChangeEvent) => void) => {
+      const wrapper = (_event: Electron.IpcRendererEvent, data: FsChangeEvent) => cb(data)
+      ipcRenderer.on('fs:change', wrapper)
+      return () => ipcRenderer.off('fs:change', wrapper)
     },
+  },
+
+  drift: {
+    verify: (docPath: string, projectRoot: string) =>
+      ipcRenderer.invoke('drift:verify', { docPath, projectRoot }),
   },
 
   claude: {
