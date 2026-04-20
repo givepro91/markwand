@@ -1,7 +1,25 @@
-# macOS 설치 가이드 (unsigned dmg)
+# macOS 설치 가이드 (unsigned dmg) — v0.2.0
 
 Markwand는 현재 Apple 코드사이닝 미적용 빌드입니다.
 아래 절차대로 진행하면 Gatekeeper 차단 없이 실행할 수 있습니다.
+
+---
+
+## 0. SHA256 무결성 확인
+
+다운로드한 dmg 파일이 변조되지 않았는지 확인합니다.
+
+```bash
+shasum -a 256 ~/Downloads/Markwand-0.2.0-arm64.dmg
+```
+
+예상 해시:
+```
+<!-- TODO: pnpm dist:mac 완료 후 실제 SHA256 값을 여기에 기입하세요 -->
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  Markwand-0.2.0-arm64.dmg
+```
+
+출력값이 위와 일치하면 안전한 파일입니다.
 
 ---
 
