@@ -1,10 +1,12 @@
 # Nova State
 
 ## Current
-- **Goal**: AI 산출물 큐레이터 데스크톱 뷰어 (Electron 33 + React 19 + TS) MVP v0.1
-- **Phase**: built + published — GitHub 원격 배포 완료, 첫 실행/사용자 검증 대기
+- **Goal**: v0.2 플래그십 — Context Composer (뷰어 → AI 작업 엔트리 포인트로 제품 포지션 전환)
+- **Phase**: built — MVP(P1+P1.5+P2) 구현 완료, 수동 E2E 검증 대기(V1/V2/V4/V9/V10/V11)
 - **Blocker**: none
 - **Remote**: git@github-givepro91:givepro91/markwand.git (main)
+- **Active Plan**: docs/plans/markwand-context-composer-mvp.md
+- **Active Design**: docs/designs/markwand-context-composer.md
 
 ## Tasks
 | Task | Status | Verdict | Note |
@@ -49,6 +51,10 @@
 > --emergency 플래그 사용 또는 Evaluator 건너뛸 때 반드시 기록. 미기록 = Hard-Block.
 
 ## Last Activity
+- /nova:auto → MVP 7 Wave 완료 — P1(Foundation·Store·Services·Primitives·UI) + P1.5(마지막 선택 복원) + P2(Codex 단발 응답). 총 7 커밋, 각 Wave 전 typecheck+build PASS, Wave 3/5는 독립 Evaluator 검증 후 CRITICAL/MAJOR 모두 수정 반영. 수동 V1/V2/V4/V9/V10/V11 대기 | 2026-04-20T15:00Z
+- /nova:design → 완료 — docs/designs/markwand-context-composer.md (CPS + Sprint Contract S-P1/P1.5/P2 + E2E 8건 + 역방향 검증) | 2026-04-20T14:00Z
+- /nova:deepplan → 완료 — docs/plans/markwand-context-composer-mvp.md (Explorer×3 병렬 → Synth → Critic CONDITIONAL PASS → Refiner 12건 반영) | 2026-04-20T13:30Z
+- feat: Workspace mode(container/single) 지원 — 루트 마커 흡수 버그 해결 (73863cd) | 2026-04-20T11:00Z
 - GitHub 원격 최초 푸시 → PASS — `git@github-givepro91:givepro91/markwand.git` main 추적 설정. ssh-agent가 `id_ed25519_jay_swk`를 먼저 올려 jay-swk로 잘못 인증되던 문제를 `GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'`로 우회. 근본 해결안: `~/.ssh/config`의 `github-givepro91` 블록에 `IdentitiesOnly yes` 추가 필요 (사용자 보류) | 2026-04-20T09:00Z
 - 문서 내 검색 커스텀 구현 (findInContainer.ts 신규, TreeWalker+CSS Highlight API, 400ms→수ms, IME 포커스 탈취 해결) + SafeImage(private 배지 404 fallback) + Electron find IPC 제거 → CONDITIONAL PASS (독립 Evaluator: Critical 1·Warning 3 중 Warning 2 + 방어적 clearTimeout 반영, Warning 1은 test env 이슈로 skip) | 2026-04-20T08:30Z
 - /nova:review --scope perf → CONDITIONAL PASS — MarkdownViewer memo/useMemo/slugCounter 클로저化로 find-in-page "다음" 1~2s 딜레이 제거 (typecheck/build PASS, 독립 Evaluator 검증) | 2026-04-20T08:00Z
@@ -59,10 +65,12 @@
 - /nova:auto --deep → PASS — md-viewer MVP v0.1 (53파일 신규, Plan/Design+Dev 2 Wave+QA 2 Wave+Fix 2 Wave) | 2026-04-20T03:18Z
 
 ## Refs
-- Plan: docs/plans/md-viewer-mvp.md
-- Design: docs/designs/md-viewer-mvp.md
-- Last Verification: Wave 2 Fix 후 빌드/typecheck/main 프로세스 12초 정상 실행 (크래시 0건)
-- Orchestration ID: orch-mo6k958z-f1gh
+- **Current Plan**: docs/plans/markwand-context-composer-mvp.md (Context Composer MVP)
+- **Current Design**: docs/designs/markwand-context-composer.md
+- Prior Plan: docs/plans/md-viewer-mvp.md (v0.1 완료)
+- Prior Design: docs/designs/md-viewer-mvp.md (v0.1 완료)
+- Last Verification: v0.1 Wave 2 Fix 후 빌드/typecheck/main 프로세스 12초 정상 실행 (크래시 0건)
+- Orchestration ID: orch-mo6k958z-f1gh (v0.1)
 
 ## 다음 단계 (사용자 액션)
 
