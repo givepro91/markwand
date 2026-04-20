@@ -37,16 +37,16 @@ export const DriftBadge = memo(function DriftBadge({ report, compact = false }: 
   if (missing > 0) {
     parts.push({
       label: compact ? `${missing}` : `${missing} missing`,
-      color: 'var(--color-danger-fg, #b42318)',
-      bg: 'var(--color-danger-bg, #fee4e2)',
+      color: 'var(--color-danger)',
+      bg: 'var(--color-danger-bg)',
       title: `${missing}개 참조 파일이 존재하지 않음`,
     })
   }
   if (stale > 0) {
     parts.push({
       label: compact ? `${stale}` : `${stale} stale`,
-      color: 'var(--color-warning-fg, #b54708)',
-      bg: 'var(--color-warning-bg, #fef0c7)',
+      color: 'var(--color-warning)',
+      bg: 'var(--color-warning-bg)',
       title: `${stale}개 참조 파일이 문서 이후 수정됨 — 내용 재확인 필요`,
     })
   }

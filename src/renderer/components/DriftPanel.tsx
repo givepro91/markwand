@@ -11,20 +11,20 @@ interface DriftPanelProps {
 const STATUS_META: Record<DriftStatus, { label: string; color: string; bg: string; icon: string }> = {
   ok: {
     label: '동기화됨',
-    color: 'var(--color-success-fg, #067647)',
-    bg: 'var(--color-success-bg, #dcfae6)',
+    color: 'var(--color-success)',
+    bg: 'var(--color-success-bg)',
     icon: '●',
   },
   stale: {
     label: 'stale',
-    color: 'var(--color-warning-fg, #b54708)',
-    bg: 'var(--color-warning-bg, #fef0c7)',
+    color: 'var(--color-warning)',
+    bg: 'var(--color-warning-bg)',
     icon: '◐',
   },
   missing: {
     label: 'missing',
-    color: 'var(--color-danger-fg, #b42318)',
-    bg: 'var(--color-danger-bg, #fee4e2)',
+    color: 'var(--color-danger)',
+    bg: 'var(--color-danger-bg)',
     icon: '✕',
   },
 }

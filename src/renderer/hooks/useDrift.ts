@@ -17,6 +17,8 @@ export function useDrift(docs: Doc[], projects: Project[]): void {
   const clearDriftReport = useAppStore((s) => s.clearDriftReport)
   const pruneDriftReports = useAppStore((s) => s.pruneDriftReports)
 
+  // 언마운트 가드 — unmount 이후 in-flight IPC 응답이 store를 오염시키지 않도록.
+  const mounted = useRef(true)
   // 현재 검증 중이거나 대기 중인 docPath — 중복 호출 방지.
   const inFlight = useRef<Set<string>>(new Set())
   // 문서별 debounce 타이머.
@@ -52,6 +54,7 @@ export function useDrift(docs: Doc[], projects: Project[]): void {
       queue.current.push(async () => {
         try {
           const report = await window.api.drift.verify(doc.path, project.root)
+          if (!mounted.current) return
           setDriftReport(doc.path, report)
         } catch {
           // 파일 크기 초과/권한/삭제 등은 silent — UI는 보고서 없음으로 처리.
@@ -96,10 +99,12 @@ export function useDrift(docs: Doc[], projects: Project[]): void {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projects])
 
-  // 언마운트: 타이머 정리.
+  // 언마운트: mounted 플래그 해제 + 타이머 정리.
   useEffect(() => {
+    mounted.current = true
     const snapshot = timers.current
     return () => {
+      mounted.current = false
       for (const t of snapshot.values()) clearTimeout(t)
       snapshot.clear()
     }

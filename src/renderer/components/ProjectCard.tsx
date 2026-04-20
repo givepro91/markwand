@@ -126,8 +126,8 @@ export const ProjectCard = memo(function ProjectCard({ project, onOpen }: Projec
                   fontWeight: 'var(--fw-medium)',
                   padding: '1px 6px',
                   borderRadius: '10px',
-                  background: driftCounts.missing > 0 ? 'var(--color-danger-bg, #fee4e2)' : 'var(--color-warning-bg, #fef0c7)',
-                  color: driftCounts.missing > 0 ? 'var(--color-danger-fg, #b42318)' : 'var(--color-warning-fg, #b54708)',
+                  background: driftCounts.missing > 0 ? 'var(--color-danger-bg)' : 'var(--color-warning-bg)',
+                  color: driftCounts.missing > 0 ? 'var(--color-danger)' : 'var(--color-warning)',
                   lineHeight: 1.3,
                 }}
               >

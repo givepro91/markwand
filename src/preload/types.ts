@@ -54,32 +54,15 @@ export interface FsChangeEvent {
   frontmatter?: DocFrontmatter
 }
 
-// Drift Verifier — src/lib/drift/types.ts 와 형태 일치.
-// renderer에 IPC 결과 전달용으로 preload에서 재선언 (순환 의존 방지).
-export type DriftStatus = 'ok' | 'missing' | 'stale'
-
-export interface VerifiedReference {
-  raw: string
-  resolvedPath: string
-  kind: 'at' | 'hint' | 'inline'
-  line: number
-  col: number
-  status: DriftStatus
-  targetMtime?: number
-}
-
-export interface DriftReport {
-  docPath: string
-  docMtime: number
-  projectRoot: string
-  references: VerifiedReference[]
-  counts: {
-    ok: number
-    missing: number
-    stale: number
-  }
-  verifiedAt: number
-}
+// Drift Verifier — 단일 진실 공급원은 src/lib/drift/types.ts.
+// preload는 순수 type 파일만 re-export 하므로 런타임 의존 없음 (순환 안전).
+export type {
+  DriftStatus,
+  VerifiedReference,
+  DriftReport,
+  Reference,
+  ReferenceKind,
+} from '../lib/drift/types'
 
 export interface ClaudeCheckResult {
   available: boolean
