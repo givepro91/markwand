@@ -1,4 +1,4 @@
-import { ensureLoginPath } from './claude-launcher'
+import { ensureLoginPath, openInGhostty } from './claude-launcher'
 import type { TerminalType } from '../../preload/types'
 
 export interface CodexLaunchResult {
@@ -45,6 +45,12 @@ export async function openInCodex(
   if (!codexPath) return { ok: false, reason: 'CODEX_NOT_FOUND' }
 
   const instruction = opts.instruction?.trim() || DEFAULT_INSTRUCTION
+
+  // Ghostty는 AppleScript 미지원 → `open -na` 분기 (claude-launcher 공용)
+  if (terminal === 'Ghostty') {
+    return openInGhostty(absDir, { contextFile: opts.contextFile }, 'codex', instruction)
+  }
+
   const script = buildCodexScript(terminal)
 
   try {

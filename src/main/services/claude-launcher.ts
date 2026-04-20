@@ -57,6 +57,13 @@ export async function openInClaude(
   const claudePath = await which('claude').catch(() => null)
   if (!claudePath) return { ok: false, reason: 'CLAUDE_NOT_FOUND' }
 
+  // Ghostty는 AppleScript scripting suite를 구현하지 않는다(`do script` 실패).
+  // 공식 가이드: `open -na Ghostty.app --args --working-directory=<dir> -e <command>`.
+  // `open -na` 자체가 매 호출 새 창 생성 → Composer 새 창 강제가 자연스럽게 해결됨.
+  if (terminal === 'Ghostty') {
+    return openInGhostty(absDir, options, 'claude')
+  }
+
   const script = options.contextFile
     ? buildComposerScript(terminal)
     : buildDefaultScript(terminal)
@@ -71,6 +78,54 @@ export async function openInClaude(
       },
       timeout: 10_000,
     })
+    return { ok: true }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    return { ok: false, reason: msg }
+  }
+}
+
+// bash/zsh 싱글쿼트 이스케이프 — 공백/따옴표/달러/백틱 안전.
+function shellQuote(s: string): string {
+  return `'${s.replace(/'/g, `'\\''`)}'`
+}
+
+// Ghostty 런칭 — claude / codex 공용. 내부 셸에서 login 프로파일을 거쳐야 PATH가 살아있으므로
+// 명령을 `bash -lc` 래퍼로 감싼다. `open -na Ghostty.app --args ... -e <단일 명령 문자열>`.
+export async function openInGhostty(
+  absDir: string,
+  options: { contextFile?: string },
+  cli: 'claude' | 'codex',
+  codexInstruction?: string
+): Promise<LaunchResult> {
+  let innerCmd: string
+  if (cli === 'claude') {
+    innerCmd = options.contextFile
+      ? `claude ${shellQuote('@' + options.contextFile)}`
+      : 'claude'
+  } else {
+    // codex: 반드시 contextFile과 instruction이 있어야 한다 (composer 전용 호출)
+    if (!options.contextFile) return { ok: false, reason: 'CONTEXT_REQUIRED' }
+    innerCmd = `codex exec ${shellQuote(codexInstruction ?? '다음 문서들을 바탕으로 작업해줘')} < ${shellQuote(options.contextFile)}`
+  }
+  // Ghostty 내부 셸은 user $SHELL — PATH는 login 프로파일에서 로드됨.
+  // 그래도 안전을 위해 bash -lc로 로그인 셸 관행을 강제.
+  const bashScript = `bash -lc ${shellQuote(innerCmd)}`
+
+  try {
+    const { execa } = await import('execa')
+    await execa(
+      'open',
+      [
+        '-na',
+        'Ghostty.app',
+        '--args',
+        `--working-directory=${absDir}`,
+        '-e',
+        bashScript,
+      ],
+      { timeout: 10_000 }
+    )
     return { ok: true }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
