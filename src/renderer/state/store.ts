@@ -22,6 +22,12 @@ interface AppState {
   // F4: 프로젝트별 마지막으로 본 문서 경로 (메모리만, 영속화 X)
   lastViewedDocs: Record<string, string>
 
+  // Composer (v0.2) — 전역 다중 선택 상태. 크로스 프로젝트가 기능의 차별점.
+  selectedDocPaths: Set<string>
+  composerCollapsed: boolean
+  composerAutoClear: boolean // prefs 동기화. true면 Send 성공 시 자동 Clear.
+  composerOnboardingSeen: boolean // prefs 동기화. 첫 실행 말풍선 노출 여부.
+
   setWorkspaces: (workspaces: Workspace[]) => void
   addWorkspace: (workspace: Workspace) => void
   removeWorkspace: (id: string) => void
@@ -43,6 +49,15 @@ interface AppState {
   markDocRead: (path: string) => void
   setPendingDocOpen: (pending: { projectId: string; path: string } | null) => void
   setLastViewedDoc: (projectId: string, path: string) => void
+
+  // Composer 액션 — Set은 반드시 new Set(...)으로 불변 교체(Zustand shallow equality)
+  toggleDocSelection: (absPath: string) => void
+  clearDocSelection: () => void
+  replaceDocSelection: (paths: string[]) => void
+  setComposerCollapsed: (collapsed: boolean) => void
+  setComposerAutoClear: (autoClear: boolean) => void
+  setComposerOnboardingSeen: (seen: boolean) => void
+  pruneStaleDocSelection: (availablePaths: Set<string>) => number
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -61,6 +76,10 @@ export const useAppStore = create<AppState>((set) => ({
   readDocs: {},
   pendingDocOpen: null,
   lastViewedDocs: {},
+  selectedDocPaths: new Set<string>(),
+  composerCollapsed: false,
+  composerAutoClear: false,
+  composerOnboardingSeen: false,
 
   setWorkspaces: (workspaces) => set({ workspaces }),
   addWorkspace: (workspace) =>
@@ -92,4 +111,30 @@ export const useAppStore = create<AppState>((set) => ({
   setPendingDocOpen: (pending) => set({ pendingDocOpen: pending }),
   setLastViewedDoc: (projectId, path) =>
     set((state) => ({ lastViewedDocs: { ...state.lastViewedDocs, [projectId]: path } })),
+
+  // Composer 액션 — Set 불변 교체 패턴 강제 (shallow equality로 리렌더 보장)
+  toggleDocSelection: (absPath) =>
+    set((s) => {
+      const next = new Set(s.selectedDocPaths)
+      if (next.has(absPath)) next.delete(absPath)
+      else next.add(absPath)
+      return { selectedDocPaths: next }
+    }),
+  clearDocSelection: () => set({ selectedDocPaths: new Set<string>() }),
+  replaceDocSelection: (paths) => set({ selectedDocPaths: new Set<string>(paths) }),
+  setComposerCollapsed: (composerCollapsed) => set({ composerCollapsed }),
+  setComposerAutoClear: (composerAutoClear) => set({ composerAutoClear }),
+  setComposerOnboardingSeen: (composerOnboardingSeen) => set({ composerOnboardingSeen }),
+  pruneStaleDocSelection: (available) => {
+    let removed = 0
+    set((s) => {
+      const next = new Set<string>()
+      for (const p of s.selectedDocPaths) {
+        if (available.has(p)) next.add(p)
+        else removed++
+      }
+      return removed === 0 ? {} : { selectedDocPaths: next }
+    })
+    return removed
+  },
 }))
