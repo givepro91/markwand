@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { createHash } from 'crypto'
 import fg from 'fast-glob'
-import type { Project, Doc } from '../../preload/types'
+import type { Project, Doc, WorkspaceMode } from '../../preload/types'
 
 // 프로젝트를 식별하는 마커 파일 8종
 const PROJECT_MARKERS = [
@@ -57,14 +57,80 @@ function makeProjectId(root: string): string {
   return createHash('sha1').update(root).digest('hex').slice(0, 16)
 }
 
+async function findMarkers(dirPath: string): Promise<string[]> {
+  const found: string[] = []
+  for (const marker of PROJECT_MARKERS) {
+    try {
+      await fs.promises.access(path.join(dirPath, marker))
+      found.push(marker)
+    } catch {
+      // 마커 없음
+    }
+  }
+  return found
+}
+
+async function makeProject(
+  workspaceId: string,
+  dirPath: string,
+  markers: string[]
+): Promise<Project> {
+  let lastModified = 0
+  try {
+    const stat = await fs.promises.stat(dirPath)
+    lastModified = stat.mtimeMs
+  } catch {
+    lastModified = Date.now()
+  }
+  return {
+    id: makeProjectId(dirPath),
+    workspaceId,
+    name: path.basename(dirPath),
+    root: dirPath,
+    markers,
+    docCount: -1, // 분석 중 sentinel — App.tsx worker가 채우면 0 이상
+    lastModified,
+  }
+}
+
 /**
- * workspaceId에 속하는 프로젝트를 depth 2까지 스캔한다.
- * 마커 8종 중 하나라도 존재하는 디렉토리를 프로젝트로 인식한다.
+ * 워크스페이스 루트 직하(depth 1)에 프로젝트 마커 보유 디렉토리가 있는지 본다.
+ * 있으면 container 추천, 없으면 single 추천.
+ */
+export async function detectWorkspaceMode(rootPath: string): Promise<WorkspaceMode> {
+  let entries: fs.Dirent[]
+  try {
+    entries = await fs.promises.readdir(rootPath, { withFileTypes: true })
+  } catch {
+    return 'single'
+  }
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue
+    if (PROJECT_SCAN_IGNORE.has(entry.name)) continue
+    if (entry.name.startsWith('.')) continue
+    const markers = await findMarkers(path.join(rootPath, entry.name))
+    if (markers.length > 0) return 'container'
+  }
+  return 'single'
+}
+
+/**
+ * workspaceId에 속하는 프로젝트를 스캔한다.
+ * - mode='single': 루트 자체를 1개 프로젝트로 반환 (마커 없어도 등록 — 사용자가 명시적으로 단독 지정한 의도).
+ * - mode='container': 루트(depth 0)는 마커 검사 스킵하고 하위를 depth 2까지 재귀 탐색.
+ *   마커 8종 중 하나라도 있는 디렉토리를 프로젝트로 인식.
  */
 export async function scanProjects(
   workspaceId: string,
-  rootPath: string
+  rootPath: string,
+  mode: WorkspaceMode = 'container'
 ): Promise<Project[]> {
+  if (mode === 'single') {
+    const markers = await findMarkers(rootPath)
+    const project = await makeProject(workspaceId, rootPath, markers)
+    return [project]
+  }
+
   const projects: Project[] = []
 
   async function scan(dirPath: string, currentDepth: number): Promise<void> {
@@ -77,38 +143,14 @@ export async function scanProjects(
       return
     }
 
-    // 현재 디렉토리의 마커 확인
-    const foundMarkers: string[] = []
-    for (const marker of PROJECT_MARKERS) {
-      const markerPath = path.join(dirPath, marker)
-      try {
-        await fs.promises.access(markerPath)
-        foundMarkers.push(marker)
-      } catch {
-        // 마커 없음
+    // 루트(depth 0)는 "컨테이너"로 취급해 마커 검사 스킵 — swk 같은 메타 폴더가
+    // 루트 CLAUDE.md 때문에 프로젝트로 흡수되던 버그 해결.
+    if (currentDepth > 0) {
+      const foundMarkers = await findMarkers(dirPath)
+      if (foundMarkers.length > 0) {
+        projects.push(await makeProject(workspaceId, dirPath, foundMarkers))
+        return // 프로젝트 내부는 재귀 탐색하지 않음
       }
-    }
-
-    if (foundMarkers.length > 0) {
-      // 마커가 있는 경우 프로젝트로 등록
-      let lastModified = 0
-      try {
-        const stat = await fs.promises.stat(dirPath)
-        lastModified = stat.mtimeMs
-      } catch {
-        lastModified = Date.now()
-      }
-
-      projects.push({
-        id: makeProjectId(dirPath),
-        workspaceId,
-        name: path.basename(dirPath),
-        root: dirPath,
-        markers: foundMarkers,
-        docCount: -1, // 분석 중 sentinel — App.tsx worker가 채우면 0 이상
-        lastModified,
-      })
-      return // 프로젝트 내부는 재귀 탐색하지 않음
     }
 
     // 하위 디렉토리 재귀 탐색 — PROJECT_SCAN_IGNORE에 명시된 거대 디렉토리만 제외.

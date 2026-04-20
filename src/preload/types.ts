@@ -3,11 +3,15 @@ export type TerminalType = 'Terminal' | 'iTerm2' | 'Ghostty'
 export type ViewMode = 'all' | 'inbox' | 'project'
 export type SortOrder = 'recent' | 'name' | 'count'
 export type ViewLayout = 'grid' | 'list'
+// container: 루트 하위의 프로젝트들을 depth 2까지 스캔
+// single: 루트 자체를 1개의 프로젝트로 등록 (하위 스캔 안 함)
+export type WorkspaceMode = 'container' | 'single'
 
 export interface Workspace {
   id: string
   name: string
   root: string
+  mode: WorkspaceMode
   addedAt: number
   lastOpened: number | null
 }
