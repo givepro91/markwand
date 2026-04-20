@@ -1,0 +1,193 @@
+@import './tokens.css';
+@import './markdown.css';
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 스크롤바 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* 텍스트 선택 */
+::selection {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* 문서 내 검색 하이라이트 (CSS Custom Highlight API) */
+::highlight(md-viewer-find-match) {
+  background-color: #ffd54f;
+  color: #000;
+}
+::highlight(md-viewer-find-match-active) {
+  background-color: #ff9800;
+  color: #000;
+}
+
+/* 버튼 기본 초기화 */
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* 링크 기본 */
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* 접근성: focus-visible 기본 outline */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* 모션 감소 선호 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* ── ui primitives hover (CSS — JS 핸들러 제거하여 42+ 카드 동시 mount 시 성능 확보) ── */
+
+.ui-card {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--duration-normal) var(--ease-standard),
+              background var(--duration-normal) var(--ease-standard);
+}
+.ui-card.is-interactive {
+  cursor: pointer;
+}
+.ui-card.is-interactive:hover {
+  box-shadow: var(--shadow-md);
+  background: var(--bg-hover);
+}
+
+/* ── 카드/행 액션 아이콘 — hover 시에만 표시 ── */
+.card-actions {
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+.ui-card.is-interactive:hover .card-actions,
+.project-row:hover .card-actions {
+  opacity: 1;
+}
+
+.ui-btn {
+  transition: background var(--duration-fast) var(--ease-standard),
+              border-color var(--duration-fast) var(--ease-standard),
+              box-shadow var(--duration-fast) var(--ease-standard);
+}
+.ui-btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover) !important;
+}
+.ui-btn-ghost:hover:not(:disabled),
+.ui-btn-danger:hover:not(:disabled) {
+  background: var(--bg-hover) !important;
+}
+
+/* ── 스피너 (StatusMessage variant=loading) ── */
+@keyframes ui-spin {
+  to { transform: rotate(360deg); }
+}
+.ui-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: ui-spin 800ms linear infinite;
+  vertical-align: -3px;
+  margin-right: var(--sp-2);
+}
+.ui-spinner.lg {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+  margin-right: 0;
+}
+
+/* ── 풀스크린 로딩 오버레이 (워크스페이스 첫 스캔용) ── */
+.app-loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  z-index: var(--z-modal);
+}
+.app-loading-overlay__title {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+}
+.app-loading-overlay__detail {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  text-align: center;
+  max-width: 480px;
+}
+.app-loading-overlay__progress {
+  width: 320px;
+  height: 6px;
+  background: var(--bg-hover);
+  border-radius: var(--r-pill);
+  overflow: hidden;
+}
+.app-loading-overlay__progress-bar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--r-pill);
+  transition: width var(--duration-normal) var(--ease-standard);
+}

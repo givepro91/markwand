@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      CSP 정책:
+      - script-src에 'wasm-unsafe-eval' 추가 — Shiki(syntax highlighting)가 WebAssembly로 onig regex를 로드한다.
+        없으면 CompileError 발생 + React 렌더 throw → renderer freeze.
+      - connect-src 'self' — vite HMR(dev) 및 동적 import 청크 fetch 허용.
+      - app: 프로토콜 — 워크스페이스 내 이미지 접근.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' app: data: blob: https:; connect-src 'self' app: ws: wss:; font-src 'self' data:;"
+    />
+    <title>md-viewer</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

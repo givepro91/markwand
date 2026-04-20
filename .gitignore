@@ -1,0 +1,38 @@
+.nova/
+node_modules/
+dist/
+out/
+.vite/
+*.local
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# 빌드 아티팩트
+*.dmg
+*.pkg
+*.app
+
+# 환경변수
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 로그
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 캐시
+.eslintcache
+.cache/

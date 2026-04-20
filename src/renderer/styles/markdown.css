@@ -1,0 +1,191 @@
+.markdown-viewer {
+  font-size: var(--fs-md);
+  line-height: var(--lh-loose);
+  color: var(--text);
+}
+
+/* Headings */
+.markdown-viewer h1,
+.markdown-viewer h2,
+.markdown-viewer h3,
+.markdown-viewer h4,
+.markdown-viewer h5,
+.markdown-viewer h6 {
+  margin-top: var(--sp-6);
+  margin-bottom: var(--sp-3);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+}
+
+.markdown-viewer h1 {
+  font-size: var(--fs-2xl);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: var(--sp-2);
+}
+
+.markdown-viewer h2 {
+  font-size: var(--fs-xl);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: var(--sp-2);
+}
+
+.markdown-viewer h3 {
+  font-size: var(--fs-lg);
+}
+
+.markdown-viewer h4 {
+  font-size: var(--fs-md);
+}
+
+.markdown-viewer h5 {
+  font-size: var(--fs-sm);
+}
+
+.markdown-viewer h6 {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+/* Paragraph */
+.markdown-viewer p {
+  margin-top: 0;
+  margin-bottom: var(--sp-4);
+  line-height: var(--lh-loose);
+}
+
+/* Links */
+.markdown-viewer a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.markdown-viewer a:hover {
+  text-decoration: underline;
+}
+
+/* Lists */
+.markdown-viewer ul,
+.markdown-viewer ol {
+  padding-left: var(--sp-6);
+  margin-bottom: var(--sp-4);
+}
+
+.markdown-viewer ul {
+  list-style: disc;
+}
+
+.markdown-viewer ol {
+  list-style: decimal;
+}
+
+.markdown-viewer ul ul,
+.markdown-viewer ol ul {
+  list-style: circle;
+}
+
+.markdown-viewer ul ul ul,
+.markdown-viewer ol ul ul {
+  list-style: square;
+}
+
+.markdown-viewer li {
+  margin-bottom: var(--sp-1);
+}
+
+.markdown-viewer li::marker {
+  color: var(--text-muted);
+}
+
+/* Blockquote */
+.markdown-viewer blockquote {
+  border-left: 4px solid var(--border);
+  padding-left: var(--sp-4);
+  margin: 0 0 var(--sp-4) 0;
+  color: var(--text-muted);
+}
+
+.markdown-viewer blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+/* Inline code */
+.markdown-viewer code {
+  background: var(--code-bg);
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  font-size: 85%;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+/* Code block */
+.markdown-viewer pre {
+  background: var(--code-bg);
+  padding: var(--sp-4);
+  border-radius: var(--r-md);
+  overflow-x: auto;
+  margin-bottom: var(--sp-4);
+}
+
+.markdown-viewer pre code {
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+  border-radius: 0;
+}
+
+/* Table */
+.markdown-viewer table {
+  border-collapse: collapse;
+  border: 1px solid var(--border);
+  width: 100%;
+  margin-bottom: var(--sp-4);
+}
+
+.markdown-viewer th,
+.markdown-viewer td {
+  border: 1px solid var(--border);
+  padding: var(--sp-2) var(--sp-3);
+  text-align: left;
+}
+
+.markdown-viewer th {
+  font-weight: var(--fw-semibold);
+  background: var(--bg-elev);
+}
+
+/* Horizontal rule */
+.markdown-viewer hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: var(--sp-6) 0;
+}
+
+/* Image */
+.markdown-viewer img {
+  max-width: 100%;
+  border-radius: var(--r-md);
+  height: auto;
+}
+
+/* Details / Summary */
+.markdown-viewer details {
+  margin-bottom: var(--sp-4);
+}
+
+.markdown-viewer summary {
+  cursor: pointer;
+  font-weight: var(--fw-medium);
+}
+
+/* Task list checkbox */
+.markdown-viewer input[type="checkbox"] {
+  margin-right: var(--sp-2);
+  vertical-align: middle;
+}
+
+/* Task list item */
+.markdown-viewer .task-list-item {
+  list-style: none;
+  margin-left: calc(var(--sp-6) * -1);
+  padding-left: var(--sp-6);
+}

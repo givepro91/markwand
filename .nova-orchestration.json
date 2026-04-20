@@ -1,0 +1,52 @@
+{
+  "orch-mo6k958z-f1gh": {
+    "id": "orch-mo6k958z-f1gh",
+    "task": "md-viewer MVP v0.1 — AI 산출물 큐레이터 데스크톱 뷰어 (Electron + React + TS) 신규 프로젝트 구현",
+    "complexity": "complex",
+    "status": "completed",
+    "phases": [
+      {
+        "name": "DeepPlan",
+        "role": "Architect (Explorer x3 → Synth → Critic → Refiner)",
+        "status": "completed",
+        "startedAt": "2026-04-20T02:13:41.611Z",
+        "result": "docs/plans/md-viewer-mvp.md 작성 (Explorer×3 + Critic P0/P1 반영, 5 스프린트 분할)",
+        "completedAt": "2026-04-20T02:21:39.585Z"
+      },
+      {
+        "name": "Architect",
+        "role": "Architect (Plan 기반 CPS 설계서 작성)",
+        "status": "completed",
+        "startedAt": "2026-04-20T02:22:20.483Z",
+        "result": "docs/designs/md-viewer-mvp.md 저장 (40+ 파일 구체화, IPC 13채널, 보안 게이트, 디자인 토큰, 5스프린트 체크리스트)",
+        "completedAt": "2026-04-20T02:29:34.964Z"
+      },
+      {
+        "name": "Dev",
+        "role": "Generator (senior-dev, MVP v0.1 구현)",
+        "status": "completed",
+        "startedAt": "2026-04-20T02:30:01.319Z",
+        "result": "Wave 1 (24파일) + Wave 2 (29파일) 구현 완료. 빌드/타입체크/main 프로세스 시작 모두 통과.",
+        "completedAt": "2026-04-20T03:18:34.764Z"
+      },
+      {
+        "name": "QA",
+        "role": "Evaluator (qa-engineer, 빌드/타입/구조/실행 검증)",
+        "status": "completed",
+        "startedAt": "2026-04-20T02:41:26.960Z",
+        "result": "Wave 1 CONDITIONAL→PASS, Wave 2 FAIL→PASS (Fix 후). 보안 P0 전 항목 통과.",
+        "completedAt": "2026-04-20T03:18:36.358Z"
+      },
+      {
+        "name": "Fix",
+        "role": "Generator (senior-dev, FAIL 시 한정 수정)",
+        "status": "completed",
+        "startedAt": "2026-04-20T02:49:46.195Z",
+        "result": "Wave 1 4건 + Wave 2 5건 한정 수정 완료. CRITICAL 2건(execa ESM, buildTree 루트) 해소.",
+        "completedAt": "2026-04-20T03:18:38.056Z"
+      }
+    ],
+    "createdAt": "2026-04-20T02:13:22.259Z",
+    "updatedAt": "2026-04-20T03:18:38.056Z"
+  }
+}
