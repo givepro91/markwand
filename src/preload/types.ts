@@ -55,14 +55,8 @@ export interface ClaudeOpenResult {
   reason?: string
 }
 
-// Composer — 선택 doc들을 임시 파일로 concat. 자동 런칭 없이 contextFile 경로만 반환.
-// Renderer가 clipboard 복사 등으로 활용한다.
-export interface ComposerPrepareResult {
-  ok: boolean
-  contextFile?: string
-  reason?: string
-}
-
+// Composer — 선택 paths 토큰 추정만 main 프로세스가 담당.
+// 복사는 renderer에서 `@<path>` 문자열을 직접 조립 후 navigator.clipboard.
 export interface ComposerEstimate {
   bytes: number
   estimatedTokens: number
@@ -92,7 +86,6 @@ export interface WindowApi {
     open: (dir: string, terminal: TerminalType) => Promise<ClaudeOpenResult>
   }
   composer: {
-    prepare: (paths: string[]) => Promise<ComposerPrepareResult>
     estimateTokens: (paths: string[]) => Promise<ComposerEstimate>
   }
   shell: {

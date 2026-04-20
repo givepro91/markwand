@@ -89,10 +89,6 @@ export function parseShellShowItemInput(raw: unknown): { path: string } {
 
 const ComposerPathList = z.array(PathInput).min(1).max(200)
 
-export function parseComposerPrepareInput(raw: unknown): { paths: string[] } {
-  return z.object({ paths: ComposerPathList }).parse(raw)
-}
-
 export function parseComposerEstimateInput(raw: unknown): { paths: string[] } {
   return z.object({ paths: ComposerPathList }).parse(raw)
 }

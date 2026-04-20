@@ -48,21 +48,13 @@ export function ComposerTray() {
   const handleCopyRef = async () => {
     setCopying(true)
     try {
-      const result = await window.api.composer.prepare(paths)
-      if (!result.ok || !result.contextFile) {
-        toast.error(`컨텍스트 파일 생성 실패: ${result.reason ?? '알 수 없는 오류'}`)
-        return
-      }
-      const atRef = `@${result.contextFile}`
-      await navigator.clipboard.writeText(atRef)
-      toast.success('@참조 클립보드 복사됨 — Claude/Codex에 붙여넣기', {
-        action: {
-          label: '경로 복사',
-          onClick: () => {
-            void navigator.clipboard.writeText(result.contextFile!)
-          },
-        },
-        durationMs: 6000,
+      // 파일마다 `@절대경로` 나열. 공백 포함 경로는 따옴표로 감싸 Claude/쉘이 분리되지 않게.
+      const atRefs = paths
+        .map((p) => (p.includes(' ') ? `"@${p}"` : `@${p}`))
+        .join(' ')
+      await navigator.clipboard.writeText(atRefs)
+      toast.success(`@참조 ${paths.length}개 복사됨 — Claude/Codex에 붙여넣기`, {
+        durationMs: 4000,
       })
       if (composerAutoClear) clearDocSelection()
     } catch (err) {

@@ -36,7 +36,6 @@ contextBridge.exposeInMainWorld('api', {
   },
 
   composer: {
-    prepare: (paths: string[]) => ipcRenderer.invoke('composer:prepare', { paths }),
     estimateTokens: (paths: string[]) =>
       ipcRenderer.invoke('composer:estimate-tokens', { paths }),
   },

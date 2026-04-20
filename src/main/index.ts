@@ -12,7 +12,6 @@ import { registerClaudeHandlers } from './ipc/claude'
 import { registerComposerHandlers } from './ipc/composer'
 import { getStore } from './services/store'
 import { parseShellShowItemInput } from './security/validators'
-import { cleanupOldContextFiles, cleanupAllContextFilesSync } from './services/context-builder'
 
 // app:// 프로토콜을 privileged로 등록해야 한다 (보안 정책상 secure 처리)
 protocol.registerSchemesAsPrivileged([
@@ -81,11 +80,6 @@ async function initializeApp(): Promise<void> {
   registerComposerHandlers()
   registerShellHandlers()
 
-  // Composer — 지난 실행 잔해 선제 삭제 (block 하지 않고 fire-and-forget)
-  cleanupOldContextFiles().catch(() => {
-    // ignore
-  })
-
   // 저장된 워크스페이스 루트로 프로토콜 allowlist 초기화
   const store = await getStore()
   const workspaces = store.get('workspaces')
@@ -137,9 +131,4 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
-})
-
-// Composer 임시 파일 정리 — 앱 종료 전 동기 삭제 (AppleScript TTL unlink 타이머와 무관)
-app.on('before-quit', () => {
-  cleanupAllContextFilesSync()
 })
