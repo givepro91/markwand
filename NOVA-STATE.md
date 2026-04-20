@@ -2,8 +2,9 @@
 
 ## Current
 - **Goal**: AI 산출물 큐레이터 데스크톱 뷰어 (Electron 33 + React 19 + TS) MVP v0.1
-- **Phase**: built — 첫 실행/사용자 검증 대기
+- **Phase**: built + published — GitHub 원격 배포 완료, 첫 실행/사용자 검증 대기
 - **Blocker**: none
+- **Remote**: git@github-givepro91:givepro91/markwand.git (main)
 
 ## Tasks
 | Task | Status | Verdict | Note |
@@ -16,9 +17,9 @@
 ## Recently Done (최근 3개)
 | Task | Completed | Verdict | Ref |
 |------|-----------|---------|-----|
+| GitHub 원격 초기 푸시 (markwand repo, id_rsa 강제 지정으로 jay-swk/givepro91 키 충돌 우회) | 2026-04-20 | PASS | github:givepro91/markwand |
 | 문서 내 검색 커스텀 구현 (TreeWalker + CSS Highlight API, Electron findInPage 대체) + SafeImage fallback | 2026-04-20 | CONDITIONAL PASS | perf/UX |
 | 문서 내 검색 next 버튼 딜레이 최적화 (MarkdownViewer memo + components useMemo + slugCounter 클로저化) | 2026-04-20 | CONDITIONAL PASS | /nova:review perf |
-| Wave 2 Fix (execa ESM, FileTree buildTree, Shiki CSS, ClaudeButton 장착, Plan 수정) | 2026-04-20 | PASS | orch-mo6k958z-f1gh |
 
 ## Known Risks
 | 위험 | 심각도 | 상태 |
@@ -48,6 +49,7 @@
 > --emergency 플래그 사용 또는 Evaluator 건너뛸 때 반드시 기록. 미기록 = Hard-Block.
 
 ## Last Activity
+- GitHub 원격 최초 푸시 → PASS — `git@github-givepro91:givepro91/markwand.git` main 추적 설정. ssh-agent가 `id_ed25519_jay_swk`를 먼저 올려 jay-swk로 잘못 인증되던 문제를 `GIT_SSH_COMMAND='ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes'`로 우회. 근본 해결안: `~/.ssh/config`의 `github-givepro91` 블록에 `IdentitiesOnly yes` 추가 필요 (사용자 보류) | 2026-04-20T09:00Z
 - 문서 내 검색 커스텀 구현 (findInContainer.ts 신규, TreeWalker+CSS Highlight API, 400ms→수ms, IME 포커스 탈취 해결) + SafeImage(private 배지 404 fallback) + Electron find IPC 제거 → CONDITIONAL PASS (독립 Evaluator: Critical 1·Warning 3 중 Warning 2 + 방어적 clearTimeout 반영, Warning 1은 test env 이슈로 skip) | 2026-04-20T08:30Z
 - /nova:review --scope perf → CONDITIONAL PASS — MarkdownViewer memo/useMemo/slugCounter 클로저化로 find-in-page "다음" 1~2s 딜레이 제거 (typecheck/build PASS, 독립 Evaluator 검증) | 2026-04-20T08:00Z
 - Wave E 사용자 피드백 5건 → PASS — FileTree 가상화 높이 측정(position:absolute + useLayoutEffect + docs 로드 시 재측정) / TOC id 매칭(slugify Unicode 보존 + sanitize clobber 해제 + 텍스트 fallback) / 카드 Finder 아이콘 / 인박스 pendingDocOpen / 프로젝트 lastViewedDocs | 2026-04-20T07:30Z
