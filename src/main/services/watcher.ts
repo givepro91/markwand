@@ -2,6 +2,7 @@ import { watch, FSWatcher } from 'chokidar'
 import path from 'path'
 import type { WebContents } from 'electron'
 import type { FsChangeEvent } from '../../preload/types'
+import { parseFrontmatter } from './scanner'
 
 type ChangeType = FsChangeEvent['type']
 
@@ -51,9 +52,19 @@ function sendChange(type: ChangeType, filePath: string): void {
 
   const timer = setTimeout(() => {
     debounceTimers.delete(key)
-    if (activeWebContents && !activeWebContents.isDestroyed()) {
+    if (!activeWebContents || activeWebContents.isDestroyed()) return
+
+    if (type === 'unlink') {
       activeWebContents.send('fs:change', { type, path: filePath } satisfies FsChangeEvent)
+      return
     }
+
+    void parseFrontmatter(filePath).then((frontmatter) => {
+      if (!activeWebContents || activeWebContents.isDestroyed()) return
+      const payload: FsChangeEvent = { type, path: filePath }
+      if (frontmatter !== undefined) payload.frontmatter = frontmatter
+      activeWebContents.send('fs:change', payload)
+    })
   }, DEBOUNCE_MS)
 
   debounceTimers.set(key, timer)
