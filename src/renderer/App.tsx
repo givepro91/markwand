@@ -6,7 +6,7 @@ import { ComposerOnboarding } from './components/ComposerOnboarding'
 import { useWorkspace } from './hooks/useWorkspace'
 import { useViewMode } from './hooks/useViewMode'
 import { useAppStore } from './state/store'
-import type { Doc, Project, TerminalType } from '../../src/preload/types'
+import type { Doc, Project } from '../../src/preload/types'
 
 // 뷰는 lazy 로드 — startup에서 shiki/react-arborist/mermaid를 미리 로드하지 않는다.
 const AllProjectsView = lazy(() =>
@@ -38,21 +38,14 @@ export default function App() {
   const pruneStaleDocSelection = useAppStore((s) => s.pruneStaleDocSelection)
   const composerOnboardingSeen = useAppStore((s) => s.composerOnboardingSeen)
   const setComposerOnboardingSeen = useAppStore((s) => s.setComposerOnboardingSeen)
-  const [terminal, setTerminal] = useState<TerminalType>('Terminal')
-  const [codexAvailable, setCodexAvailable] = useState(false)
   // P1.5 — 마지막 선택 복원 상태 플래그. 복원은 첫 워크스페이스 스캔 직후 1회만.
   const [pendingRestore, setPendingRestore] = useState<string[] | null>(null)
 
-  // viewMode 초기값 복원 + terminal + 온보딩 + codex 검출
+  // viewMode 초기값 복원 + 온보딩 + 마지막 선택 로드
   useEffect(() => {
     window.api.prefs.get('viewMode').then((stored) => {
       if (stored === 'all' || stored === 'inbox' || stored === 'project') {
         useAppStore.getState().setViewMode(stored)
-      }
-    })
-    window.api.prefs.get('terminal').then((stored) => {
-      if (stored === 'Terminal' || stored === 'iTerm2' || stored === 'Ghostty') {
-        setTerminal(stored)
       }
     })
     window.api.prefs.get('composerOnboardingSeen').then((stored) => {
@@ -64,10 +57,6 @@ export default function App() {
       if (stored === true) {
         useAppStore.getState().setComposerAutoClear(true)
       }
-    })
-    // Codex CLI 검출 (Phase 2)
-    window.api.codex.check().then((r) => setCodexAvailable(r.available)).catch(() => {
-      setCodexAvailable(false)
     })
     // P1.5 — 마지막 선택 스냅샷 로드. 실제 복원은 첫 docs 스캔 직후에 stale 필터링 후 실행.
     window.api.prefs.get('lastSelectedDocPaths').then((stored) => {
@@ -241,12 +230,6 @@ export default function App() {
     ? projects.find((p) => p.id === activeProjectId) ?? null
     : null
 
-  // Composer Send 시 사용할 projectDir — 활성 프로젝트 우선, 없으면 활성 워크스페이스.
-  const composerProjectDir =
-    activeProject?.root ??
-    workspaces.find((w) => w.id === activeWorkspaceId)?.root ??
-    null
-
   const showOnboarding = !composerOnboardingSeen && workspaces.length > 0
 
   // 워크스페이스가 없을 때 메인 영역에 1차 CTA
@@ -350,11 +333,7 @@ export default function App() {
             </div>
           )}
         </div>
-        <ComposerTray
-          projectDir={composerProjectDir}
-          terminal={terminal}
-          codexAvailable={codexAvailable}
-        />
+        <ComposerTray />
       </main>
       <ToastHost />
     </div>

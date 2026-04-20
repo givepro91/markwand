@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { ThemeType, TerminalType, ComposerSendInput } from './types'
+import type { ThemeType, TerminalType } from './types'
 
 // ipcRenderer 객체를 직접 노출하지 않는다.
 // invoke 래퍼만 contextBridge를 통해 노출한다. (보안 P0)
@@ -35,12 +35,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('claude:open', { dir, terminal }),
   },
 
-  codex: {
-    check: () => ipcRenderer.invoke('codex:check'),
-  },
-
   composer: {
-    send: (input: ComposerSendInput) => ipcRenderer.invoke('composer:send', input),
+    prepare: (paths: string[]) => ipcRenderer.invoke('composer:prepare', { paths }),
     estimateTokens: (paths: string[]) =>
       ipcRenderer.invoke('composer:estimate-tokens', { paths }),
   },
