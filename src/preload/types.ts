@@ -26,12 +26,20 @@ export interface Project {
   lastModified: number
 }
 
+export interface DocFrontmatter {
+  tags?: string[]
+  status?: string
+  updated?: number
+  source?: 'claude' | 'codex' | 'design' | 'review' | string
+  [k: string]: unknown
+}
+
 export interface Doc {
   path: string
   projectId: string
   name: string
   mtime: number
-  frontmatter?: Record<string, unknown>
+  frontmatter?: DocFrontmatter
 }
 
 export interface ReadDocResult {

@@ -2,7 +2,46 @@ import fs from 'fs'
 import path from 'path'
 import { createHash } from 'crypto'
 import fg from 'fast-glob'
-import type { Project, Doc, WorkspaceMode } from '../../preload/types'
+import matter from 'gray-matter'
+import type { Project, Doc, DocFrontmatter, WorkspaceMode } from '../../preload/types'
+
+const HEADER_READ_BYTES = 4096
+
+function normalizeUpdated(value: unknown): number | undefined {
+  if (value === undefined || value === null) return undefined
+  if (typeof value === 'number') return value
+  if (value instanceof Date) return value.getTime()
+  if (typeof value === 'string') {
+    const ms = Date.parse(value)
+    return isNaN(ms) ? undefined : ms
+  }
+  return undefined
+}
+
+async function parseFrontmatter(absPath: string): Promise<DocFrontmatter | undefined> {
+  try {
+    const fd = await fs.promises.open(absPath, 'r')
+    try {
+      const buf = Buffer.alloc(HEADER_READ_BYTES)
+      const { bytesRead } = await fd.read(buf, 0, HEADER_READ_BYTES, 0)
+      const head = buf.subarray(0, bytesRead).toString('utf8')
+      const { data } = matter(head)
+      if (!data || Object.keys(data).length === 0) return undefined
+      const fm: DocFrontmatter = { ...data }
+      const updatedNormalized = normalizeUpdated(data.updated)
+      if (updatedNormalized !== undefined) {
+        fm.updated = updatedNormalized
+      } else {
+        delete fm.updated
+      }
+      return fm
+    } finally {
+      await fd.close()
+    }
+  } catch {
+    return undefined
+  }
+}
 
 // 프로젝트를 식별하는 마커 파일 8종
 const PROJECT_MARKERS = [
@@ -217,12 +256,15 @@ export async function* scanDocs(
       mtime = Date.now()
     }
 
-    chunk.push({
+    const frontmatter = await parseFrontmatter(absPath)
+    const doc: Doc = {
       path: absPath,
       projectId,
       name: path.basename(absPath),
       mtime,
-    })
+    }
+    if (frontmatter !== undefined) doc.frontmatter = frontmatter
+    chunk.push(doc)
 
     if (chunk.length >= chunkSize) {
       yield chunk
