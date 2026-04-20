@@ -1,6 +1,6 @@
 {
-  "name": "md-viewer",
-  "version": "0.1.0",
+  "name": "markwand",
+  "version": "0.2.0",
   "description": "AI 산출물 큐레이터 — 여러 프로젝트에 산재한 마크다운 문서를 발견·소비·재진입",
   "main": "./out/main/index.js",
   "author": "jay@spacewalk.tech",
@@ -44,8 +44,8 @@
     "vite": "^5.0.0"
   },
   "build": {
-    "appId": "tech.spacewalk.md-viewer",
-    "productName": "md-viewer",
+    "appId": "tech.spacewalk.markwand",
+    "productName": "Markwand",
     "directories": {
       "output": "dist"
     },
