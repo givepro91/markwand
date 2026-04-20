@@ -1,6 +1,15 @@
 import { create } from 'zustand'
 import type { Workspace, Project, Doc, ViewMode, SortOrder, ViewLayout } from '../../../src/preload/types'
 
+export type UpdatedRange = 'today' | '7d' | '30d' | 'all'
+
+export interface MetaFilter {
+  tags: string[]
+  statuses: string[]
+  sources: string[]
+  updatedRange: UpdatedRange
+}
+
 interface AppState {
   workspaces: Workspace[]
   activeWorkspaceId: string | null
@@ -23,6 +32,10 @@ interface AppState {
   commandPaletteOpen: boolean
   // F4: 프로젝트별 마지막으로 본 문서 경로 (메모리만, 영속화 X)
   lastViewedDocs: Record<string, string>
+
+  // FilterBar — frontmatter 기반 메타 필터
+  metaFilter: MetaFilter
+  setMetaFilter: (filter: MetaFilter) => void
 
   // Composer (v0.2) — 전역 다중 선택 상태. 크로스 프로젝트가 기능의 차별점.
   selectedDocPaths: Set<string>
@@ -85,6 +98,9 @@ export const useAppStore = create<AppState>((set) => ({
   pendingDocOpen: null,
   lastViewedDocs: {},
   commandPaletteOpen: false,
+  metaFilter: { tags: [], statuses: [], sources: [], updatedRange: 'all' },
+  setMetaFilter: (metaFilter) => set({ metaFilter }),
+
   selectedDocPaths: new Set<string>(),
   composerCollapsed: false,
   composerAutoClear: false,

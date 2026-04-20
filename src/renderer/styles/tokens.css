@@ -57,6 +57,30 @@
   --color-success-bg: #dafbe1;
   --color-warning: #9a6700;
   --color-warning-bg: #fff8c5;
+
+  /* source badges */
+  --source-claude-bg:   #f3eeff;
+  --source-claude-text: #5b21b6;
+  --source-claude-icon: #7c3aed;
+  --source-codex-bg:    #e0f7fa;
+  --source-codex-text:  #0e7490;
+  --source-codex-icon:  #0891b2;
+  --source-design-bg:   #fff7ed;
+  --source-design-text: #c2410c;
+  --source-design-icon: #ea580c;
+  --source-review-bg:   var(--color-warning-bg);
+  --source-review-text: var(--color-warning);
+  --source-review-icon: #b45309;
+  --source-unknown-bg:   var(--bg-hover, #eaeef2);
+  --source-unknown-text: var(--text-muted, #59636e);
+
+  /* status badges */
+  --status-draft-bg:       #f1f3f5;
+  --status-draft-text:     #495057;
+  --status-published-bg:   var(--color-success-bg);
+  --status-published-text: var(--color-success);
+  --status-archived-bg:    #e9ecef;
+  --status-archived-text:  #868e96;
 }
 
 [data-theme="dark"] {
@@ -69,4 +93,26 @@
   --color-success-bg: #033a16;
   --color-warning: #d29922;
   --color-warning-bg: #4d2d00;
+
+  /* source badges */
+  --source-claude-bg:   #2a1a4a;
+  --source-claude-text: #c084fc;
+  --source-claude-icon: #a855f7;
+  --source-codex-bg:    #0a2a2f;
+  --source-codex-text:  #22d3ee;
+  --source-codex-icon:  #06b6d4;
+  --source-design-bg:   #3a1500;
+  --source-design-text: #fb923c;
+  --source-design-icon: #f97316;
+  --source-review-bg:   var(--color-warning-bg);
+  --source-review-text: var(--color-warning);
+  --source-review-icon: #fbbf24;
+
+  /* status badges */
+  --status-draft-bg:       #2c2f33;
+  --status-draft-text:     #adb5bd;
+  --status-published-bg:   var(--color-success-bg);
+  --status-published-text: var(--color-success);
+  --status-archived-bg:    #1c1f22;
+  --status-archived-text:  #6c757d;
 }
