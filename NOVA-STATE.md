@@ -14,6 +14,17 @@
 - **Kept**: 체크박스 멀티셀렉트, Tray 칩·게이지, 토큰 추정(휴리스틱), 온보딩, 마지막 선택 복원, stale 경로 자동 정리
 - **Final UX**: 파일 체크 → `📋 Copy @ref` → `@/p1 @/p2 @/p3` 나열로 클립보드 복사 → 사용자가 터미널에 직접 붙여넣기
 
+## Release Checklist — v0.2.0 (2026-04-21)
+| 항목 | 상태 | 비고 |
+|------|------|------|
+| v0.2.0 태그 → HEAD 일치 | ❌ FAIL (hard-block) | 태그=561209c, HEAD=842650f; 6커밋 차이 (dmg빌드·Gatekeeper·QA·골든패스 미포함) |
+| DMG 아티팩트 존재 + SHA256 | ❌ FAIL (hard-block) | dist/out/ 어디에도 .dmg 없음; 0b0c491 커밋은 package.json만 수정 |
+| install-macos.md SHA256 섹션 | ⚠️ FAIL (soft-block) | v0.2.0 명기 없음, SHA256 검증 섹션 없음 (템플릿 추가됨 — 실제 해시 기입 필요) |
+| Known Risks 실측치 기록 | ✅ CONDITIONAL PASS | 4개 항목 실측 완료; 5k FPS·dmg 실설치는 GUI 필요로 추정값 |
+| 골든 패스 전 구간 PASS | ⚠️ PARTIAL | Step1-2 PASS; Step3(doc view)·Step4(Copy @ref)·Step5(paste) GUI 미검증 |
+
+> **릴리스 블로커**: Hard 2건 해소 전 배포 금지. (1) `git tag -f v0.2.0 842650f` 후 재서명 또는 재생성, (2) `pnpm dist:mac` 실행 후 SHA256 기록.
+
 ## Tasks
 | Task | Status | Verdict | Note |
 |------|--------|---------|------|
