@@ -64,6 +64,24 @@ export default function App() {
         useAppStore.getState().setComposerAutoClear(true)
       }
     })
+    // load atomically to avoid race between trackReadDocs and readDocs
+    Promise.all([
+      window.api.prefs.get('trackReadDocs'),
+      window.api.prefs.get('readDocs'),
+    ]).then(([trackStored, readDocsStored]) => {
+      const trackReadDocs = trackStored === false ? false : undefined
+      const readDocs =
+        readDocsStored && typeof readDocsStored === 'object' && !Array.isArray(readDocsStored)
+          ? (readDocsStored as Record<string, number>)
+          : undefined
+      if (trackReadDocs !== undefined && readDocs !== undefined) {
+        useAppStore.setState({ trackReadDocs, readDocs })
+      } else if (trackReadDocs !== undefined) {
+        useAppStore.getState().setTrackReadDocs(trackReadDocs)
+      } else if (readDocs !== undefined) {
+        useAppStore.getState().setReadDocs(readDocs)
+      }
+    })
     // P1.5 — 마지막 선택 스냅샷 로드. 실제 복원은 첫 docs 스캔 직후에 stale 필터링 후 실행.
     window.api.prefs.get('lastSelectedDocPaths').then((stored) => {
       if (Array.isArray(stored) && stored.every((v) => typeof v === 'string')) {
