@@ -1,12 +1,18 @@
 # Nova State
 
 ## Current
-- **Goal**: v0.2 플래그십 — Context Composer (뷰어 → AI 작업 엔트리 포인트로 제품 포지션 전환)
-- **Phase**: built — MVP(P1+P1.5+P2) 구현 완료, 수동 E2E 검증 대기(V1/V2/V4/V9/V10/V11)
+- **Goal**: v0.2 플래그십 — Context Composer (Copy @ref 단일 흐름, 자동 런칭 철회)
+- **Phase**: built — 사용자 실기 검증 완료, v0.2.0 릴리스 준비
 - **Blocker**: none
-- **Remote**: git@github-givepro91:givepro91/markwand.git (main)
-- **Active Plan**: docs/plans/markwand-context-composer-mvp.md
-- **Active Design**: docs/designs/markwand-context-composer.md
+- **Remote**: git@github-givepro91:givepro91/markwand.git (main) — 13 commits ahead, push 대기
+- **Active Plan**: docs/plans/markwand-context-composer-mvp.md (일부 스코프 피벗됨)
+- **Active Design**: docs/designs/markwand-context-composer.md (일부 스코프 피벗됨)
+
+## Scope Pivot (2026-04-20)
+- **Drop**: `Send to Claude Code`·`Send to Codex` 자동 런칭, codex-launcher, context-builder, AppleScript Composer 모드
+- **Reasons**: (1) Ghostty/Warp/Alacritty 등 터미널 지원 매트릭스 유지 비용 과다, (2) 자동 실행으로 의도치 않은 토큰 낭비 위험, (3) 사용자 제어권 확보
+- **Kept**: 체크박스 멀티셀렉트, Tray 칩·게이지, 토큰 추정(휴리스틱), 온보딩, 마지막 선택 복원, stale 경로 자동 정리
+- **Final UX**: 파일 체크 → `📋 Copy @ref` → `@/p1 @/p2 @/p3` 나열로 클립보드 복사 → 사용자가 터미널에 직접 붙여넣기
 
 ## Tasks
 | Task | Status | Verdict | Note |
@@ -51,6 +57,9 @@
 > --emergency 플래그 사용 또는 Evaluator 건너뛸 때 반드시 기록. 미기록 = Hard-Block.
 
 ## Last Activity
+- fix: Copy @ref 여러개 선택 UX 수정 (a4ec0f4) — bundle 임시파일 방식 → `@/path1 @/path2 ...` 나열. context-builder/prepare IPC 제거. 189줄 삭제. | 2026-04-20T16:30Z
+- refactor: 자동 런칭 전면 철회 (a59c6b1) — codex-launcher 삭제, Send 버튼 제거, ComposerTray는 Copy @ref 단일 버튼. 595줄 삭제. | 2026-04-20T16:00Z
+- fix: Ghostty 런칭 시도 (d49baa7) — 실기 테스트에서 bash 이스케이프 실패, 이후 피벗으로 철회. | 2026-04-20T15:30Z
 - /nova:auto → MVP 7 Wave 완료 — P1(Foundation·Store·Services·Primitives·UI) + P1.5(마지막 선택 복원) + P2(Codex 단발 응답). 총 7 커밋, 각 Wave 전 typecheck+build PASS, Wave 3/5는 독립 Evaluator 검증 후 CRITICAL/MAJOR 모두 수정 반영. 수동 V1/V2/V4/V9/V10/V11 대기 | 2026-04-20T15:00Z
 - /nova:design → 완료 — docs/designs/markwand-context-composer.md (CPS + Sprint Contract S-P1/P1.5/P2 + E2E 8건 + 역방향 검증) | 2026-04-20T14:00Z
 - /nova:deepplan → 완료 — docs/plans/markwand-context-composer-mvp.md (Explorer×3 병렬 → Synth → Critic CONDITIONAL PASS → Refiner 12건 반영) | 2026-04-20T13:30Z
