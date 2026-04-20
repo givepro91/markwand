@@ -86,6 +86,13 @@ export function CommandPalette() {
   const closeCommandPalette = useAppStore((s) => s.closeCommandPalette)
   const openDoc = useAppStore((s) => s.openDoc)
   const projects = useAppStore((s) => s.projects)
+  const workspaces = useAppStore((s) => s.workspaces)
+  const docCountProgress = useAppStore((s) => s.docCountProgress)
+  const projectsLoading = useAppStore((s) => s.projectsLoading)
+
+  const isIndexing =
+    projectsLoading || (docCountProgress.total > 0 && docCountProgress.done < docCountProgress.total)
+  const hasNoWorkspace = workspaces.length === 0
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
@@ -272,6 +279,40 @@ export function CommandPalette() {
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Indexing status banner */}
+        {isIndexing && (
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--sp-2)',
+              padding: 'var(--sp-2) var(--sp-4)',
+              background: 'var(--bg-elev)',
+              borderBottom: '1px solid var(--border-muted)',
+              fontSize: 'var(--fs-xs)',
+              color: 'var(--text-muted)',
+              flexShrink: 0,
+            }}
+          >
+            <div
+              className="cmd-spinner"
+              style={{
+                width: '12px',
+                height: '12px',
+                border: '1.5px solid var(--border)',
+                borderTopColor: 'var(--accent)',
+                borderRadius: '50%',
+                flexShrink: 0,
+              }}
+            />
+            {projectsLoading
+              ? '인덱싱 중…'
+              : `인덱싱 중 ${docCountProgress.done}/${docCountProgress.total}`}
+          </div>
+        )}
+
         {/* Input row */}
         <div
           style={{
@@ -337,7 +378,30 @@ export function CommandPalette() {
           className="cmd-results"
           style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain' }}
         >
-          {paletteState === 'empty' && (
+          {paletteState === 'empty' && hasNoWorkspace && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 'var(--sp-2)',
+                padding: 'var(--sp-10) var(--sp-6)',
+                color: 'var(--text-muted)',
+                fontSize: 'var(--fs-sm)',
+                textAlign: 'center',
+              }}
+            >
+              <SearchIcon style={{ width: '32px', height: '32px', opacity: 0.4 } as React.CSSProperties} />
+              <span style={{ fontWeight: 'var(--fw-medium)', color: 'var(--text)' }}>
+                워크스페이스가 없습니다
+              </span>
+              <span style={{ fontSize: 'var(--fs-xs)', opacity: 0.7 }}>
+                사이드바에서 워크스페이스를 추가하면 ⌘K로 문서를 검색할 수 있습니다
+              </span>
+            </div>
+          )}
+          {paletteState === 'empty' && !hasNoWorkspace && (
             <div
               style={{
                 display: 'flex',

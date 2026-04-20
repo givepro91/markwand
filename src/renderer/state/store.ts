@@ -29,6 +29,7 @@ interface AppState {
   composerCollapsed: boolean
   composerAutoClear: boolean // prefs 동기화. true면 Send 성공 시 자동 Clear.
   composerOnboardingSeen: boolean // prefs 동기화. 첫 실행 말풍선 노출 여부.
+  cmdkHintSeen: boolean // prefs 동기화. 인덱싱 완료 후 ⌘K 힌트 토스트 1회 노출 여부.
 
   setWorkspaces: (workspaces: Workspace[]) => void
   addWorkspace: (workspace: Workspace) => void
@@ -63,6 +64,7 @@ interface AppState {
   setComposerCollapsed: (collapsed: boolean) => void
   setComposerAutoClear: (autoClear: boolean) => void
   setComposerOnboardingSeen: (seen: boolean) => void
+  setCmdkHintSeen: (seen: boolean) => void
   pruneStaleDocSelection: (availablePaths: Set<string>) => number
 }
 
@@ -87,6 +89,7 @@ export const useAppStore = create<AppState>((set) => ({
   composerCollapsed: false,
   composerAutoClear: false,
   composerOnboardingSeen: false,
+  cmdkHintSeen: false,
 
   setWorkspaces: (workspaces) => set({ workspaces }),
   addWorkspace: (workspace) =>
@@ -141,6 +144,7 @@ export const useAppStore = create<AppState>((set) => ({
   setComposerCollapsed: (composerCollapsed) => set({ composerCollapsed }),
   setComposerAutoClear: (composerAutoClear) => set({ composerAutoClear }),
   setComposerOnboardingSeen: (composerOnboardingSeen) => set({ composerOnboardingSeen }),
+  setCmdkHintSeen: (cmdkHintSeen) => set({ cmdkHintSeen }),
   pruneStaleDocSelection: (available) => {
     let removed = 0
     set((s) => {

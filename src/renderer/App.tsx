@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState, lazy, Suspense } from 'react'
+import { useEffect, useCallback, useState, useRef, lazy, Suspense } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { EmptyState, StatusMessage, ToastHost, toast } from './components/ui'
 import { ComposerTray } from './components/ComposerTray'
@@ -52,6 +52,11 @@ export default function App() {
     window.api.prefs.get('composerOnboardingSeen').then((stored) => {
       if (stored === true) {
         useAppStore.getState().setComposerOnboardingSeen(true)
+      }
+    })
+    window.api.prefs.get('hints.cmdk.seen').then((stored) => {
+      if (stored === true) {
+        useAppStore.getState().setCmdkHintSeen(true)
       }
     })
     window.api.prefs.get('composerAutoClear').then((stored) => {
@@ -113,6 +118,9 @@ export default function App() {
     }, 500)
     return () => clearTimeout(t)
   }, [selectedDocPaths])
+
+  const cmdkHintSeen = useAppStore((s) => s.cmdkHintSeen)
+  const setCmdkHintSeen = useAppStore((s) => s.setCmdkHintSeen)
 
   const handleDismissOnboarding = useCallback(() => {
     setComposerOnboardingSeen(true)
@@ -219,6 +227,24 @@ export default function App() {
 
   const projectsLoading = useAppStore((s) => s.projectsLoading)
   const docCountProgress = useAppStore((s) => s.docCountProgress)
+
+  // 인덱싱 완료 감지 → ⌘K 힌트 토스트 1회 노출
+  const wasIndexingRef = useRef(false)
+  useEffect(() => {
+    const counting = docCountProgress.total > 0 && docCountProgress.done < docCountProgress.total
+    if (counting) {
+      wasIndexingRef.current = true
+      return
+    }
+    if (wasIndexingRef.current && docCountProgress.total > 0) {
+      wasIndexingRef.current = false
+      if (!cmdkHintSeen) {
+        toast.info('⌘K로 모든 프로젝트 문서 검색', { durationMs: 7000 })
+        setCmdkHintSeen(true)
+        void window.api.prefs.set('hints.cmdk.seen', true)
+      }
+    }
+  }, [docCountProgress, cmdkHintSeen, setCmdkHintSeen])
   const isDocCounting = docCountProgress.total > 0 && docCountProgress.done < docCountProgress.total
   // 풀스크린 오버레이 — 워크스페이스 분석부터 docCount 진행률 100% 도달까지 유지.
   // 진행률(%)을 사용자가 명확히 볼 수 있도록 docCount 단계도 포함.
