@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar'
 import { EmptyState, StatusMessage, ToastHost, toast } from './components/ui'
 import { ComposerTray } from './components/ComposerTray'
 import { ComposerOnboarding } from './components/ComposerOnboarding'
+import { CommandPalette } from './components/CommandPalette'
 import { useWorkspace } from './hooks/useWorkspace'
 import { useViewMode } from './hooks/useViewMode'
 import { useAppStore } from './state/store'
@@ -254,6 +255,7 @@ export default function App() {
             size="lg"
           />
         </main>
+        <CommandPalette />
       </div>
     )
   }
@@ -336,6 +338,7 @@ export default function App() {
         <ComposerTray />
       </main>
       <ToastHost />
+      <CommandPalette />
     </div>
   )
 }
