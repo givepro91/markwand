@@ -13,6 +13,7 @@
     "dist:mac": "pnpm build && electron-builder --mac --publish never",
     "test": "vitest run",
     "bench:transport": "npx --yes tsx scripts/bench-transport.ts",
+    "test:integration-ssh": "npx --yes tsx scripts/test-integration-ssh.ts",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {

@@ -1,0 +1,36 @@
+{
+  "timestamp": "2026-04-21T09:42:19.886Z",
+  "target": "markwand@127.0.0.1:2222",
+  "results": [
+    {
+      "name": "T-conn-001 TOFU 최초 연결",
+      "ok": true,
+      "detail": "algorithm=ssh-ed25519, id=ssh:9054d316ecba451a"
+    },
+    {
+      "name": "T-sftp-readFile-001 readFile small md",
+      "ok": true,
+      "detail": "88 bytes"
+    },
+    {
+      "name": "T-fs-too-large-001 FILE_TOO_LARGE",
+      "ok": true,
+      "detail": "size-first 가드 동작"
+    },
+    {
+      "name": "T-scanner-001 scanDocs + detectWorkspaceMode",
+      "ok": true,
+      "detail": "2 md, mode=container"
+    },
+    {
+      "name": "T-hostkey-reject-001 hostVerifier false → 연결 차단 (DC-4)",
+      "ok": true,
+      "detail": "rejected 확인"
+    },
+    {
+      "name": "T-watcher-manual-001 SshPoller manual 기본 동작",
+      "ok": true,
+      "detail": "watch→close 정상"
+    }
+  ]
+}

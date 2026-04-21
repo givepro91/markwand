@@ -7,6 +7,7 @@ import crypto from 'node:crypto'
 import { SshClient } from './client'
 import { createSshFsDriver } from './fs'
 import { createSshScannerDriver } from './scanner'
+import { createSshWatcherDriver } from './watcher'
 import { requestHostKeyTrust } from './hostKeyPromptBridge'
 import { setHostKey } from './hostKeyDb'
 import type { Transport } from '../types'
@@ -15,6 +16,7 @@ import type { HostKeyInfo, SshConnectOptions } from './types'
 export { SshClient } from './client'
 export { createSshFsDriver } from './fs'
 export { createSshScannerDriver } from './scanner'
+export { createSshWatcherDriver, suggestInterval } from './watcher'
 export * from './types'
 
 /**
@@ -65,16 +67,17 @@ export async function createSshTransport(options: SshConnectOptions): Promise<Ss
   const client = new SshClient({ ...options, hostVerifier })
   await client.connect()
 
-  // 연결 성공 후 handshake 이벤트로 갱신된 algorithm 을 저장소에도 반영 (sha256 동일이면 setHostKey 가 firstSeenAt 유지).
-  // bridge 가 이미 저장한 경우엔 중복 set 이 되지만 schema 동등성 유지되므로 무해.
-  const finalKey = client.acceptedHostKey
-  if (finalKey) {
-    // setHostKey 는 덮어쓰기 — match 경로에서 TOFU prompt 스킵된 경우에도 최신 algorithm 반영.
-    await setHostKey(id, finalKey)
+  // 연결 성공 후 handshake 이벤트로 갱신된 algorithm 을 저장소에도 반영.
+  // 단, 사용자가 명시 hostVerifier 를 준 경로(테스트/smoke/CLI)는 electron-store 의존성을
+  // 우회하기 위해 setHostKey 스킵. bridge 기본 경로는 verifier 내부에서 setHostKey 를 이미 호출.
+  if (!options.hostVerifier) {
+    const finalKey = client.acceptedHostKey
+    if (finalKey) await setHostKey(id, finalKey)
   }
 
   const fs = createSshFsDriver(client)
   const scanner = createSshScannerDriver(client)
+  const watcher = createSshWatcherDriver(client)
 
   return {
     id,
@@ -82,7 +85,7 @@ export async function createSshTransport(options: SshConnectOptions): Promise<Ss
     client,
     fs,
     scanner,
-    watcher: undefined, // M4 (S4)
+    watcher,
     exec: undefined, // M6 (별도 Plan)
     async dispose() {
       await client.dispose()
