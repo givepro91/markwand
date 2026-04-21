@@ -48,5 +48,122 @@
     ],
     "createdAt": "2026-04-20T02:13:22.259Z",
     "updatedAt": "2026-04-20T03:18:38.056Z"
+  },
+  "orch-mo7y5i7f-q3ul": {
+    "id": "orch-mo7y5i7f-q3ul",
+    "task": "DriftPanel 이슈 복사 기능 추가 — missing/stale 참조를 AI 프롬프트 형식으로 클립보드에 복사",
+    "complexity": "simple",
+    "status": "completed",
+    "phases": [
+      {
+        "name": "구현",
+        "role": "Generator",
+        "status": "completed",
+        "startedAt": "2026-04-21T01:30:29.860Z",
+        "result": "DriftPanel.tsx 수정 완료. buildCopyIssuesPrompt 순수 함수 + 헤더에 hasIssues 조건부 이슈 복사 버튼 추가. typecheck/build PASS. pre-existing extractor.test 10건은 무관.",
+        "completedAt": "2026-04-21T01:33:24.849Z"
+      },
+      {
+        "name": "검증",
+        "role": "Evaluator",
+        "status": "completed",
+        "startedAt": "2026-04-21T01:33:27.690Z",
+        "result": "CONDITIONAL PASS — Critical 0, Major 2(pre-existing 계약 가정, 스코프 밖), Minor 3. Minor 중 raw 백틱 이스케이프만 반영(마크다운 스팬 경계 파손 방지). 나머지 Minor(setTimeout 리크·key·mtime=0)는 기존 패턴 답습·기능 무영향.",
+        "completedAt": "2026-04-21T01:36:18.061Z"
+      },
+      {
+        "name": "리뷰",
+        "role": "Reviewer",
+        "status": "completed",
+        "startedAt": "2026-04-21T01:36:21.049Z",
+        "result": "PASS — Critical 0. 요구사항 매칭 10/10. Minor 2건(clipboard silent·setTimeout cleanup)은 기존 패턴 답습, 차단 사유 아님.",
+        "completedAt": "2026-04-21T01:37:23.433Z"
+      }
+    ],
+    "createdAt": "2026-04-21T01:30:13.227Z",
+    "updatedAt": "2026-04-21T01:37:23.433Z"
+  },
+  "orch-mo7yw17u-cnx5": {
+    "id": "orch-mo7yw17u-cnx5",
+    "task": "사이드바 파일명 잘림 해결 — 툴팁 + 리사이즈 핸들",
+    "complexity": "simple",
+    "status": "completed",
+    "phases": [
+      {
+        "name": "사전 확인",
+        "role": "Explorer",
+        "status": "completed",
+        "startedAt": "2026-04-21T01:51:38.420Z",
+        "result": "파일 3개 편집 범위 확정: validators.ts(allowlist +1줄), FileTree.tsx(title +1줄), ProjectView.tsx(width state + splitter + debounced persist). react-arborist width=100% 로 폭 변경 시 자동 추종, ResizeObserver도 기존 그대로 동작.",
+        "completedAt": "2026-04-21T01:53:13.385Z"
+      },
+      {
+        "name": "구현",
+        "role": "Generator",
+        "status": "completed",
+        "startedAt": "2026-04-21T01:53:22.626Z",
+        "result": "4 파일 수정: validators.ts(+sidebarWidth allowlist), FileTree.tsx(+title), ProjectView.tsx(+width state +splitter handle +pointer events), globals.css(+hover indicator). typecheck + build PASS.",
+        "completedAt": "2026-04-21T01:55:32.090Z"
+      },
+      {
+        "name": "검증",
+        "role": "Evaluator",
+        "status": "completed",
+        "startedAt": "2026-04-21T01:55:35.581Z",
+        "result": "CONDITIONAL → PASS 이후 반영. Critical 0, Major 2 중 M2(IPC race) 반영, M1은 실질 무버그. Minor 4 중 m1(pointercancel 원복)·m3(CSS selector 좁히기) 반영, m2(a11y)는 Known Gap, m4(main validator)는 renderer clamp 로 충분.",
+        "completedAt": "2026-04-21T01:58:49.987Z"
+      },
+      {
+        "name": "리뷰",
+        "role": "Reviewer",
+        "status": "completed",
+        "startedAt": "2026-04-21T01:58:52.953Z",
+        "result": "Review 초기 CONDITIONAL — Critical 2건(listener 누수·setPointerCapture 미사용) 반영: unmountedRef 가드 + setPointerCapture + rAF stale 해소(s.latest 참조). 재빌드 PASS. 사용자에게 앱 재실행 안내.",
+        "completedAt": "2026-04-21T02:01:30.027Z"
+      }
+    ],
+    "createdAt": "2026-04-21T01:50:50.922Z",
+    "updatedAt": "2026-04-21T02:01:30.027Z"
+  },
+  "orch-mo86dcfj-bdu2": {
+    "id": "orch-mo86dcfj-bdu2",
+    "task": "v0.9 M1 Transport Interface 도입 + LocalTransport 래핑 (S1). Plan: docs/plans/remote-fs-transport-m1-m2.md (approved). Design: docs/designs/remote-fs-transport.md §2.2 rev. M1.",
+    "complexity": "complex",
+    "status": "running",
+    "phases": [
+      {
+        "name": "C1 Baseline 커밋",
+        "role": "Orchestrator",
+        "status": "running",
+        "startedAt": "2026-04-21T05:20:25.700Z"
+      },
+      {
+        "name": "C2 Transport 신규 파일",
+        "role": "Generator",
+        "status": "pending"
+      },
+      {
+        "name": "C3 IPC 위임 수정",
+        "role": "Generator",
+        "status": "pending"
+      },
+      {
+        "name": "C4 테스트 작성",
+        "role": "Generator",
+        "status": "pending"
+      },
+      {
+        "name": "Evaluator 검증",
+        "role": "Evaluator",
+        "status": "pending"
+      },
+      {
+        "name": "Fix (필요 시)",
+        "role": "Generator",
+        "status": "pending"
+      }
+    ],
+    "createdAt": "2026-04-21T05:20:15.919Z",
+    "updatedAt": "2026-04-21T05:20:25.700Z"
   }
 }

@@ -118,12 +118,20 @@ export interface FsDriver {
   readFile(absPath: string, opts?: ReadOptions): Promise<Buffer>
   readStream(absPath: string, opts?: ReadOptions): AsyncIterable<Uint8Array>  // for app:// streaming
   access(absPath: string): Promise<boolean>  // existence check w/o throw
+
+  // rev. M1 (2026-04-21) — readFile의 기본 maxBytes는 2MB. 초과 시 FILE_TOO_LARGE 에러.
+  // NOVA-STATE Known Risk "fs:read-doc 파일 크기 무제한"을 FsDriver 계약 수준에서 해소.
 }
 
 export interface ScannerDriver {
   countDocs(root: string, patterns: string[], ignore: string[]): Promise<number>
   scanDocs(root: string, patterns: string[], ignore: string[]): AsyncIterable<FileStat>
   // patterns/ignore는 POSIX glob, transport별 구현체가 해석
+
+  // rev. M1 (2026-04-21) — workspace container/single 모드 감지. 루트 자체가 프로젝트 마커를
+  // 포함하면 'single', 하위 디렉토리들이 각자 마커를 가지면 'container'.
+  // 원격 transport는 root 하위 readdir로 구현하며, 로컬과 동일 계약.
+  detectWorkspaceMode(root: string): Promise<'container' | 'single'>
 }
 
 export interface WatcherDriver {

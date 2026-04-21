@@ -1,12 +1,13 @@
 # Nova State
 
 ## Current
-- **Goal**: v0.3 이미지 뷰어 MVP 완료 — Markwand를 "md 뷰어" → "Viewable Asset 큐레이터"로 확장
-- **Phase**: v0.3.2 남은 Known Gap 4건 해소(updatedRange 이미지 제외·ImageViewer arrow-key·watcher size 전파·FileTree 타입별 정렬) + 중복 `applyMetaFilter` 단일 소스 정리. 독립 Evaluator CONDITIONAL PASS(Critical 0, Major 3 중 2건 반영, 1건은 스코프 밖으로 Known Gap 이관).
+- **Goal**: v0.9 로컬 이득 선행 — M1 Transport Interface + M2 Hash 보조 도입. v1.0 SSH M3+는 v0.3 피드백 1~2 사이클 후 별도 Plan.
+- **Phase**: Plan 승인 완료(U-M2-1 2026-04-21 사용자 승인 — 옵션 B: hash는 보조 필드로만 도입, 진짜 mtime→hash 판정 전환은 별도 Plan). S1(M1 Transport, 2일) → S2(M2 Hash 보조, 0.5일) → S3(Bench, 0.5일). 다음 `/nova:auto` 또는 `/nova:run`으로 S1 착수.
 - **Blocker**: none
-- **Remote**: git@github-givepro91:givepro91/markwand.git (main) — 지난 세션 6 커밋 push 완료 (`561209c..c16590f`). 이 세션은 v0.3.2 1 커밋 추가, push 예정.
-- **Active Plan**: docs/plans/image-viewer-mvp.md (v0.3 — S1+S2 완료)
-- **Active Design**: docs/designs/remote-fs-transport.md (v1.0 SSH — 설계만, 구현 대기)
+- **Remote**: git@github-givepro91:givepro91/markwand.git (main) — v0.3.2 커밋(`c6f0422`) push 여부 미확인. 이 세션은 Plan 문서 1건 + NOVA-STATE 갱신.
+- **Active Plan**: **docs/plans/remote-fs-transport-m1-m2.md** (v0.9 M1·M2 선행, draft)
+- **Active Design**: docs/designs/remote-fs-transport.md (v1.0 SSH 설계 + §2.2 rev. M1 적용 — `detectWorkspaceMode` 추가, `readFile maxBytes:2MB` 계약 명시)
+- **Prior Plan**: docs/plans/image-viewer-mvp.md (v0.3 — S1+S2 완료)
 - **Prior Plan/Design**: docs/plans/markwand-context-composer-mvp.md, docs/designs/markwand-context-composer.md (v0.2 — 일부 스코프 피벗)
 
 ## Scope Pivot (2026-04-20)
@@ -89,6 +90,8 @@
 > --emergency 플래그 사용 또는 Evaluator 건너뛸 때 반드시 기록. 미기록 = Hard-Block.
 
 ## Last Activity
+- /nova:deepplan → PASS — docs/plans/remote-fs-transport-m1-m2.md (v0.9 M1·M2 선행, Mode: deep, Iterations: 1). Explorer×3 병렬(43 FS 호출 지점 전수조사 · 5 hot path 성능 영향 +1~3% 추정 · sha256/전체 content/인메모리 Map 캐시) → Synthesizer 20파일·3일 추정 → Critic(nova:architect) CONDITIONAL PASS · 5 수정 지시 반영 → Refiner. **주요 발견**: M2 순수 hash 치환은 mtime 기반과 등가 불가(doc 기준점 ref hash 저장 없이는 stale 판정 불가능) → S2 범위 축소(hash는 보조 필드만). 설계서 §2.2 rev. M1 선수정(detectWorkspaceMode + readFile maxBytes 계약). Known Risk `fs:read-doc 무제한` Hard는 M1에서 동시 해소. U-M2-1 사용자 승인 필요. | 2026-04-21T
+- /nova:ux-audit → Critical 1 / High 16 / Medium 0 / Low 0 — docs/designs/remote-fs-transport.md §9 Q2~Q4. **5 jury 만장일치 합의**: Q2 readonly 엄수(5/5), Q3 (c) hybrid(로컬 N개 + 원격 active 1 + warm 1, 5/5), Q4 (c) M1·M2 즉시 착수 + M3~ v0.3 피드백 1~2사이클 후 feature flag(4.5/5). Design Contract DC-1~DC-7 도출(write boundary · concurrency · status·a11y · trust · perf budget · phasing · verification). Q1 고정: 사용자 SSH config 분석 기반 (b)+(a) 시나리오, 제품은 3시나리오 모두 수용·하드코딩 금지. 다음 단계 /nova:deepplan로 M1·M2 Plan 작성. | 2026-04-21T
 - fix(v0.3.2): 남은 Known Gap 4건 해소 + 중복 `applyMetaFilter` 단일 소스화 (pending). (1) **updatedRange 이미지 제외** — docFilters.ts `classifyAsset==='md'` AND 가드(활성 범위에서만, 'all'일 땐 이미지 유지). ProjectView의 로컬 복제본 제거 → utils import. (2) **ImageViewer radiogroup arrow-key** — ←/→/↑/↓ 순환, Home/End, roving tabindex(active 0, 나머지 -1), radioRefs로 focus+select 동시 전이. (3) **watcher size 전파** — FsChangeEvent.size 추가, sendChange에서 `fs.stat` → isFile() 가드, ENOENT는 undefined로 fallback(silent). useDocs에서 patch에 size 포함(0 byte도 반영). (4) **FileTree 타입별 정렬** — compareTreeNodes(dir→md→image→기타, `doc.path` 기반) + sortTreeRecursively, V8 stable sort. 독립 Evaluator CONDITIONAL PASS(Critical 0, Major 3): M-1(name→doc.path) 반영, M-2(tags+updatedRange 복합 테스트) 반영, M-3(mtime 일관성)은 스코프 밖 → v0.4 Known Gap 이관. 8 파일 수정(docFilters.ts/docFilters.test.ts/ProjectView.tsx/ImageViewer.tsx/FileTree.tsx/useDocs.ts/types.ts/watcher.ts). typecheck PASS, docFilters 테스트 34건 PASS. | 2026-04-21T
 - fix(v0.3.1): 체스보드 대비 토큰(`--image-checker-a/b` 라이트·다크, WCAG ~3:1) + FileTree 아이콘 a11y(role="img" + aria-label) + Composer 이미지 제외(FileTree Checkbox 숨김 + composer.ts missing 분류 + App.tsx 복원 필터 + store pruneStaleDocSelection md-only) (`0315a13`). Known Gap 3건 동시 해소. 독립 Evaluator Critical 1건(이전 세션 선택 prefs 복원 경로에 이미지 잔류)+Warning 1건(다크 체스보드 WCAG 미달) 반영. 6 파일 수정. | 2026-04-21T
 - feat(viewer): ImageViewer + ProjectView 라우팅 + `app://local/<path>` URL 계약 정정 (`7ccb1e7`) — Chromium custom scheme host 소문자 정규화 우회. path 세그먼트를 host에 두면 `/Users/...`가 `users/...`로 변환되어 workspace `startsWith` 비교가 항상 실패하는 증상. 고정 host `local` + pathname 대소문자 보존. SafeImage도 동일 버그여서 동반 fix. Evaluator FAIL(C1 URL 인코딩 `#` 미처리·C2 errored path 변경 고착)→반영→PASS. GUI 실측 이미지 3개 렌더 확인.
@@ -129,8 +132,9 @@
 - /nova:auto --deep → PASS — md-viewer MVP v0.1 (53파일 신규, Plan/Design+Dev 2 Wave+QA 2 Wave+Fix 2 Wave) | 2026-04-20T03:18Z
 
 ## Refs
-- **Current Plan**: docs/plans/image-viewer-mvp.md (v0.3 Viewable Asset — S1+S2 완료)
-- **Current Design**: docs/designs/remote-fs-transport.md (v1.0 SSH Transport — 설계만, M1~M8 로드맵)
+- **Current Plan**: docs/plans/remote-fs-transport-m1-m2.md (v0.9 M1·M2 선행, draft)
+- **Current Design**: docs/designs/remote-fs-transport.md (v1.0 SSH Transport — 설계 + §2.2 rev. M1, M1~M8 로드맵)
+- Prior Plan: docs/plans/image-viewer-mvp.md (v0.3 Viewable Asset — S1+S2 완료)
 - Prior Plan: docs/plans/markwand-context-composer-mvp.md (v0.2 Context Composer, 일부 스코프 피벗)
 - Prior Design: docs/designs/markwand-context-composer.md (v0.2)
 - Prior Plan: docs/plans/md-viewer-mvp.md (v0.1 완료)
