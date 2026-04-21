@@ -46,6 +46,62 @@ function getSearchText(raw: string, kind: string): string {
   return raw
 }
 
+// 이슈(missing/stale) 를 AI 프롬프트 형식으로 직렬화. 무시된 참조는 제외한다.
+// 반환이 빈 문자열이면 호출 측에서 버튼을 숨긴다 — 사실 hasIssues 가드로 도달 불가.
+export function buildCopyIssuesPrompt(params: {
+  docPath: string
+  projectRoot: string
+  references: VerifiedReference[]
+  ignored: Set<string>
+}): string {
+  const { docPath, projectRoot, references, ignored } = params
+  const active = references.filter((r) => !ignored.has(r.resolvedPath))
+  const missing = active.filter((r) => r.status === 'missing')
+  const stale = active.filter((r) => r.status === 'stale')
+  if (missing.length === 0 && stale.length === 0) return ''
+
+  const docRel = relativePath(docPath, projectRoot)
+  const out: string[] = []
+  out.push(`이 문서: ${docRel}`)
+  out.push('')
+  out.push('아래 참조들에 문제가 있습니다. 문서를 열어 수정안을 제안해주세요.')
+  out.push('')
+
+  if (missing.length > 0) {
+    out.push(`## ✕ missing (${missing.length}) — 파일이 없습니다 (경로 오타·이름 변경·삭제 가능)`)
+    for (const r of missing) {
+      // raw 안의 백틱은 제거 — inline kind (`path`) 는 raw 양 끝이 백틱이고,
+      // 그대로 출력하면 감싸는 외부 백틱과 충돌해 마크다운 코드 스팬 경계가 깨진다.
+      const rawSafe = r.raw.replace(/`/g, '')
+      out.push(`- ${relativePath(r.resolvedPath, projectRoot)} (L${r.line}, \`${rawSafe}\`)`)
+    }
+    out.push('')
+  }
+
+  if (stale.length > 0) {
+    out.push(`## ◐ stale (${stale.length}) — 문서 이후 파일이 수정됐습니다 (내용 갱신 필요 여부 확인)`)
+    for (const r of stale) {
+      // targetMtime 은 옵셔널. 없으면 verifier 가 수집하지 못한 경우(희박) — '시각 불명' fallback.
+      const mtimeStr =
+        typeof r.targetMtime === 'number'
+          ? new Date(r.targetMtime).toISOString().slice(0, 10)
+          : '시각 불명'
+      out.push(`- ${relativePath(r.resolvedPath, projectRoot)} (L${r.line}, 파일 수정: ${mtimeStr})`)
+    }
+    out.push('')
+  }
+
+  if (missing.length > 0 && stale.length > 0) {
+    out.push('missing은 경로 정정/삭제 반영, stale은 문서 내용 최신화 여부를 판단해주세요.')
+  } else if (missing.length > 0) {
+    out.push('missing은 경로 정정/삭제 반영 여부를 판단해주세요.')
+  } else {
+    out.push('stale은 문서 내용 최신화 여부를 판단해주세요.')
+  }
+
+  return out.join('\n')
+}
+
 export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProps) {
   const report = useAppStore((s) => s.driftReports[docPath])
   const ignoredList = useAppStore((s) => s.ignoredDriftRefs[docPath])
@@ -56,6 +112,7 @@ export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProp
   const [expanded, setExpanded] = useState(false)
   const [revalidating, setRevalidating] = useState(false)
   const [revalidateError, setRevalidateError] = useState<string | null>(null)
+  const [issuesCopied, setIssuesCopied] = useState(false)
 
   const ignored = useMemo(() => new Set(ignoredList ?? []), [ignoredList])
 
@@ -85,6 +142,24 @@ export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProp
       setRevalidating(false)
     }
   }, [docPath, projectRoot, setDriftReport])
+
+  const handleCopyIssues = useCallback(async () => {
+    if (!report) return
+    const text = buildCopyIssuesPrompt({
+      docPath,
+      projectRoot,
+      references: report.references,
+      ignored,
+    })
+    if (!text) return
+    try {
+      await navigator.clipboard.writeText(text)
+      setIssuesCopied(true)
+      setTimeout(() => setIssuesCopied(false), 1200)
+    } catch {
+      // clipboard 실패 시 silent — Electron contextIsolation 환경에서 흔함.
+    }
+  }, [report, docPath, projectRoot, ignored])
 
   // 정렬은 early-return 전에 선언. React hook 규칙: 모든 hook 은 동일 순서로 호출되어야 함.
   // (과거 sortedRefs useMemo 가 return null 뒤에 있어 "Rendered fewer hooks than expected" 크래시 발생했음)
@@ -198,8 +273,23 @@ export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProp
         {/* 헤더 div 의 토글 onClick 이 Button에 번지지 않도록 wrapping span 에서 stopPropagation */}
         <span
           onClick={(e) => e.stopPropagation()}
-          style={{ display: 'inline-flex' }}
+          style={{ display: 'inline-flex', gap: '4px' }}
         >
+          {hasIssues && (
+            <span
+              title="missing/stale 이슈를 AI 프롬프트 형식으로 클립보드에 복사 (문서 경로·줄번호·지시문 포함)"
+              style={{ display: 'inline-flex' }}
+            >
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleCopyIssues}
+                aria-label="이슈 복사"
+              >
+                {issuesCopied ? '복사됨' : '📋 이슈 복사'}
+              </Button>
+            </span>
+          )}
           <Button
             size="sm"
             variant="ghost"
