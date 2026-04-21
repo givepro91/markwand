@@ -166,7 +166,10 @@ function FileTreeNode({ node, style }: { node: NodeApi<TreeNode>; style: React.C
       >
         {isDir ? <FolderIcon open={node.isOpen} /> : <FileIcon />}
       </span>
-      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      <span
+        title={node.data.name}
+        style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
+      >
         {node.data.name}
       </span>
     </div>

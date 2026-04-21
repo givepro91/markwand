@@ -113,6 +113,106 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
     })
   }, [projectId])
 
+  // 사이드바 폭 (리사이즈 가능). 180~600 clamp, 기본 260.
+  // 긴 파일명(날짜 prefix + 제목)이 잘리지 않도록 사용자가 드래그해 조절.
+  // a11y 제약: 현재 키보드 리사이즈·aria-valuenow/min/max 미지원 (Known Gap).
+  const [sidebarWidth, setSidebarWidth] = useState(260)
+  const resizeStateRef = useRef<{ startX: number; startWidth: number; latest: number } | null>(null)
+  const rafRef = useRef<number | null>(null)
+  // 언마운트 플래그 — 드래그 중 프로젝트 전환(ProjectView key remount)으로 인한
+  // 좀비 listener 가 setSidebarWidth 를 호출하지 못하게 한다.
+  // StrictMode dev 재마운트(mount→cleanup→mount)에서는 cleanup 이 플래그를 true 로 남기므로
+  // 재마운트 시 effect 가 false 로 리셋해 정상 동작하게 한다.
+  const unmountedRef = useRef(false)
+  useEffect(() => {
+    unmountedRef.current = false
+    return () => {
+      unmountedRef.current = true
+    }
+  }, [])
+
+  // prefs 복원. 이미 드래그 중이면 응답 무시 — IPC race 로 드래그 중인 폭이 튀어오르지 않게.
+  useEffect(() => {
+    window.api.prefs.get('sidebarWidth').then((v) => {
+      if (unmountedRef.current || resizeStateRef.current) return
+      if (typeof v === 'number' && v >= 180 && v <= 600) setSidebarWidth(v)
+    })
+  }, [])
+
+  // 드래그 핸들 — pointerdown 으로 시작, setPointerCapture + window pointermove/up 으로 추적.
+  // setPointerCapture: 커서가 핸들 DOM 밖으로 벗어나도 이벤트가 계속 이 엘리먼트로 전달됨 →
+  // 빠른 드래그 + 핸들 이탈 시 pointerup 을 놓치는 엣지 버그 방지.
+  // rAF 로 setState throttle 해 60fps 이상 업데이트에서도 렌더 루프 안정.
+  // pointercancel(ESC·OS 포커스 전환 등) 이면 시작 폭으로 원복 + 영속 안 함 (네이티브 앱 관례).
+  const handleSidebarResizeStart = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    const target = e.currentTarget
+    const pointerId = e.pointerId
+    try {
+      target.setPointerCapture(pointerId)
+    } catch {
+      // setPointerCapture 실패는 UX 치명 아님 — window listener 로도 기본 동작.
+    }
+    resizeStateRef.current = { startX: e.clientX, startWidth: sidebarWidth, latest: sidebarWidth }
+    const onMove = (ev: PointerEvent) => {
+      if (unmountedRef.current) return
+      const s = resizeStateRef.current
+      if (!s) return
+      const next = Math.max(180, Math.min(600, s.startWidth + (ev.clientX - s.startX)))
+      s.latest = next
+      if (rafRef.current != null) return
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null
+        if (unmountedRef.current) return
+        // s.latest 를 참조해 rAF 사이 누적된 move 의 마지막 값을 반영 (클로저 stale 방지).
+        const ss = resizeStateRef.current
+        if (ss) setSidebarWidth(ss.latest)
+      })
+    }
+    const cleanup = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onEnd)
+      window.removeEventListener('pointercancel', onEnd)
+      try {
+        target.releasePointerCapture(pointerId)
+      } catch {
+        // 이미 해제된 경우 무시.
+      }
+    }
+    const onEnd = (ev: PointerEvent) => {
+      cleanup()
+      const s = resizeStateRef.current
+      resizeStateRef.current = null
+      if (rafRef.current != null) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
+      if (unmountedRef.current || !s) return
+      // 드래그 중 선택된 텍스트가 있으면 해제 (splitter 근처 텍스트 선택 아티팩트 방지).
+      window.getSelection()?.removeAllRanges()
+      if (ev.type === 'pointercancel') {
+        // 의도적 중단 — 시작 폭으로 복원, prefs 영속 생략.
+        setSidebarWidth(s.startWidth)
+        return
+      }
+      if (s.latest !== s.startWidth) {
+        setSidebarWidth(s.latest)
+        window.api.prefs.set('sidebarWidth', s.latest).catch(() => {
+          // prefs 영속 실패는 UX 치명 아님 — 다음 세션에서 기본값 260 으로 복귀.
+        })
+      }
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onEnd)
+    window.addEventListener('pointercancel', onEnd)
+  }, [sidebarWidth])
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
+    }
+  }, [])
+
   const loadDoc = useCallback(async (doc: Doc) => {
     setSelectedDoc(doc)
     setHeadings([])
@@ -396,7 +496,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
         {/* F1: 좌측 파일 트리 — flex column + minHeight:0 체인 완전 보장 */}
         <div
           style={{
-            width: '260px',
+            width: `${sidebarWidth}px`,
             flexShrink: 0,
             borderRight: '1px solid var(--border)',
             background: 'var(--bg-elev)',
@@ -444,6 +544,39 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
               onExpandChange={handleExpandChange}
             />
           </div>
+        </div>
+
+        {/* 사이드바 리사이즈 핸들 — 드래그로 좌측 트리 폭 조절. 180~600px clamp.
+            hit-box 는 6px, 시각 표시는 hover 시 2px accent 선. flexShrink:0 필수. */}
+        <div
+          className="sidebar-resize-handle"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="사이드바 폭 조절"
+          onPointerDown={handleSidebarResizeStart}
+          style={{
+            width: '6px',
+            flexShrink: 0,
+            cursor: 'col-resize',
+            background: 'transparent',
+            position: 'relative',
+            userSelect: 'none',
+            touchAction: 'none',
+          }}
+        >
+          <div
+            className="sidebar-resize-indicator"
+            style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: '2px',
+              width: '2px',
+              background: 'transparent',
+              transition: 'background 0.15s ease',
+              pointerEvents: 'none',
+            }}
+          />
         </div>
 
         {/* F2: 중앙 마크다운 뷰어 — ref 부착 */}

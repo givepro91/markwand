@@ -197,3 +197,9 @@ a:hover {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* 사이드바 리사이즈 핸들 — hover/active 시 얇은 accent 선 노출. 클래스 기반으로 범위 고정. */
+.sidebar-resize-handle:hover .sidebar-resize-indicator,
+.sidebar-resize-handle:active .sidebar-resize-indicator {
+  background: var(--accent);
+}

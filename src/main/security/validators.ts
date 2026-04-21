@@ -23,6 +23,8 @@ export const ALLOWED_PREFS_KEYS = new Set([
   'composerOnboardingSeen',
   'composerAutoClear',
   'lastSelectedDocPaths',
+  // 사이드바 리사이즈 핸들 (v0.3)
+  'sidebarWidth',
 ])
 
 // ── parse 함수들 ──────────────────────────────────────────────
