@@ -221,6 +221,79 @@ async function main() {
     })
   }
 
+  // ── 시나리오 7: npm scope 패키지 이름은 path 로 잡지 않는다 ─────
+  {
+    const root = path.join(tmp, 's7')
+    fs.mkdirSync(root, { recursive: true })
+    const docPath = path.join(root, 'pkg.md')
+    fs.writeFileSync(
+      docPath,
+      [
+        '| 패키지 | 경로 |',
+        '|--|--|',
+        '| `@swk/design-system` | `packages/design-system` |',
+        '| `@auth0/nextjs-auth0` | `node_modules/@auth0/nextjs-auth0` |',
+        '',
+      ].join('\n')
+    )
+    const { references } = await verifyDoc(docPath, root)
+    const hasScope = references.some((r) => /^@[a-z0-9][^/]*\/[^/]+$/i.test(r.raw.replace(/`/g, '')))
+    // 경로(packages/design-system) 는 추출돼도 괜찮지만 @swk/design-system 은 절대 아님.
+    const scopeRawsInRefs = references
+      .map((r) => r.raw.replace(/`/g, ''))
+      .filter((raw) => /^@[a-z0-9][^/]*\/[^/]+$/i.test(raw))
+    const pass = !hasScope && scopeRawsInRefs.length === 0
+    results.push({
+      name: 'npm scope `@swk/design-system` 은 추출에서 제외',
+      verdict: pass ? 'PASS' : 'FAIL',
+      detail: `scope-as-ref=${JSON.stringify(scopeRawsInRefs)} totalRefs=${references.length}`,
+    })
+  }
+
+  // ── 시나리오 8: glob/placeholder 는 at-ref 에서도 제외 ─────
+  {
+    const root = path.join(tmp, 's8')
+    fs.mkdirSync(root, { recursive: true })
+    const docPath = path.join(root, 'globs.md')
+    fs.writeFileSync(
+      docPath,
+      [
+        '# Globs & placeholders',
+        '',
+        'All files under @/apps/** and @/packages/*.ts should be watched.',
+        'Create it at @/apps/<app-name>/README.md.',
+        '',
+      ].join('\n')
+    )
+    const { references } = await verifyDoc(docPath, root)
+    const unwanted = references.filter((r) => /[*<>]/.test(r.raw))
+    const pass = unwanted.length === 0 && references.length === 0
+    results.push({
+      name: 'glob/placeholder (**,  *, <name>) at-ref 에서 제외',
+      verdict: pass ? 'PASS' : 'FAIL',
+      detail: `refs=${references.length} unwanted=${unwanted.length}`,
+    })
+  }
+
+  // ── 시나리오 9: 정상 @/ ref 는 여전히 추출 ─────
+  {
+    const root = path.join(tmp, 's9')
+    fs.mkdirSync(path.join(root, 'src', 'lib'), { recursive: true })
+    const tgt = path.join(root, 'src', 'lib', 'real.ts')
+    fs.writeFileSync(tgt, '//\n')
+    const pastMtime = new Date(Date.now() - 60_000)
+    fs.utimesSync(tgt, pastMtime, pastMtime)
+    const docPath = path.join(root, 'doc.md')
+    fs.writeFileSync(docPath, 'See @/src/lib/real.ts for logic.\n')
+    const { references, counts } = await verifyDoc(docPath, root)
+    const pass = references.length === 1 && references[0].kind === 'at' && counts.ok === 1
+    results.push({
+      name: '정상 @/src/... 경로는 가드 통과해 추출됨 (회귀 방지)',
+      verdict: pass ? 'PASS' : 'FAIL',
+      detail: `refs=${references.length} kind=${references[0]?.kind} counts=${JSON.stringify(counts)}`,
+    })
+  }
+
   // 결과 출력
   console.log('\n=== Drift Verifier Smoke Test ===')
   let passCount = 0

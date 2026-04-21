@@ -20,6 +20,19 @@ function isPathLike(s: string): boolean {
   return s.includes('/') || s.includes('\\')
 }
 
+// npm scoped 패키지 이름: `@scope/name` — 파일 경로가 아니므로 drift 추출에서 제외.
+// (프로젝트 루트 ref 인 `@/path` 는 항상 `@` 직후 `/` 이므로 구별 가능)
+const NPM_SCOPE_RE = /^@[a-z0-9][a-z0-9\-_.]*\/[a-z0-9][a-z0-9\-_.]*$/i
+function isNpmScopePackage(s: string): boolean {
+  return NPM_SCOPE_RE.test(s)
+}
+
+// glob 패턴 / 문서 placeholder 탐지 — 실제 파일 경로로 해석하면 항상 missing 오판.
+// 예: `@/apps/**`, `packages/<name>/src`, `**/*.test.ts`
+function isGlobOrPlaceholder(s: string): boolean {
+  return /[*<>{}]/.test(s) || s.includes('**')
+}
+
 function resolveRef(rawPath: string, kind: ReferenceKind, projectRoot: string): string {
   const cleaned = stripPathExtras(rawPath)
 
@@ -90,9 +103,11 @@ export function extractReferences(md: string, projectRoot: string): Reference[] 
       }
 
       // @/path references
+      // glob(`**`, `*`) / placeholder(`<name>`) 은 실제 파일 경로가 아니므로 스킵.
       for (const m of line.matchAll(AT_REF_RE)) {
         const rawMatch = m[0]
         const pathPart = m[1]
+        if (isGlobOrPlaceholder(pathPart)) continue
         const col = (m.index ?? 0) + 1
         results.push({
           raw: rawMatch,
@@ -103,19 +118,21 @@ export function extractReferences(md: string, projectRoot: string): Reference[] 
         })
       }
 
-      // Inline backtick paths — skip if content is an @/ ref (already captured above)
+      // Inline backtick paths — path-like 이면서 @/path 도 아니고, npm scope 도 아니고, glob/placeholder 도 아닌 경우만.
       for (const m of line.matchAll(INLINE_BACKTICK_RE)) {
         const inner = m[1]
-        if (isPathLike(inner) && !inner.startsWith('@/')) {
-          const col = (m.index ?? 0) + 1
-          results.push({
-            raw: m[0],
-            resolvedPath: resolveRef(inner, 'inline', projectRoot),
-            kind: 'inline',
-            line: lineNum,
-            col,
-          })
-        }
+        if (!isPathLike(inner)) continue
+        if (inner.startsWith('@/')) continue // at-ref 로 이미 처리됨
+        if (isNpmScopePackage(inner)) continue // `@swk/design-system` 같은 패키지 이름
+        if (isGlobOrPlaceholder(inner)) continue
+        const col = (m.index ?? 0) + 1
+        results.push({
+          raw: m[0],
+          resolvedPath: resolveRef(inner, 'inline', projectRoot),
+          kind: 'inline',
+          line: lineNum,
+          col,
+        })
       }
     } else {
       // Closing fence must match the opening marker exactly
@@ -130,13 +147,19 @@ export function extractReferences(md: string, projectRoot: string): Reference[] 
         nextIsHint = false
         const hint = extractHintComment(line)
         if (hint) {
-          results.push({
-            raw: line.trim(),
-            resolvedPath: resolveRef(hint.pathStr, 'hint', projectRoot),
-            kind: 'hint',
-            line: lineNum,
-            col: hint.col,
-          })
+          // code block hint 도 동일 규칙 적용
+          if (
+            !isNpmScopePackage(hint.pathStr) &&
+            !isGlobOrPlaceholder(hint.pathStr)
+          ) {
+            results.push({
+              raw: line.trim(),
+              resolvedPath: resolveRef(hint.pathStr, 'hint', projectRoot),
+              kind: 'hint',
+              line: lineNum,
+              col: hint.col,
+            })
+          }
         }
       }
     }
