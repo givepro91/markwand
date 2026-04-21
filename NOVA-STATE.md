@@ -1,10 +1,10 @@
 # Nova State
 
 ## Current
-- **Goal**: v0.2 문서↔코드 drift 감지 — goal 진행률 100% (12/12 태스크 done)
-- **Phase**: built — headless smoke 6/6 PASS, GUI 실기는 사용자 확인 대기
-- **Blocker**: none — 이전 hard-block (fs:read-doc 상한) 이 drift 작업 중 해소됨
-- **Remote**: git@github-givepro91:givepro91/markwand.git (main) — 13 commits ahead, push 대기
+- **Goal**: v0.2 drift 감지 — 기능 완성 + 사용자 피드백 기반 UX 수습 완료
+- **Phase**: built + 사용자 실기 사이클 반복으로 false-positive·UX 이슈 수습 완료
+- **Blocker**: none
+- **Remote**: git@github-givepro91:givepro91/markwand.git (main) — push 대기 (이 세션 13커밋 추가)
 - **Active Plan**: docs/plans/markwand-context-composer-mvp.md (일부 스코프 피벗됨)
 - **Active Design**: docs/designs/markwand-context-composer.md (일부 스코프 피벗됨)
 
@@ -67,6 +67,9 @@
 | **readDocs GC** | **GC 미구현 확정(QA 2026-04-21): 7개월 전 타임스탬프도 영구 유지. 90일 이상 stale 항목 prune 필요** | **v0.2 Hard** |
 | **InboxView projects 의존성 레이스** | effect deps에 projects 배열 포함 — projects ref 변경 시 진행 중 스캔 중단 후 재시작, 중복 IPC 가능 | v0.2 Medium |
 | **T1 성능 실측** | GUI 미실행으로 첫 카드 렌더 <200ms·전체 로드 <2s·IPC 중복 직접 측정 불가 | 수동 확인 필요 |
+| **⌘K 검색 backend 미구현** | CommandPalette 가 `window.api.search.query` 호출하나 main/preload 어디에도 `search:` IPC 핸들러 없음. 검색 결과 항상 0건. fts5 등 인덱스 필요 | **v0.3 High** |
+| **drift — 코드 파일 변경 자동 감지** | watcher 가 `.md` 만 감시 → 코드 수정 시 stale 배지 자동 갱신 X. 수동 재검증 또는 문서 저장이 트리거 | v0.3 Medium |
+| **drift — mtime 정밀도 / git checkout** | FAT32·동일-초 내 저장 시 ok 오판 / git checkout 이 mtime 덮어써 stale 오판. content hash 기반 판정 필요 | v0.3 Low |
 
 ## 규칙 우회 이력 (감사 추적)
 | 날짜 | 커맨드 | 우회 이유 | 사후 조치 |
@@ -76,7 +79,15 @@
 > --emergency 플래그 사용 또는 Evaluator 건너뛸 때 반드시 기록. 미기록 = Hard-Block.
 
 ## Last Activity
-- test(drift): headless smoke 6/6 PASS (`69a94e2`) — scripts/drift-smoke.ts 로 mixed/resolve/2MB/hint/inline/no-refs. Nova Orbit drift goal 12/12 done, progress 100% | 2026-04-21T
+- fix(drift): 위치로 이동 — inline 백틱 스트립 (`1711d5e`) | 2026-04-21T
+- fix(drift): 대규모 false-positive 수습 — PATH_CHAR_RE 화이트리스트 + 세그 길이 규칙 + docDir/projectRoot fallback + scripts/drift-audit.ts 신규. smoke 21/21, 실 워크스페이스 audit 가드 뚫림 0 (`824e111`)
+- fix(drift): 디렉토리 stale 제외 + 경로 클릭 회수 (`3678f32`)
+- fix(drift): npm scope · glob · placeholder 필터 (`4b16b9e`)
+- feat(drift): missing/stale 실행 가능 액션(위치로 이동·Finder·경로 복사·무시) + 태그 필터 제거 (`e844d1a`)
+- fix: 앱 크래시 3건 + ErrorBoundary 2단 (`c3c9531`) — DriftPanel hook 순서 위반 / tags 문자열을 문자 단위 분해 / 빈 화면 복구 불가
+- fix: pre-existing 런타임·타입 에러 정리 (`3c93d0d`) — prefs allowlist, AllProjectsView sortDocsByOrder import, preload 타입 re-export, tsconfig.node include
+- test(drift): headless smoke PASS (`69a94e2`) — scripts/drift-smoke.ts
+- feat(drift): 문서↔코드 드리프트 감지 IPC 통합 + DriftPanel + 코드 리뷰 반영 (`ac70842`, `913d0f4`, `8532165`) — Nova Orbit drift goal 12/12 done | 2026-04-21T
 - fix(drift): 코드 리뷰 Top 3 반영 (`8532165`) — useDrift 언마운트 가드, CSS 토큰 정합, 타입 이중선언 해소 (preload → lib/drift re-export), mtime Known Limitations 주석
 - feat(drift): DriftPanel — 뷰어 상단 참조 리스트 + 재검증/무시 UI (`913d0f4`) — ignoredDriftRefs 세션 스코프, 집계 반영
 - feat(drift): 문서↔코드 드리프트 감지 IPC 통합 + UI 배지 (`ac70842`) — extractor dead-code 해소, drift:verify 핸들러(2MB 상한·ok/missing/stale 판정), useDrift 백그라운드 훅, DriftBadge · ProjectCard 집계. Hard-block 2건 + Soft-block 2건 동시 해소 | 2026-04-21T
