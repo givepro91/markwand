@@ -42,6 +42,15 @@ export async function getStore(): Promise<import('electron-store').default<Store
             name: { type: 'string' },
             root: { type: 'string' },
             mode: { type: 'string', enum: ['container', 'single'] },
+            // M1 (2026-04-21): transport 필드 추가. schema required 에는 넣지 않음 —
+            // 기존 저장 엔트리는 아래 런타임 마이그레이션에서 { type: 'local' } 로 승격.
+            transport: {
+              type: 'object',
+              properties: {
+                type: { type: 'string', enum: ['local'] },
+              },
+              required: ['type'],
+            },
             addedAt: { type: 'number' },
             lastOpened: { type: ['number', 'null'] },
           },
@@ -68,8 +77,19 @@ export async function getStore(): Promise<import('electron-store').default<Store
   // schema required에 mode를 넣지 않는 이유: 이 migration이 schema 검증보다 먼저 돌 수
   // 없고, required 추가 시 기존 v0.1 사용자의 store 로드가 실패한다. mode는 런타임에서
   // scanner.ts의 기본 인자(='container')로 이중 방어한다.
+  //
+  // M1 (2026-04-21): transport 필드도 동일 lazy 마이그레이션 — 기존 엔트리는 local 로 주입.
   const existing = storeInstance.get('workspaces')
-  const migrated = existing.map((w) => (w.mode != null ? w : { ...w, mode: 'container' as const }))
+  const migrated = existing.map((w) => {
+    let next = w
+    if (next.mode == null) {
+      next = { ...next, mode: 'container' as const }
+    }
+    if (next.transport == null) {
+      next = { ...next, transport: { type: 'local' as const } }
+    }
+    return next
+  })
   if (migrated.some((w, i) => w !== existing[i])) {
     storeInstance.set('workspaces', migrated)
   }

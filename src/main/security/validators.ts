@@ -113,15 +113,30 @@ export function parseShellOpenExternalInput(raw: unknown): { url: string } {
 
 // ── 경로 보안 ────────────────────────────────────────────────
 
+export interface AssertInWorkspaceOptions {
+  // M3 SSH 검증의 사전 계약 (Plan rev. M1, 2026-04-21). 로컬은 path.sep를 써 OS 분기가 필요하지만,
+  // 원격 transport(SSH)는 POSIX 경로만 취급하므로 path.posix 로 고정한다. M1 에서는 사용처 0 —
+  // dead param 으로 오인해 제거되지 않도록 의도 명시. M3 SSH 도입 시 opts.posix=true 로 활성.
+  posix?: boolean
+}
+
 /**
  * absPath가 등록된 workspaceRoots 중 하나의 하위 경로인지 검증한다.
  * path traversal 공격 차단을 위해 path.resolve 후 비교한다.
+ *
+ * opts.posix (default false) — M3 SSH 원격 경로 검증용 사전 계약. 현재 M1 에선 미사용이나
+ * interface 를 먼저 확립해 M3 시점 다수 호출부 동시 수정을 방지한다.
  */
-export function assertInWorkspace(absPath: string, workspaceRoots: string[]): void {
-  const resolved = path.resolve(absPath)
+export function assertInWorkspace(
+  absPath: string,
+  workspaceRoots: string[],
+  opts?: AssertInWorkspaceOptions
+): void {
+  const p = opts?.posix ? path.posix : path
+  const resolved = p.resolve(absPath)
   const isAllowed = workspaceRoots.some((root) => {
-    const resolvedRoot = path.resolve(root)
-    return resolved.startsWith(resolvedRoot + path.sep) || resolved === resolvedRoot
+    const resolvedRoot = p.resolve(root)
+    return resolved.startsWith(resolvedRoot + p.sep) || resolved === resolvedRoot
   })
   if (!isAllowed) {
     throw new Error('PATH_OUT_OF_WORKSPACE')

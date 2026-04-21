@@ -1,9 +1,9 @@
-import fs from 'fs'
 import { ipcMain } from 'electron'
 import matter from 'gray-matter'
 import { getStore } from '../services/store'
 import { parseReadDocInput, assertInWorkspace } from '../security/validators'
 import { classifyAsset } from '../../lib/viewable'
+import { localTransport } from '../transport/local'
 import type { ReadDocResult } from '../../preload/types'
 
 const MAX_READ_BYTES = 2 * 1024 * 1024
@@ -26,10 +26,10 @@ export function registerFsHandlers(): void {
       throw new Error('NOT_A_TEXT_DOC')
     }
 
-    const stat = await fs.promises.stat(docPath)
-    if (stat.size > MAX_READ_BYTES) throw new Error('FILE_TOO_LARGE')
-
-    const raw_content = await fs.promises.readFile(docPath, 'utf-8')
+    // LocalTransport 위임. readFile이 size-first + maxBytes 로 FILE_TOO_LARGE 를 자체 방어.
+    const stat = await localTransport.fs.stat(docPath)
+    const buf = await localTransport.fs.readFile(docPath, { maxBytes: MAX_READ_BYTES })
+    const raw_content = buf.toString('utf-8')
 
     const parsed = matter(raw_content)
     process.stderr.write(`[ipc] fs:read-doc done ${docPath} (${Date.now() - t0}ms, ${raw_content.length}B)\n`)

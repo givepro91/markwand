@@ -7,11 +7,17 @@ export type ViewLayout = 'grid' | 'list'
 // single: 루트 자체를 1개의 프로젝트로 등록 (하위 스캔 안 함)
 export type WorkspaceMode = 'container' | 'single'
 
+// Transport 구분 — M1 에서는 'local' 만. M3 SSH 착수 시 SshTransportConfig 변형 추가.
+export type WorkspaceTransport = { type: 'local' }
+
 export interface Workspace {
   id: string
   name: string
   root: string
   mode: WorkspaceMode
+  // M1 (2026-04-21): lazy 마이그레이션 — 기존 저장된 workspace 엔트리는 이 필드가 없을 수 있다.
+  // store 로드 시 { type: 'local' } 로 주입한다.
+  transport: WorkspaceTransport
   addedAt: number
   lastOpened: number | null
 }

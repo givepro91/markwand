@@ -2,7 +2,9 @@ import { dialog, ipcMain, BrowserWindow } from 'electron'
 import { randomUUID } from 'crypto'
 import path from 'path'
 import { getStore } from '../services/store'
-import { scanProjects, scanDocs, countDocs, detectWorkspaceMode } from '../services/scanner'
+import { scanProjects, scanDocs } from '../services/scanner'
+import { localTransport } from '../transport/local'
+import { VIEWABLE_GLOB } from '../../lib/viewable'
 import { setProtocolWorkspaceRoots } from '../security/protocol'
 import {
   parseScanInput,
@@ -10,6 +12,26 @@ import {
   parseWorkspaceRemoveInput,
 } from '../security/validators'
 import type { Workspace, Project, WorkspaceMode } from '../../preload/types'
+
+// LocalScannerDriver.countDocs 가 patterns/ignore 를 받도록 설계 (§2.2 rev. M1). 기존
+// scanner.ts 의 SCAN_IGNORE_PATTERNS 상수와 동일 내용을 여기에 선언 — 향후 M3 SSH에서도
+// 동일 ignore 집합을 원격 scanner 에 전달할 수 있도록 IPC 레이어에서 정책을 잡는다.
+const WORKSPACE_SCAN_IGNORE_PATTERNS = [
+  '**/node_modules/**',
+  '**/.git/**',
+  '**/dist/**',
+  '**/.next/**',
+  '**/build/**',
+  '**/__pycache__/**',
+  '**/target/**',
+  '**/vendor/**',
+  '**/.venv/**',
+  '**/coverage/**',
+  '**/.cache/**',
+  '**/out/**',
+  '**/.nuxt/**',
+  '**/.turbo/**',
+]
 
 function getWorkspaceRoots(workspaces: Workspace[]): string[] {
   return workspaces.map((w) => w.root)
@@ -98,7 +120,7 @@ export function registerWorkspaceHandlers(): void {
 
     // 하위 1depth에 프로젝트 마커 폴더가 있으면 container, 없으면 single 추천.
     // swk처럼 루트 CLAUDE.md + 하위 repo 조합은 container로 자동 분류된다.
-    const suggested = await detectWorkspaceMode(root)
+    const suggested = await localTransport.scanner.detectWorkspaceMode(root)
     const choice = await dialog.showMessageBox(win, {
       type: 'question',
       title: '추가 방식 선택',
@@ -122,6 +144,7 @@ export function registerWorkspaceHandlers(): void {
       name: basename,
       root,
       mode,
+      transport: { type: 'local' },
       addedAt: Date.now(),
       lastOpened: null,
     }
@@ -190,7 +213,7 @@ export function registerWorkspaceHandlers(): void {
       }
     }
     if (!projectRoot) return 0
-    return countDocs(projectRoot)
+    return localTransport.scanner.countDocs(projectRoot, [VIEWABLE_GLOB], WORKSPACE_SCAN_IGNORE_PATTERNS)
   })
 
   ipcMain.handle('project:scan-docs', async (event, raw: unknown) => {

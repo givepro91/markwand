@@ -1,4 +1,3 @@
-import fs from 'fs'
 import { ipcMain } from 'electron'
 import { z } from 'zod'
 import { extractReferences } from '../../lib/drift/extractor'
@@ -6,6 +5,7 @@ import type { DriftReport, DriftStatus, Reference, VerifiedReference } from '../
 import { getStore } from '../services/store'
 import { assertInWorkspace } from '../security/validators'
 import { classifyAsset } from '../../lib/viewable'
+import { localTransport } from '../transport/local'
 
 // extract + stat 을 메인 스레드에서 수행하므로 상한 필수.
 // 2MB 초과 시 다수의 AI 산출물(보통 수십 KB)이 아닌 비정상 파일로 간주.
@@ -40,7 +40,7 @@ export function registerDriftHandlers(): void {
     assertInWorkspace(docPath, roots)
     assertInWorkspace(projectRoot, roots)
 
-    const docStat = await fs.promises.stat(docPath)
+    const docStat = await localTransport.fs.stat(docPath)
     if (docStat.size > MAX_DRIFT_FILE_BYTES) {
       // 거대 파일은 drift 검증 스킵 — 빈 리포트로 응답해 UI는 ok 취급.
       return emptyReport(docPath, docStat.mtimeMs, projectRoot)
@@ -52,7 +52,9 @@ export function registerDriftHandlers(): void {
       return emptyReport(docPath, docStat.mtimeMs, projectRoot)
     }
 
-    const content = await fs.promises.readFile(docPath, 'utf-8')
+    // LocalTransport 위임 — readFile 이 maxBytes(기본 2MB) 자체 방어.
+    const buf = await localTransport.fs.readFile(docPath, { maxBytes: MAX_DRIFT_FILE_BYTES })
+    const content = buf.toString('utf-8')
     // docPath 전달: inline/hint 는 문서 디렉토리 기준으로 상대 경로를 resolve 한다.
     const refs = extractReferences(content, projectRoot, docPath)
     const docMtime = docStat.mtimeMs
@@ -67,13 +69,13 @@ export function registerDriftHandlers(): void {
       ref: Reference
     ): Promise<{ path: string; mtimeMs: number; isDirectory: boolean } | null> {
       try {
-        const s = await fs.promises.stat(ref.resolvedPath)
-        return { path: ref.resolvedPath, mtimeMs: s.mtimeMs, isDirectory: s.isDirectory() }
+        const s = await localTransport.fs.stat(ref.resolvedPath)
+        return { path: ref.resolvedPath, mtimeMs: s.mtimeMs, isDirectory: s.isDirectory }
       } catch {}
       if (ref.fallbackPath) {
         try {
-          const s = await fs.promises.stat(ref.fallbackPath)
-          return { path: ref.fallbackPath, mtimeMs: s.mtimeMs, isDirectory: s.isDirectory() }
+          const s = await localTransport.fs.stat(ref.fallbackPath)
+          return { path: ref.fallbackPath, mtimeMs: s.mtimeMs, isDirectory: s.isDirectory }
         } catch {}
       }
       return null

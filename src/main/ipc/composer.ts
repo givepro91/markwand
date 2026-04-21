@@ -1,4 +1,3 @@
-import fs from 'fs'
 import { ipcMain } from 'electron'
 import { getStore } from '../services/store'
 import {
@@ -6,6 +5,7 @@ import {
   assertInWorkspace,
 } from '../security/validators'
 import { classifyAsset } from '../../lib/viewable'
+import { localTransport } from '../transport/local'
 
 export function registerComposerHandlers(): void {
   // 선택 paths bytes 합 기반 토큰 추정.
@@ -28,7 +28,7 @@ export function registerComposerHandlers(): void {
           missing.push(p)
           continue
         }
-        const stat = await fs.promises.stat(p)
+        const stat = await localTransport.fs.stat(p)
         bytes += stat.size
       } catch {
         missing.push(p)
