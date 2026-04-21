@@ -4,7 +4,7 @@
 - **Goal**: v0.3 이미지 뷰어 MVP 완료 — Markwand를 "md 뷰어" → "Viewable Asset 큐레이터"로 확장
 - **Phase**: v0.3 S1+S2 구현·독립 Evaluator 2회 통과·GUI 실측 PASS. app:// URL 계약 정정으로 SafeImage 잠재 버그 동반 해소.
 - **Blocker**: none
-- **Remote**: git@github-givepro91:givepro91/markwand.git (main) — 이 세션 4 커밋 추가 (docs + S1 + IPC guards + S2 URL 계약). push 예정.
+- **Remote**: git@github-givepro91:givepro91/markwand.git (main) — 지난 세션 5 커밋 push 완료 (`561209c..2f42cdb`). 이 세션은 v0.3.1 UX/a11y 후속 1 커밋 추가, push 예정.
 - **Active Plan**: docs/plans/image-viewer-mvp.md (v0.3 — S1+S2 완료)
 - **Active Design**: docs/designs/remote-fs-transport.md (v1.0 SSH — 설계만, 구현 대기)
 - **Prior Plan/Design**: docs/plans/markwand-context-composer-mvp.md, docs/designs/markwand-context-composer.md (v0.2 — 일부 스코프 피벗)
@@ -39,9 +39,9 @@
 ## Recently Done (최근 3개)
 | Task | Completed | Verdict | Ref |
 |------|-----------|---------|-----|
+| v0.3.1 UX/a11y 후속 3건 + 잔류 cleanup — 체스보드 대비 토큰·FileTree 아이콘 aria-label·Composer 이미지 Checkbox 숨김·estimateTokens 이중 방어 + 이전 세션 선택 복원에서 이미지 필터 (Evaluator Critical 반영) | 2026-04-21 | PASS | `0315a13` |
 | v0.3 이미지 뷰어 MVP — S1 Data Path + S2 Viewer Route + ImageViewer + `app://local/<path>` URL 계약 정정 (Chromium host 소문자 정규화 우회) + SafeImage 동반 fix | 2026-04-21 | PASS | `7ccb1e7`/`156a1ae`/`426d2d1` |
 | docs(plans,designs) — v0.3 `image-viewer-mvp` Plan + v1.0 `remote-fs-transport` SSH Transport Design 작성 (675 lines, Explorer 조사 기반) | 2026-04-21 | PASS | `a20826d` |
-| GitHub 원격 초기 푸시 (markwand repo, id_rsa 강제 지정으로 jay-swk/givepro91 키 충돌 우회) | 2026-04-20 | PASS | github:givepro91/markwand |
 
 ## Known Risks
 | 위험 | 심각도 | 실측치 | 상태 |
@@ -72,11 +72,11 @@
 | **drift — 코드 파일 변경 자동 감지** | watcher 가 `.md` 만 감시 → 코드 수정 시 stale 배지 자동 갱신 X. 수동 재검증 또는 문서 저장이 트리거 | v0.3 Medium |
 | **drift — mtime 정밀도 / git checkout** | FAT32·동일-초 내 저장 시 ok 오판 / git checkout 이 mtime 덮어써 stale 오판. content hash 기반 판정 필요 | v0.3 Low |
 | **사이드바 리사이즈 a11y** | `role="separator"` 만 있고 `aria-valuenow/min/max` 부재. 키보드(↑↓/←→)로 폭 조절 미지원. VoiceOver 사용자는 현재 폭 인지 및 조작 불가 | v0.3 Low |
-| **Composer 이미지 `@ref` 허용** | ComposerTray/estimateTokens가 이미지 Doc 선택을 차단하지 않음. `@/path/image.png` 복사가 Claude Code에서 무의미하거나 토큰 낭비 — 선택 차단 or 별도 toast 필요 | v0.3.1 Medium |
+| ~~**Composer 이미지 `@ref` 허용**~~ | ~~이미지 Doc 선택 차단 필요~~ | ~~v0.3.1 Medium~~ ✅ 해소 `0315a13`: FileTree Checkbox 숨김 + composer.ts missing 분류 + App.tsx 복원 필터 + store pruneStaleDocSelection md-only |
 | **`updatedRange` 필터 이미지 포함** | InboxView·AllProjectsView의 날짜 필터가 frontmatter 무관이라 이미지도 "오늘/7일/30일" 목록에 섞임. 의도인지 결정 후 classifyAsset 가드 | v0.3.1 Medium |
-| **ImageIcon a11y** | FileTree의 새 ImageIcon이 `aria-hidden="true"`라 스크린리더에 파일 종류(md vs image) 미전달. aria-label 혹은 visually-hidden span 필요 | v0.3.1 Low |
+| ~~**ImageIcon a11y**~~ | ~~스크린리더 파일 종류 구분 불가~~ | ~~v0.3.1 Low~~ ✅ 해소 `0315a13`: FolderIcon/FileIcon/ImageIcon 모두 `role="img"` + `aria-label`. 잔여 Warning: treeitem 내 중복 낭독 가능성 (실기기 검증 후 판단) |
 | **ImageViewer 라디오 그룹 arrow-key** | `role="radio"` 부여했으나 ←/→ 이동 핸들러 없음. Tab/Enter만 동작. WAI-ARIA 계약 위반 | v0.3.1 Low |
-| **체스보드 대비 토큰** | ImageViewer 투명 영역 인지용 체스보드를 `--bg`/`--bg-elev`로 그림 — 라이트/다크 모두 두 토큰 차이가 작아 거의 단색. 고정 대비 토큰 `--image-checker-a/b` 신설 필요 | v0.3.1 Low |
+| ~~**체스보드 대비 토큰**~~ | ~~투명 영역 인지 불가~~ | ~~v0.3.1 Low~~ ✅ 해소 `0315a13`: `--image-checker-a/b` 신설, 라이트 `#ffffff/#d8dde3`·다크 `#1f252d/#3a4450` (WCAG 1.4.11 ~3:1) |
 | **watcher change 이벤트 size 미갱신** | FsChangeEvent에 size 없음. 사용자가 이미지를 편집 저장하면 mtime은 갱신되나 Doc.size는 스캔 시점 값으로 고정 → ImageViewer 푸터가 stale bytes 표시 | v0.3.1 Low |
 | **FileTree 파일 정렬 — md vs image interleave** | buildTree가 알파벳 기본 정렬이라 md와 이미지가 섞임. "문서 먼저, 이미지 나중" 정책 or 타입별 그룹핑 옵션 필요 (Plan R3 이연) | v0.3.1 Low |
 
@@ -88,6 +88,7 @@
 > --emergency 플래그 사용 또는 Evaluator 건너뛸 때 반드시 기록. 미기록 = Hard-Block.
 
 ## Last Activity
+- fix(v0.3.1): 체스보드 대비 토큰(`--image-checker-a/b` 라이트·다크, WCAG ~3:1) + FileTree 아이콘 a11y(role="img" + aria-label) + Composer 이미지 제외(FileTree Checkbox 숨김 + composer.ts missing 분류 + App.tsx 복원 필터 + store pruneStaleDocSelection md-only) (`0315a13`). Known Gap 3건 동시 해소. 독립 Evaluator Critical 1건(이전 세션 선택 prefs 복원 경로에 이미지 잔류)+Warning 1건(다크 체스보드 WCAG 미달) 반영. 6 파일 수정. | 2026-04-21T
 - feat(viewer): ImageViewer + ProjectView 라우팅 + `app://local/<path>` URL 계약 정정 (`7ccb1e7`) — Chromium custom scheme host 소문자 정규화 우회. path 세그먼트를 host에 두면 `/Users/...`가 `users/...`로 변환되어 workspace `startsWith` 비교가 항상 실패하는 증상. 고정 host `local` + pathname 대소문자 보존. SafeImage도 동일 버그여서 동반 fix. Evaluator FAIL(C1 URL 인코딩 `#` 미처리·C2 errored path 변경 고착)→반영→PASS. GUI 실측 이미지 3개 렌더 확인.
 - fix(ipc): fs:read-doc · drift:verify가 이미지 경로 거부 (`156a1ae`) — Evaluator M1·M2. 2MB 미만 이미지 바이너리가 utf-8로 읽혀 matter() 파싱되던 경로 차단 (NOT_A_TEXT_DOC / emptyReport).
 - feat(viewable): 이미지 확장자를 1급 viewable asset으로 승격 (`426d2d1`) — S1 Data Path. src/lib/viewable.ts 신규(VIEWABLE_EXTS/classifyAsset/VIEWABLE_GLOB) + scanner/watcher/useDocs/FileTree/preload Doc.size. md 기존 흐름 회귀 0.
