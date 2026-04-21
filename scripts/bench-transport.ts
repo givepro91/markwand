@@ -121,35 +121,41 @@ function stdDev(values: number[]): number {
 // Hot Paths
 // ────────────────────────────────────────────────────────────
 
-async function benchScanDocs(root: string): Promise<Sample> {
-  // 5 projects 전체 스캔 — 프로젝트당 1회 scanDocs 호출을 실측.
-  const projects = fs.readdirSync(root, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
+// 실 워크스페이스에선 top-level dotfolder(.idea/.DS_Store 등)는 프로젝트가 아님.
+// IGNORE 대상이 아닌 빈 프로젝트도 존재 가능하므로 0-file 은 silent skip.
+function listProjectRoots(root: string): string[] {
+  return fs.readdirSync(root, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && !e.name.startsWith('.') && !SKIP_DIR_NAMES.has(e.name))
     .map((e) => path.join(root, e.name))
+}
 
+async function benchScanDocs(root: string): Promise<Sample> {
+  // 프로젝트당 1회 scanDocs 호출을 실측.
+  const projects = listProjectRoots(root)
   const samples: number[] = []
+  let totalCount = 0
   for (const projRoot of projects) {
     const t0 = performance.now()
     let count = 0
     for await (const _ of localScanner.scanDocs(projRoot, [VIEWABLE_GLOB], IGNORE)) count++
     samples.push(performance.now() - t0)
-    if (count === 0) throw new Error(`bench scanDocs found 0 files in ${projRoot}`)
+    totalCount += count
   }
+  if (totalCount === 0) throw new Error(`bench scanDocs found 0 files across ${projects.length} projects`)
   return summarize(samples)
 }
 
 async function benchCountDocs(root: string): Promise<Sample> {
-  const projects = fs.readdirSync(root, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
-    .map((e) => path.join(root, e.name))
-
+  const projects = listProjectRoots(root)
   const samples: number[] = []
+  let totalCount = 0
   for (const projRoot of projects) {
     const t0 = performance.now()
     const n = await localScanner.countDocs(projRoot, [VIEWABLE_GLOB], IGNORE)
     samples.push(performance.now() - t0)
-    if (n === 0) throw new Error(`bench countDocs found 0 files in ${projRoot}`)
+    totalCount += n
   }
+  if (totalCount === 0) throw new Error(`bench countDocs found 0 files across ${projects.length} projects`)
   return summarize(samples)
 }
 
@@ -189,13 +195,30 @@ async function benchDetectMode(root: string): Promise<Sample> {
   return summarize(samples)
 }
 
+// IGNORE 기반 디렉토리 스킵 — scanner와 동일한 경계. EACCES는 silent skip.
+const SKIP_DIR_NAMES = new Set([
+  'node_modules', '.git', 'dist', '.next', 'build', '__pycache__',
+  'target', 'vendor', '.venv', 'coverage', '.cache', 'out', '.nuxt', '.turbo',
+])
+
 function collectAllMd(root: string): string[] {
   const out: string[] = []
   function walk(d: string) {
-    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
-      const full = path.join(d, e.name)
-      if (e.isDirectory()) walk(full)
-      else if (e.name.endsWith('.md')) out.push(full)
+    let entries: fs.Dirent[]
+    try {
+      entries = fs.readdirSync(d, { withFileTypes: true })
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code
+      if (code === 'EACCES' || code === 'EPERM' || code === 'ENOENT') return
+      throw err
+    }
+    for (const e of entries) {
+      if (e.isDirectory()) {
+        if (SKIP_DIR_NAMES.has(e.name)) continue
+        walk(path.join(d, e.name))
+      } else if (e.name.endsWith('.md')) {
+        out.push(path.join(d, e.name))
+      }
     }
   }
   walk(root)
