@@ -1,0 +1,63 @@
+import { describe, it, expect } from 'vitest'
+import path from 'node:path'
+import { assertInWorkspace } from './validators'
+
+// IPC 핸들러 보안 체크리스트 (Plan §M1.4 Critic G-Major).
+// 각 IPC 경계가 workspace 밖 경로를 받으면 PATH_OUT_OF_WORKSPACE 를 던지는지 계약 검증.
+// assertInWorkspace 는 모든 FS IPC 의 진입 guard — 이 계약 깨지면 path traversal 발생.
+
+const WS = '/Users/alice/workspace'
+const OTHER = '/Users/bob/other-workspace'
+
+describe('assertInWorkspace — path traversal 방어', () => {
+  it('워크스페이스 내부 절대경로 — 통과', () => {
+    expect(() => assertInWorkspace(`${WS}/doc.md`, [WS])).not.toThrow()
+  })
+
+  it('워크스페이스 루트 자체 — 통과 (startsWith === 케이스)', () => {
+    expect(() => assertInWorkspace(WS, [WS])).not.toThrow()
+  })
+
+  it('워크스페이스 밖 경로 — PATH_OUT_OF_WORKSPACE', () => {
+    expect(() => assertInWorkspace('/etc/passwd', [WS])).toThrow('PATH_OUT_OF_WORKSPACE')
+  })
+
+  it('다른 워크스페이스 경로 — PATH_OUT_OF_WORKSPACE', () => {
+    expect(() => assertInWorkspace(`${OTHER}/doc.md`, [WS])).toThrow('PATH_OUT_OF_WORKSPACE')
+  })
+
+  it('../ traversal — path.resolve 후 바깥 경로로 해석되면 거부', () => {
+    // 상대경로가 들어오면 path.resolve 는 cwd 기준으로 풀리므로 워크스페이스 밖.
+    expect(() => assertInWorkspace(`${WS}/../../etc/passwd`, [WS])).toThrow('PATH_OUT_OF_WORKSPACE')
+  })
+
+  it('prefix collision 방어 — /root2 가 /root 의 하위로 오인되지 않아야', () => {
+    // '/root/file' vs '/root2/file' — startsWith('/root') 만 보면 /root2 가 통과해버린다.
+    // 구현은 sep 포함 비교(startsWith(root + sep))로 이를 막는다.
+    expect(() => assertInWorkspace('/root2/file', ['/root'])).toThrow('PATH_OUT_OF_WORKSPACE')
+  })
+
+  it('여러 workspaceRoots 중 하나만 매칭해도 통과', () => {
+    expect(() => assertInWorkspace(`${OTHER}/doc.md`, [WS, OTHER])).not.toThrow()
+  })
+
+  it('빈 roots — 무조건 거부', () => {
+    expect(() => assertInWorkspace(`${WS}/doc.md`, [])).toThrow('PATH_OUT_OF_WORKSPACE')
+  })
+})
+
+describe('assertInWorkspace — {posix:true} (M3 SSH 사전 계약)', () => {
+  it('posix=true 일 때 path.posix 로 해석 — 슬래시 경로만 허용', () => {
+    // 현재 플랫폼이 macOS/Linux 면 posix 와 native 가 동일해 기본 동작과 구분 안 됨.
+    // 테스트는 "계약이 throw 하지 않는다" 까지만 확인.
+    expect(() => assertInWorkspace('/remote/workspace/file.md', ['/remote/workspace'], { posix: true })).not.toThrow()
+    expect(() => assertInWorkspace('/other/path.md', ['/remote/workspace'], { posix: true })).toThrow('PATH_OUT_OF_WORKSPACE')
+  })
+
+  it('기본 (posix 미지정) — 기존 동작 보존', () => {
+    // opts 미전달 → native path 사용, 기존 호출부 회귀 0
+    const native = process.platform === 'win32' ? 'C:\\ws' : '/ws'
+    const inside = path.join(native, 'a.md')
+    expect(() => assertInWorkspace(inside, [native])).not.toThrow()
+  })
+})
