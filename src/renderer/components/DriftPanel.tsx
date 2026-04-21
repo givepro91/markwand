@@ -6,6 +6,9 @@ import type { DriftStatus, VerifiedReference } from '../../preload/types'
 interface DriftPanelProps {
   docPath: string
   projectRoot: string
+  // 위치로 이동 — 뷰어에서 ref.raw 문자열을 find → 하이라이트 + 스크롤.
+  // 미지정 시 "위치로 이동" 액션이 숨겨진다 (기본 동작: ProjectView 가 주입).
+  onJumpToRef?: (raw: string) => void
 }
 
 const STATUS_META: Record<DriftStatus, { label: string; color: string; bg: string; icon: string }> = {
@@ -34,7 +37,7 @@ function relativePath(abs: string, root: string): string {
   return abs
 }
 
-export function DriftPanel({ docPath, projectRoot }: DriftPanelProps) {
+export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProps) {
   const report = useAppStore((s) => s.driftReports[docPath])
   const ignoredList = useAppStore((s) => s.ignoredDriftRefs[docPath])
   const setDriftReport = useAppStore((s) => s.setDriftReport)
@@ -217,6 +220,29 @@ export function DriftPanel({ docPath, projectRoot }: DriftPanelProps) {
       {/* 참조 목록 */}
       {expanded && (
         <div style={{ borderTop: '1px solid var(--border)', padding: 'var(--sp-2) var(--sp-3)' }}>
+          {/* 상태 설명 — "무엇을 해야 할지 모르겠다" 해소용. hasIssues 일 때만 노출. */}
+          {hasIssues && (
+            <div
+              style={{
+                fontSize: 'var(--fs-xs)',
+                color: 'var(--text-muted)',
+                background: 'var(--bg-elev, #fafaf9)',
+                padding: 'var(--sp-2) var(--sp-3)',
+                borderRadius: 'var(--r-sm)',
+                marginBottom: 'var(--sp-2)',
+                lineHeight: 1.5,
+              }}
+            >
+              <div>
+                <span style={{ color: STATUS_META.missing.color, fontWeight: 'var(--fw-medium)' }}>✕ missing</span>
+                {' '}— 문서가 언급한 파일이 실제로 없습니다. 경로 오타·이름 변경·삭제일 수 있어요. <strong>위치로 이동</strong>으로 문서에서 해당 참조를 찾아 고치거나, 해결이 어려우면 <strong>무시</strong>로 제외하세요.
+              </div>
+              <div style={{ marginTop: '4px' }}>
+                <span style={{ color: STATUS_META.stale.color, fontWeight: 'var(--fw-medium)' }}>◐ stale</span>
+                {' '}— 참조 파일이 문서보다 나중에 수정됐습니다. 파일이 열어서 바뀐 내용을 확인한 뒤 문서를 갱신하세요. 문제없으면 <strong>무시</strong>.
+              </div>
+            </div>
+          )}
           {ignored.size > 0 && (
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--sp-2)' }}>
               <Button size="sm" variant="ghost" onClick={() => clearIgnoredRefs(docPath)}>
@@ -243,6 +269,7 @@ export function DriftPanel({ docPath, projectRoot }: DriftPanelProps) {
                 projectRoot={projectRoot}
                 ignored={ignored.has(ref.resolvedPath)}
                 onToggleIgnore={() => toggleIgnoredRef(docPath, ref.resolvedPath)}
+                onJump={onJumpToRef ? () => onJumpToRef(ref.raw) : undefined}
               />
             ))}
           </ul>
@@ -257,15 +284,40 @@ interface DriftRefRowProps {
   projectRoot: string
   ignored: boolean
   onToggleIgnore: () => void
+  onJump?: () => void
 }
 
-function DriftRefRow({ ref_, projectRoot, ignored, onToggleIgnore }: DriftRefRowProps) {
+function DriftRefRow({ ref_, projectRoot, ignored, onToggleIgnore, onJump }: DriftRefRowProps) {
   const meta = STATUS_META[ref_.status]
   const displayPath = relativePath(ref_.resolvedPath, projectRoot)
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(ref_.resolvedPath)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1200)
+    } catch {
+      // clipboard 실패 시 silent — Electron contextIsolation 환경에서 흔함.
+    }
+  }, [ref_.resolvedPath])
+
   const handleReveal = useCallback(() => {
     if (ref_.status === 'missing') return
     window.api.shell.revealInFinder(ref_.resolvedPath)
   }, [ref_])
+
+  const actionBtn: React.CSSProperties = {
+    flexShrink: 0,
+    fontSize: 'var(--fs-xs)',
+    padding: '2px 8px',
+    borderRadius: 'var(--r-sm)',
+    border: '1px solid var(--border)',
+    background: 'transparent',
+    color: 'var(--text-muted)',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  }
 
   return (
     <li
@@ -292,11 +344,11 @@ function DriftRefRow({ ref_, projectRoot, ignored, onToggleIgnore }: DriftRefRow
       >
         {meta.icon}
       </span>
-      <span style={{ color: 'var(--text-muted)', flexShrink: 0, minWidth: '48px' }}>
+      <span style={{ color: 'var(--text-muted)', flexShrink: 0, minWidth: '40px' }}>
         L{ref_.line}
       </span>
       <span
-        title={ref_.resolvedPath}
+        title={`${ref_.resolvedPath}\n(클릭: ${ref_.status === 'missing' ? '액션 없음' : 'Finder에서 열기'})`}
         onClick={handleReveal}
         style={{
           flex: 1,
@@ -312,29 +364,28 @@ function DriftRefRow({ ref_, projectRoot, ignored, onToggleIgnore }: DriftRefRow
       >
         {displayPath}
       </span>
-      <span
-        style={{
-          flexShrink: 0,
-          color: 'var(--text-muted)',
-          fontSize: 'var(--fs-xs)',
-          fontStyle: 'italic',
-        }}
+      {onJump && (
+        <button
+          type="button"
+          onClick={onJump}
+          style={actionBtn}
+          title="문서에서 이 참조가 나오는 위치로 이동"
+        >
+          위치로 이동
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={handleCopy}
+        style={actionBtn}
+        title="절대 경로 복사"
       >
-        {ref_.kind}
-      </span>
+        {copied ? '복사됨' : '경로 복사'}
+      </button>
       <button
         type="button"
         onClick={onToggleIgnore}
-        style={{
-          flexShrink: 0,
-          fontSize: 'var(--fs-xs)',
-          padding: '2px 8px',
-          borderRadius: 'var(--r-sm)',
-          border: '1px solid var(--border)',
-          background: ignored ? 'var(--bg-elev, #fafaf9)' : 'transparent',
-          color: 'var(--text-muted)',
-          cursor: 'pointer',
-        }}
+        style={{ ...actionBtn, background: ignored ? 'var(--bg-elev, #fafaf9)' : 'transparent' }}
         aria-pressed={ignored}
       >
         {ignored ? '무시 해제' : '무시'}

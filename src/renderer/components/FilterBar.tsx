@@ -133,38 +133,30 @@ export function FilterBar({ docs }: FilterBarProps) {
   const metaFilter = useAppStore((s) => s.metaFilter)
   const setMetaFilter = useAppStore((s) => s.setMetaFilter)
 
-  const { allTags, allStatuses, allSources } = useMemo(() => {
-    const tags = new Set<string>()
+  const { allStatuses, allSources } = useMemo(() => {
     const statuses = new Set<string>()
     const sources = new Set<string>()
     for (const doc of docs) {
-      for (const t of doc.frontmatter?.tags ?? []) tags.add(t)
       if (doc.frontmatter?.status) statuses.add(doc.frontmatter.status)
       if (doc.frontmatter?.source) sources.add(doc.frontmatter.source)
     }
     return {
-      allTags: [...tags].sort(),
       allStatuses: [...statuses].sort(),
       allSources: [...sources].sort(),
     }
   }, [docs])
 
   const isActive =
-    metaFilter.tags.length > 0 ||
     metaFilter.statuses.length > 0 ||
     metaFilter.sources.length > 0 ||
     metaFilter.updatedRange !== 'all'
 
-  if (!isActive && allTags.length === 0 && allStatuses.length === 0 && allSources.length === 0) {
+  if (!isActive && allStatuses.length === 0 && allSources.length === 0) {
     return null
   }
 
   function setRange(r: UpdatedRange) {
     setMetaFilter({ ...metaFilter, updatedRange: r })
-  }
-
-  function setTags(tags: string[]) {
-    setMetaFilter({ ...metaFilter, tags })
   }
 
   function setStatuses(statuses: string[]) {
@@ -286,27 +278,7 @@ export function FilterBar({ docs }: FilterBarProps) {
         </>
       )}
 
-      {/* Tag chips */}
-      {allTags.length > 0 && (
-        <>
-          <div style={divider} />
-          <span style={sectionLabel}>태그</span>
-          {allTags.map((tag) => {
-            const active = metaFilter.tags.includes(tag)
-            return (
-              <button
-                key={tag}
-                onClick={() => setTags(toggle(metaFilter.tags, tag))}
-                style={chipBase(active)}
-                aria-pressed={active}
-                aria-label={`태그: ${tag}`}
-              >
-                #{tag}
-              </button>
-            )
-          })}
-        </>
-      )}
+      {/* 태그 필터는 실사용 가치 낮아 제거 (사용자 피드백). 태그별 그룹 보기는 AllProjectsView 에 유지. */}
 
       {/* Clear */}
       {isActive && (
