@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { FileTree } from '../components/FileTree'
 import { MarkdownViewer } from '../components/MarkdownViewer'
+import { ImageViewer } from '../components/ImageViewer'
 import { ClaudeButton } from '../components/ClaudeButton'
 import { FilterBar } from '../components/FilterBar'
 import { TableOfContents } from '../components/TableOfContents'
@@ -10,6 +11,7 @@ import { EmptyState, IconButton } from '../components/ui'
 import { useDocs } from '../hooks/useDocs'
 import { useAppStore, type MetaFilter } from '../state/store'
 import { createFindController, type FindController } from '../lib/findInContainer'
+import { classifyAsset } from '../../lib/viewable'
 import type { Doc } from '../../../src/preload/types'
 import type { Heading } from '../components/TableOfContents'
 
@@ -218,6 +220,14 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
     setHeadings([])
     // F4: 마지막 본 문서 갱신
     setLastViewedDoc(projectId, doc.path)
+
+    // 이미지는 readDoc(utf-8)을 호출하지 않는다 — app://로 <img>가 직접 로드한다.
+    // docContent는 MarkdownViewer 전용이므로 빈 문자열로 초기화.
+    if (classifyAsset(doc.path) === 'image') {
+      setDocContent('')
+      return
+    }
+
     try {
       const result = await window.api.fs.readDoc(doc.path)
       setDocContent(result.content)
@@ -299,10 +309,22 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
     }
   }, [showFind])
 
-  // cmd+F 단축키로 검색 열기
+  // 이미지 문서 선택 시 find/TOC state를 정리해 토글 불일치를 막는다.
+  useEffect(() => {
+    if (selectedDoc && classifyAsset(selectedDoc.path) === 'image') {
+      setShowFind(false)
+      setFindQuery('')
+      setFindResult(null)
+      findControllerRef.current?.clear()
+      setHeadings([])
+    }
+  }, [selectedDoc])
+
+  // cmd+F 단축키로 검색 열기 — md 문서일 때만. 이미지 뷰에서는 검색 대상 텍스트 없음.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        if (selectedDoc && classifyAsset(selectedDoc.path) !== 'md') return
         e.preventDefault()
         setShowFind((prev) => !prev)
       }
@@ -315,9 +337,23 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [showFind])
+  }, [showFind, selectedDoc])
 
   const handleDocNavigate = useCallback(async (absPath: string) => {
+    // MarkdownViewer의 내부 링크 내비게이션은 `.md` 만 이 콜백을 호출하도록 설계돼 있으나,
+    // 방어적으로 이미지 경로가 들어오면 readDoc 스킵하고 뷰어 전환만 수행.
+    if (classifyAsset(absPath) === 'image') {
+      const fakeDoc: Doc = {
+        path: absPath,
+        projectId,
+        name: absPath.split('/').pop() ?? absPath,
+        mtime: Date.now(),
+      }
+      setSelectedDoc(fakeDoc)
+      setDocContent('')
+      setLastViewedDoc(projectId, absPath)
+      return
+    }
     try {
       const result = await window.api.fs.readDoc(absPath)
       const fakeDoc: Doc = {
@@ -584,8 +620,8 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
           ref={scrollContainerRef}
           style={{ flex: 1, overflow: 'auto', padding: 'var(--sp-6) var(--sp-8)', position: 'relative' }}
         >
-          {/* 우상단 아이콘 버튼 그룹 */}
-          {selectedDoc && (
+          {/* 우상단 아이콘 버튼 그룹 — md 문서일 때만 검색·TOC 노출 */}
+          {selectedDoc && classifyAsset(selectedDoc.path) === 'md' && (
             <div
               style={{
                 position: 'sticky',
@@ -618,27 +654,37 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
             </div>
           )}
           {selectedDoc ? (
-            <ErrorBoundary resetKey={selectedDoc.path}>
+            classifyAsset(selectedDoc.path) === 'image' ? (
               <ErrorBoundary resetKey={selectedDoc.path}>
-                <DriftPanel
-                  docPath={selectedDoc.path}
-                  projectRoot={projectRoot}
-                  onJumpToRef={handleJumpToRef}
+                <ImageViewer
+                  path={selectedDoc.path}
+                  name={selectedDoc.name}
+                  size={selectedDoc.size}
                 />
               </ErrorBoundary>
-              <MarkdownViewer
-                content={docContent}
-                basePath={selectedDoc.path}
-                onDocNavigate={handleDocNavigate}
-                onHeadings={setHeadings}
-              />
-            </ErrorBoundary>
+            ) : (
+              <ErrorBoundary resetKey={selectedDoc.path}>
+                <ErrorBoundary resetKey={selectedDoc.path}>
+                  <DriftPanel
+                    docPath={selectedDoc.path}
+                    projectRoot={projectRoot}
+                    onJumpToRef={handleJumpToRef}
+                  />
+                </ErrorBoundary>
+                <MarkdownViewer
+                  content={docContent}
+                  basePath={selectedDoc.path}
+                  onDocNavigate={handleDocNavigate}
+                  onHeadings={setHeadings}
+                />
+              </ErrorBoundary>
+            )
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
               <EmptyState
                 icon="📄"
-                title="왼쪽에서 문서를 선택하세요"
-                description="트리에서 .md 파일을 클릭하면 여기 표시됩니다."
+                title="왼쪽에서 파일을 선택하세요"
+                description="트리에서 .md 또는 이미지 파일을 클릭하면 여기 표시됩니다."
               />
             </div>
           )}

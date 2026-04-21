@@ -232,12 +232,17 @@ function MarkdownViewerInner({ content, basePath, onDocNavigate, onHeadings }: M
       return <a href={href} {...props}>{children}</a>
     },
 
-    // 이미지 처리: 상대 경로 → app:// 프로토콜.
+    // 이미지 처리: 상대 경로 → app:// 프로토콜(고정 host=local + encoded path).
+    // host에 path 세그먼트를 넣으면 Chromium이 소문자 정규화해서 워크스페이스 비교가 깨진다.
     // 로드 실패(private repo 배지 404 등) 시 깨진 아이콘 대신 alt 뱃지로 fallback.
     img({ src, alt, ...props }) {
       if (!src) return <img alt={alt} {...props} />
-      const isAbsolute = src.startsWith('http') || src.startsWith('app://')
-      const resolved = isAbsolute ? src : `app://${resolveRelativePath(src)}`
+      if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('data:') || src.startsWith('blob:')) {
+        return <SafeImage src={src} alt={alt} extraProps={props} />
+      }
+      const abs = src.startsWith('app://') ? src.replace(/^app:\/\/(?:local)?/, '') : resolveRelativePath(src)
+      const encoded = abs.split('/').map(encodeURIComponent).join('/')
+      const resolved = `app://local${encoded}`
       return <SafeImage src={resolved} alt={alt} extraProps={props} />
     },
 
