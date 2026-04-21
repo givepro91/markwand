@@ -1,6 +1,7 @@
 import { dialog, ipcMain, BrowserWindow } from 'electron'
-import { randomUUID } from 'crypto'
+import { randomUUID, createHash } from 'crypto'
 import path from 'path'
+import posix from 'node:path/posix'
 import { getStore } from '../services/store'
 import { scanProjects, parseFrontmatter, HEADER_READ_BYTES } from '../services/scanner'
 import { localTransport } from '../transport/local'
@@ -15,6 +16,9 @@ import {
 } from '../security/validators'
 import { isSshTransportEnabled } from '../services/store'
 import { createSshTransport, computeSshTransportId } from '../transport/ssh'
+import type { SshTransport } from '../transport/ssh'
+import type { PromisifiedSftp } from '../transport/ssh/util/promisifiedSftp'
+import { getActiveTransport } from '../transport/resolve'
 import type { Workspace, Project, Doc, WorkspaceMode } from '../../preload/types'
 
 // LocalScannerDriver.countDocs 가 patterns/ignore 를 받도록 설계 (§2.2 rev. M1). 기존
@@ -110,11 +114,15 @@ async function getOrScanProjects(
   if (inflight) return inflight
 
   const t0 = Date.now()
-  const promise = scanProjects(workspaceId, root, mode)
+  const isSsh = workspaceId.startsWith('ssh:')
+  const scanPromise = isSsh
+    ? scanProjectsSsh(workspaceId, root, mode)
+    : scanProjects(workspaceId, root, mode)
+  const promise = scanPromise
     .then((projects) => {
       projectsCache.set(workspaceId, projects)
       inflightScans.delete(workspaceId)
-      console.log(`[ipc] scanProjects(${workspaceId.slice(0, 8)}, ${mode}) ${projects.length} projects in ${Date.now() - t0}ms`)
+      console.log(`[ipc] scanProjects(${workspaceId.slice(0, 8)}, ${mode}, ${isSsh ? 'ssh' : 'local'}) ${projects.length} projects in ${Date.now() - t0}ms`)
       return projects
     })
     .catch((err) => {
@@ -123,6 +131,126 @@ async function getOrScanProjects(
     })
   inflightScans.set(workspaceId, promise)
   return promise
+}
+
+// Follow-up FS0 — SSH workspace 의 프로젝트 목록 스캔. 로컬 scanProjects 와 달리 SFTP readdir
+// 로 depth 2 까지 탐색. 기존 scanProjects 는 손대지 않는다(로컬 회귀 0 우선 — Plan D-2).
+//
+// SFTP 왕복 비용: RTT 50ms × (1 root + N subdir) 추정. docCount 는 sentinel -1 유지.
+const SSH_PROJECT_MARKERS = [
+  'package.json',
+  'pyproject.toml',
+  'Cargo.toml',
+  'go.mod',
+  'CLAUDE.md',
+  '.git',
+  'README.md',
+  'Makefile',
+]
+
+const SSH_PROJECT_SCAN_IGNORE = new Set([
+  'node_modules', 'dist', 'build', 'out', 'target', 'vendor', 'coverage',
+  '__pycache__', '__fixtures__', '__snapshots__',
+  '.next', '.nuxt', '.svelte-kit', '.turbo', '.cache', '.venv',
+])
+
+// SFTP attrs.mode S_IFMT bits — 로컬 SshScannerDriver 와 동일.
+const S_IFMT = 0o170000
+const S_IFDIR = 0o040000
+function isDirFromMode(mode: number): boolean {
+  return (mode & S_IFMT) === S_IFDIR
+}
+
+function makeSshProjectId(rootPosixPath: string): string {
+  return createHash('sha1').update(rootPosixPath).digest('hex').slice(0, 16)
+}
+
+export async function scanProjectsSsh(
+  workspaceId: string,
+  root: string,
+  mode: WorkspaceMode
+): Promise<Project[]> {
+  const transport = await getActiveTransport(workspaceId)
+  if (transport.kind !== 'ssh') {
+    throw new Error('SSH_TRANSPORT_EXPECTED')
+  }
+  const sshTransport = transport as SshTransport
+  const sftp = sshTransport.client.getSftp()
+  return scanProjectsViaSftp(sftp, workspaceId, root, mode)
+}
+
+// 테스트 가능 헬퍼 — PromisifiedSftp 만 받는 순수 함수. scanProjectsSsh 는 이 위에 transport 해석만 얹음.
+export async function scanProjectsViaSftp(
+  sftp: PromisifiedSftp,
+  workspaceId: string,
+  root: string,
+  mode: WorkspaceMode
+): Promise<Project[]> {
+  if (mode === 'single') {
+    const markers = await findSshMarkers(sftp, root)
+    return [makeSshProject(workspaceId, root, markers)]
+  }
+
+  const projects: Project[] = []
+
+  async function walk(dirPath: string, depth: number): Promise<void> {
+    if (depth > 2) return
+
+    let entries
+    try {
+      entries = await sftp.readdir(dirPath)
+    } catch {
+      return
+    }
+
+    if (depth > 0) {
+      const markers = await findSshMarkers(sftp, dirPath)
+      if (markers.length > 0) {
+        projects.push(makeSshProject(workspaceId, dirPath, markers))
+        return
+      }
+    }
+
+    const subdirs = entries.filter(
+      (e) => isDirFromMode(e.attrs.mode) && !SSH_PROJECT_SCAN_IGNORE.has(e.filename)
+    )
+    for (const sub of subdirs) {
+      await walk(posix.join(dirPath, sub.filename), depth + 1)
+    }
+  }
+
+  await walk(root, 0)
+  return projects
+}
+
+async function findSshMarkers(
+  sftp: PromisifiedSftp,
+  dirPath: string
+): Promise<string[]> {
+  let entries
+  try {
+    entries = await sftp.readdir(dirPath)
+  } catch {
+    return []
+  }
+  const names = new Set(entries.map((e) => e.filename))
+  return SSH_PROJECT_MARKERS.filter((m) => names.has(m))
+}
+
+function makeSshProject(
+  workspaceId: string,
+  rootPosixPath: string,
+  markers: string[]
+): Project {
+  return {
+    id: makeSshProjectId(rootPosixPath),
+    workspaceId,
+    name: posix.basename(rootPosixPath) || rootPosixPath,
+    root: rootPosixPath,
+    markers,
+    docCount: -1,
+    lastModified: 0, // SFTP attrs.mtime 은 readdir 에서만 — 루트는 skip (countDocs IPC 에서 갱신 안 함)
+  }
 }
 
 export function registerWorkspaceHandlers(): void {
@@ -232,11 +360,20 @@ export function registerWorkspaceHandlers(): void {
       // hostVerifier 생략 — bridge 기본 경로로 TOFU 자동 트리거.
     })
 
+    // Follow-up FS0 — 원격 root 에서 workspace mode 자동 판정.
+    // detectWorkspaceMode 실패 시 안전한 기본값 'container' (scanProjectsSsh depth 2 탐색 시도).
+    let detectedMode: WorkspaceMode = 'container'
+    try {
+      detectedMode = await transport.scanner.detectWorkspaceMode(input.root)
+    } catch {
+      // readdir 실패 또는 경로 부재 — workspace 는 등록하되 scanProjects 가 빈 목록 반환
+    }
+
     const workspace: Workspace = {
       id,
       name: input.name,
-      root: '/', // 원격 루트. scanProjects SSH 는 v1.1 범위 — UI 는 빈 목록 또는 수동 path 지정 필요.
-      mode: 'container',
+      root: input.root,
+      mode: detectedMode,
       transport: {
         type: 'ssh',
         host: input.host,
@@ -294,16 +431,20 @@ export function registerWorkspaceHandlers(): void {
     const store = await getStore()
     const workspaces = store.get('workspaces')
     let projectRoot: string | null = null
+    let hostWsId: string | null = null
     for (const ws of workspaces) {
       const projects = await getOrScanProjects(ws.id, ws.root, ws.mode ?? 'container')
       const found = projects.find((p) => p.id === projectId)
       if (found) {
         projectRoot = found.root
+        hostWsId = ws.id
         break
       }
     }
-    if (!projectRoot) return 0
-    return localTransport.scanner.countDocs(projectRoot, [VIEWABLE_GLOB], WORKSPACE_SCAN_IGNORE_PATTERNS)
+    if (!projectRoot || !hostWsId) return 0
+    // Follow-up FS1 — localTransport 하드코딩 제거. SSH workspace 는 getActiveTransport 경유.
+    const transport = await getActiveTransport(hostWsId)
+    return transport.scanner.countDocs(projectRoot, [VIEWABLE_GLOB], WORKSPACE_SCAN_IGNORE_PATTERNS)
   })
 
   ipcMain.handle('project:scan-docs', async (event, raw: unknown) => {
@@ -314,24 +455,29 @@ export function registerWorkspaceHandlers(): void {
     // 캐시된 scanProjects 결과를 활용해 projectRoot를 찾는다.
     // renderer 뷰가 여러 곳에서 호출해도 워크스페이스당 scanProjects는 한 번만 실제 실행됨.
     let projectRoot: string | null = null
+    let hostWsId: string | null = null
     for (const ws of workspaces) {
       const projects = await getOrScanProjects(ws.id, ws.root, ws.mode ?? 'container')
       const found = projects.find((p) => p.id === projectId)
       if (found) {
         projectRoot = found.root
+        hostWsId = ws.id
         break
       }
     }
 
-    if (!projectRoot) throw new Error('PROJECT_NOT_FOUND')
+    if (!projectRoot || !hostWsId) throw new Error('PROJECT_NOT_FOUND')
+
+    // Follow-up FS1 — SSH workspace 는 getActiveTransport 경유로 SshFsDriver/SshScannerDriver 사용.
+    const transport = await getActiveTransport(hostWsId)
 
     const t0 = Date.now()
     const allDocs: Doc[] = []
-    for await (const chunk of composeDocsFromFileStats(localTransport, projectId, projectRoot)) {
+    for await (const chunk of composeDocsFromFileStats(transport, projectId, projectRoot)) {
       event.sender.send('project:docs-chunk', chunk)
       allDocs.push(...chunk)
     }
-    console.log(`[ipc] project:scan-docs(${projectId.slice(0, 8)}) ${allDocs.length} docs in ${Date.now() - t0}ms`)
+    console.log(`[ipc] project:scan-docs(${projectId.slice(0, 8)}, ${transport.kind}) ${allDocs.length} docs in ${Date.now() - t0}ms`)
 
     return allDocs
   })

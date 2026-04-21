@@ -1,4 +1,5 @@
 import path from 'path'
+import posix from 'node:path/posix'
 import { z } from 'zod'
 import type { ThemeType, TerminalType } from '../../preload/types'
 
@@ -110,12 +111,31 @@ const SshAuthSchema = z.union([
   z.object({ kind: z.literal('key-file'), path: PathInput }),
 ])
 
+// Follow-up RF-2: SSH workspace root 는 POSIX 절대경로 + 최소 depth 2. `/` 단독은 금지
+// (assertInWorkspace 가 전체 허용으로 퇴화하는 것을 방지).
+export function isValidSshRoot(raw: string): boolean {
+  if (!raw.startsWith('/')) return false
+  const normalized = posix.normalize(raw).replace(/\/+$/, '') || '/'
+  if (normalized === '/') return false
+  const segments = normalized.split('/').filter((s) => s.length > 0)
+  return segments.length >= 2
+}
+
+const SshRootInput = z
+  .string()
+  .min(1)
+  .max(512)
+  .refine(isValidSshRoot, {
+    message: 'INVALID_SSH_ROOT (must be POSIX absolute path with depth ≥ 2)',
+  })
+
 export function parseWorkspaceAddSshInput(raw: unknown): {
   name: string
   host: string
   port: number
   user: string
   auth: { kind: 'agent' } | { kind: 'key-file'; path: string }
+  root: string
 } {
   return z
     .object({
@@ -124,6 +144,7 @@ export function parseWorkspaceAddSshInput(raw: unknown): {
       port: z.number().int().min(1).max(65535),
       user: z.string().min(1).max(64),
       auth: SshAuthSchema,
+      root: SshRootInput,
     })
     .parse(raw)
 }

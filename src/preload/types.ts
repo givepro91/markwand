@@ -168,6 +168,8 @@ export interface WindowApi {
       port: number
       user: string
       auth: SshAuthConfig
+      /** 원격 workspace root (POSIX 절대경로, depth ≥ 2 필수 — 예: `/home/user/projects`) */
+      root: string
     }) => Promise<Workspace>
     remove: (id: string) => Promise<void>
     scan: (workspaceId: string) => Promise<Project[]>

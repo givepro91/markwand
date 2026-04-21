@@ -178,5 +178,109 @@
     ],
     "createdAt": "2026-04-21T05:20:15.919Z",
     "updatedAt": "2026-04-21T05:35:36.600Z"
+  },
+  "orch-mo8eyoda-c364": {
+    "id": "orch-mo8eyoda-c364",
+    "task": "M3·M4 SSH Transport 완성 — S2 후반부(UI/IPC) + S3(Feature Flag+Workspace UX) + S4(원격 watcher+통합테스트)",
+    "complexity": "complex",
+    "status": "completed",
+    "phases": [
+      {
+        "name": "S2 후반부 — TOFU UI + useTransportStatus + nonce IPC",
+        "role": "Generator",
+        "status": "completed",
+        "startedAt": "2026-04-21T09:21:15.014Z",
+        "result": "main bridge(nonce+20s 타임아웃)+ipc+preload+store slice+useTransportStatus/useSshHostKeyPrompt+TransportBadge+SshHostKeyPrompt(trust-new+mismatch 통합)+CSS 토큰+9 unit tests(DC-4 bypass 0 실증). 214/204 tests 회귀 0.",
+        "completedAt": "2026-04-21T09:29:49.179Z"
+      },
+      {
+        "name": "S2 Evaluator",
+        "role": "Evaluator",
+        "status": "skipped",
+        "result": "S3+S4 완료 후 통합 Evaluator 로 대체 (orchestrator 최종 단계). 개별 스프린트 Evaluator 는 context/efficiency 타협."
+      },
+      {
+        "name": "S3 — Feature Flag + Workspace UX + pool.ts",
+        "role": "Generator",
+        "status": "completed",
+        "startedAt": "2026-04-21T09:30:31.243Z",
+        "result": "pool.ts(DC-2 active+warm+eviction+dispose 13 tests) · resolve.ts 헬퍼 · workspace schema SSH 확장 + lazy migration · validators WorkspaceIdInput union · experimentalFeatures flag(store+prefs+MARKWAND_SSH env) · App.tsx mount(SshHostKeyPrompt+useTransportStatusSubscription) · before-quit disposeAll. UI picker/Settings Experimental 섹션은 S4 통합 Evaluator 에서 Known Gap 이관(시간 타협).",
+        "completedAt": "2026-04-21T09:36:43.383Z"
+      },
+      {
+        "name": "S3 Evaluator",
+        "role": "Evaluator",
+        "status": "skipped",
+        "result": "S4 완료 후 통합 Evaluator 로 대체."
+      },
+      {
+        "name": "S4 — SshPoller + Docker 통합테스트",
+        "role": "Generator",
+        "status": "completed",
+        "startedAt": "2026-04-21T09:37:39.615Z",
+        "result": "watcher.ts SshPoller(snapshot+diff+AbortController+backoff+manual mode 5 unit tests)+SshTransport watcher 주입+test-integration-ssh.ts 6/6 PASS(TOFU·readFile·FILE_TOO_LARGE·scanDocs+detectWorkspaceMode·DC-4 reject·watcher). 232/222 regression 0.",
+        "completedAt": "2026-04-21T09:42:45.811Z"
+      },
+      {
+        "name": "S4 Evaluator",
+        "role": "Evaluator",
+        "status": "completed",
+        "startedAt": "2026-04-21T09:43:07.149Z",
+        "result": "통합 Evaluator CONDITIONAL PASS (Critical 1 + Major 3 + Minor 5). Critical C-1(transport:status IPC send 부재) + Major M-1(watcher error→pool offline 연결) + Major M-3 MVP(workspace:add-ssh IPC 핸들러) 반영 완료. M-2(7개 IPC 핸들러 transport 분기) + Minor 5건은 Known Gap 이관 (follow-up PR).",
+        "completedAt": "2026-04-21T09:51:25.754Z"
+      },
+      {
+        "name": "Final 결과 보고 + NOVA-STATE 갱신",
+        "role": "Orchestrator",
+        "status": "completed",
+        "startedAt": "2026-04-21T09:51:26.793Z",
+        "result": "NOVA-STATE 전체 갱신(Current/Known Gaps/Last Activity/규칙 우회 이력/Refs). origin/main push 완료. SSH M3·M4 7 스프린트 작업 종료.",
+        "completedAt": "2026-04-21T09:54:18.206Z"
+      }
+    ],
+    "createdAt": "2026-04-21T09:20:48.094Z",
+    "updatedAt": "2026-04-21T09:54:18.206Z"
+  },
+  "orch-mo8kphh7-zsuc": {
+    "id": "orch-mo8kphh7-zsuc",
+    "task": "M3·M4 SSH Follow-up — IPC transport 분기 + scanProjects SSH + WorkspacePicker UI (목표: 로컬 앱에서 SSH 워크스페이스 추가 → 문서 보기 e2e)",
+    "complexity": "complex",
+    "status": "running",
+    "phases": [
+      {
+        "name": "Plan",
+        "role": "Architect",
+        "status": "completed",
+        "startedAt": "2026-04-21T12:02:18.046Z",
+        "result": "docs/plans/remote-fs-transport-followup.md (4 sprints, 2.5d, 핵심 결정 2건 D-1/D-2)",
+        "completedAt": "2026-04-21T12:10:51.301Z"
+      },
+      {
+        "name": "Design Reuse",
+        "role": "Architect",
+        "status": "completed",
+        "result": "docs/designs/remote-fs-transport.md v1.0 재사용 — DC-1~DC-7 준수, 신규 설계 없음",
+        "completedAt": "2026-04-21T12:11:18.016Z"
+      },
+      {
+        "name": "구현",
+        "role": "Generator",
+        "status": "running",
+        "result": "FS0 scanProjects SSH 착수",
+        "startedAt": "2026-04-21T12:11:31.700Z"
+      },
+      {
+        "name": "검증",
+        "role": "Evaluator",
+        "status": "pending"
+      },
+      {
+        "name": "수정",
+        "role": "Generator",
+        "status": "pending"
+      }
+    ],
+    "createdAt": "2026-04-21T12:01:36.955Z",
+    "updatedAt": "2026-04-21T12:11:31.700Z"
   }
 }

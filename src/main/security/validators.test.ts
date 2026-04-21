@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import path from 'node:path'
-import { assertInWorkspace } from './validators'
+import { assertInWorkspace, isValidSshRoot, parseWorkspaceAddSshInput } from './validators'
 
 // IPC 핸들러 보안 체크리스트 (Plan §M1.4 Critic G-Major).
 // 각 IPC 경계가 workspace 밖 경로를 받으면 PATH_OUT_OF_WORKSPACE 를 던지는지 계약 검증.
@@ -59,5 +59,70 @@ describe('assertInWorkspace — {posix:true} (M3 SSH 사전 계약)', () => {
     const native = process.platform === 'win32' ? 'C:\\ws' : '/ws'
     const inside = path.join(native, 'a.md')
     expect(() => assertInWorkspace(inside, [native])).not.toThrow()
+  })
+})
+
+describe('isValidSshRoot — Follow-up RF-2', () => {
+  it('POSIX 절대경로 depth ≥ 2 — 통과', () => {
+    expect(isValidSshRoot('/home/user')).toBe(true)
+    expect(isValidSshRoot('/config/workspace')).toBe(true)
+    expect(isValidSshRoot('/var/www/html')).toBe(true)
+    expect(isValidSshRoot('/a/b/c/d')).toBe(true)
+  })
+
+  it('`/` 단독 — 거부 (assertInWorkspace 전체 허용 방지)', () => {
+    expect(isValidSshRoot('/')).toBe(false)
+  })
+
+  it('depth 1 (`/home`) — 거부', () => {
+    expect(isValidSshRoot('/home')).toBe(false)
+    expect(isValidSshRoot('/root')).toBe(false)
+  })
+
+  it('상대경로 거부 — 절대경로만 허용', () => {
+    expect(isValidSshRoot('home/user')).toBe(false)
+    expect(isValidSshRoot('~/projects')).toBe(false)
+    expect(isValidSshRoot('./foo')).toBe(false)
+  })
+
+  it('trailing slash 정규화 — /home/user/ == /home/user', () => {
+    expect(isValidSshRoot('/home/user/')).toBe(true)
+    expect(isValidSshRoot('/home/')).toBe(false)
+  })
+
+  it('중복 슬래시 정규화 — //home//user → depth 2', () => {
+    expect(isValidSshRoot('//home//user')).toBe(true)
+  })
+})
+
+describe('parseWorkspaceAddSshInput — root 필수 + depth 검증', () => {
+  const baseInput = {
+    name: 'test',
+    host: '127.0.0.1',
+    port: 22,
+    user: 'alice',
+    auth: { kind: 'agent' as const },
+  }
+
+  it('root 있고 depth ≥ 2 — 통과', () => {
+    const parsed = parseWorkspaceAddSshInput({ ...baseInput, root: '/home/alice' })
+    expect(parsed.root).toBe('/home/alice')
+  })
+
+  it('root 부재 — 거부', () => {
+    expect(() => parseWorkspaceAddSshInput(baseInput)).toThrow()
+  })
+
+  it('root = "/" — 거부 (RF-2)', () => {
+    expect(() => parseWorkspaceAddSshInput({ ...baseInput, root: '/' })).toThrow()
+  })
+
+  it('key-file auth 경로 수용', () => {
+    const parsed = parseWorkspaceAddSshInput({
+      ...baseInput,
+      auth: { kind: 'key-file', path: '/Users/alice/.ssh/id_ed25519' },
+      root: '/home/alice/projects',
+    })
+    expect(parsed.auth).toEqual({ kind: 'key-file', path: '/Users/alice/.ssh/id_ed25519' })
   })
 })
