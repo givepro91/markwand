@@ -52,12 +52,18 @@ export function registerDriftHandlers(): void {
     // Known Limitations (v1):
     //  - FAT32/일부 macOS HFS+ 는 mtime 정밀도가 1초 — 동일 초 내 저장 시 ok 오판 가능.
     //  - `git checkout` 은 파일 mtime을 체크아웃 시각으로 갱신 → stale 오판. content hash 기반 판정은 v2.
+    //  - 디렉토리는 내부 파일 추가·삭제마다 mtime 이 갱신되므로 stale 판정 제외 (존재=ok, 없음=missing 만).
     const verified: VerifiedReference[] = await Promise.all(
       refs.map(async (ref): Promise<VerifiedReference> => {
         try {
           const targetStat = await fs.promises.stat(ref.resolvedPath)
-          const status: DriftStatus = targetStat.mtimeMs > docMtime ? 'stale' : 'ok'
-          return { ...ref, status, targetMtime: targetStat.mtimeMs }
+          const isDirectory = targetStat.isDirectory()
+          const status: DriftStatus = isDirectory
+            ? 'ok'
+            : targetStat.mtimeMs > docMtime
+              ? 'stale'
+              : 'ok'
+          return { ...ref, status, targetMtime: targetStat.mtimeMs, isDirectory }
         } catch {
           return { ...ref, status: 'missing' }
         }

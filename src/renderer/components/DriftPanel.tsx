@@ -239,7 +239,7 @@ export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProp
               </div>
               <div style={{ marginTop: '4px' }}>
                 <span style={{ color: STATUS_META.stale.color, fontWeight: 'var(--fw-medium)' }}>◐ stale</span>
-                {' '}— 참조 파일이 문서보다 나중에 수정됐습니다. 파일이 열어서 바뀐 내용을 확인한 뒤 문서를 갱신하세요. 문제없으면 <strong>무시</strong>.
+                {' '}— 참조 <em>파일</em>이 문서 이후 수정됐습니다. 파일을 열어 바뀐 내용을 확인한 뒤 문서를 갱신하세요. 문제없으면 <strong>무시</strong>. (폴더 경로는 내부 변경이 잦아 stale 판정 대상이 아닙니다.)
               </div>
             </div>
           )}
@@ -307,6 +307,9 @@ function DriftRefRow({ ref_, projectRoot, ignored, onToggleIgnore, onJump }: Dri
     window.api.shell.revealInFinder(ref_.resolvedPath)
   }, [ref_])
 
+  // 경로 span 전체는 클릭 영역이 아님. 액션은 버튼에만 모음. (사용자 피드백: 실수로 파인더 열림)
+  // "Finder 에서 열기" 가 필요하면 별도 버튼으로 제공.
+
   const actionBtn: React.CSSProperties = {
     flexShrink: 0,
     fontSize: 'var(--fs-xs)',
@@ -348,8 +351,7 @@ function DriftRefRow({ ref_, projectRoot, ignored, onToggleIgnore, onJump }: Dri
         L{ref_.line}
       </span>
       <span
-        title={`${ref_.resolvedPath}\n(클릭: ${ref_.status === 'missing' ? '액션 없음' : 'Finder에서 열기'})`}
-        onClick={handleReveal}
+        title={ref_.resolvedPath}
         style={{
           flex: 1,
           minWidth: 0,
@@ -358,12 +360,28 @@ function DriftRefRow({ ref_, projectRoot, ignored, onToggleIgnore, onJump }: Dri
           whiteSpace: 'nowrap',
           color: 'var(--text)',
           fontFamily: 'var(--font-mono, monospace)',
-          cursor: ref_.status === 'missing' ? 'default' : 'pointer',
           textDecoration: ignored ? 'line-through' : 'none',
+          // user-select 허용해 경로 드래그·복사는 가능하게. 단, 클릭 자체는 no-op.
+          userSelect: 'text',
         }}
       >
         {displayPath}
       </span>
+      {ref_.isDirectory && (
+        <span
+          title="이 경로는 디렉토리입니다 — 폴더는 내부 변경으로 mtime 이 계속 바뀌기 때문에 stale 판정에서 제외됩니다."
+          style={{
+            flexShrink: 0,
+            fontSize: 'var(--fs-xs)',
+            color: 'var(--text-muted)',
+            background: 'var(--bg-elev, #fafaf9)',
+            padding: '1px 6px',
+            borderRadius: '8px',
+          }}
+        >
+          폴더
+        </span>
+      )}
       {onJump && (
         <button
           type="button"
@@ -372,6 +390,16 @@ function DriftRefRow({ ref_, projectRoot, ignored, onToggleIgnore, onJump }: Dri
           title="문서에서 이 참조가 나오는 위치로 이동"
         >
           위치로 이동
+        </button>
+      )}
+      {ref_.status !== 'missing' && (
+        <button
+          type="button"
+          onClick={handleReveal}
+          style={actionBtn}
+          title={ref_.isDirectory ? 'Finder 에서 폴더 열기' : 'Finder 에서 파일 위치 보기'}
+        >
+          Finder
         </button>
       )}
       <button

@@ -43,8 +43,13 @@ async function verifyDoc(docPath: string, projectRoot: string): Promise<{
     refs.map(async (ref): Promise<VerifiedReference> => {
       try {
         const s = await fs.promises.stat(ref.resolvedPath)
-        const status: DriftStatus = s.mtimeMs > docMtime ? 'stale' : 'ok'
-        return { ...ref, status, targetMtime: s.mtimeMs }
+        const isDirectory = s.isDirectory()
+        const status: DriftStatus = isDirectory
+          ? 'ok'
+          : s.mtimeMs > docMtime
+            ? 'stale'
+            : 'ok'
+        return { ...ref, status, targetMtime: s.mtimeMs, isDirectory }
       } catch {
         return { ...ref, status: 'missing' }
       }
@@ -272,6 +277,29 @@ async function main() {
       name: 'glob/placeholder (**,  *, <name>) at-ref 에서 제외',
       verdict: pass ? 'PASS' : 'FAIL',
       detail: `refs=${references.length} unwanted=${unwanted.length}`,
+    })
+  }
+
+  // ── 시나리오 10: 디렉토리 참조는 stale 대신 항상 ok ─────
+  // 디렉토리 mtime 은 내부 파일 추가·삭제로 항상 갱신되기 때문에 파일 stale 기준 적용 시 false positive.
+  {
+    const root = path.join(tmp, 's10')
+    fs.mkdirSync(path.join(root, 'apps', 'landinsight'), { recursive: true })
+    const docPath = path.join(root, 'doc.md')
+    fs.writeFileSync(docPath, 'See @/apps/landinsight for the app.\n')
+    // doc 을 과거로 고정, 디렉토리를 그 뒤에 건드려 mtime 을 doc 이후로 만든다.
+    const docTime = new Date(Date.now() - 30_000)
+    fs.utimesSync(docPath, docTime, docTime)
+    // 디렉토리 내부에 파일을 추가해 디렉토리 mtime 을 현재로 갱신
+    fs.writeFileSync(path.join(root, 'apps', 'landinsight', 'x.ts'), '//\n')
+
+    const { references, counts } = await verifyDoc(docPath, root)
+    const ref0 = references[0]
+    const pass = references.length === 1 && ref0?.isDirectory === true && ref0.status === 'ok' && counts.stale === 0
+    results.push({
+      name: '디렉토리 참조는 stale 판정 제외 (존재=ok)',
+      verdict: pass ? 'PASS' : 'FAIL',
+      detail: `refs=${references.length} isDir=${ref0?.isDirectory} status=${ref0?.status} counts=${JSON.stringify(counts)}`,
     })
   }
 
