@@ -54,6 +54,9 @@ export interface FsChangeEvent {
   type: 'add' | 'change' | 'unlink'
   path: string
   frontmatter?: DocFrontmatter
+  // 바이트 크기. add/change 시 watcher가 stat으로 채워 Doc.size 갱신에 사용.
+  // unlink 또는 stat 실패 시 undefined.
+  size?: number
 }
 
 // Drift Verifier — 단일 진실 공급원은 src/lib/drift/types.ts.

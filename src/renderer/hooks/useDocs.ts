@@ -54,7 +54,11 @@ export function useDocs(projectId: string | null) {
       if (data.type === 'unlink') {
         removeDoc(data.path)
       } else if (data.type === 'change') {
-        updateDoc(data.path, { mtime: Date.now() })
+        // watcher가 stat으로 size를 함께 보내는 경우 Doc.size도 갱신한다.
+        // size가 undefined이면(stat 실패 등) 필드 자체를 빼 기존 값을 유지.
+        const patch: Partial<Doc> = { mtime: Date.now() }
+        if (data.size !== undefined) patch.size = data.size
+        updateDoc(data.path, patch)
       }
     })
     return unsubscribe

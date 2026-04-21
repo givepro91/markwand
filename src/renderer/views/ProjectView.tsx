@@ -9,37 +9,12 @@ import { DriftPanel } from '../components/DriftPanel'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { EmptyState, IconButton } from '../components/ui'
 import { useDocs } from '../hooks/useDocs'
-import { useAppStore, type MetaFilter } from '../state/store'
+import { useAppStore } from '../state/store'
 import { createFindController, type FindController } from '../lib/findInContainer'
 import { classifyAsset } from '../../lib/viewable'
+import { applyMetaFilter } from '../utils/docFilters'
 import type { Doc } from '../../../src/preload/types'
 import type { Heading } from '../components/TableOfContents'
-
-function applyMetaFilter(docs: Doc[], filter: MetaFilter): Doc[] {
-  let result = docs
-  if (filter.tags.length > 0)
-    result = result.filter((d) => filter.tags.some((t) => d.frontmatter?.tags?.includes(t)))
-  if (filter.statuses.length > 0)
-    result = result.filter(
-      (d) => d.frontmatter?.status != null && filter.statuses.includes(d.frontmatter.status)
-    )
-  if (filter.sources.length > 0)
-    result = result.filter(
-      (d) =>
-        d.frontmatter?.source != null &&
-        filter.sources.includes(d.frontmatter.source as string)
-    )
-  if (filter.updatedRange !== 'all') {
-    const now = Date.now()
-    const ms: Record<string, number> = {
-      today: 86_400_000,
-      '7d': 604_800_000,
-      '30d': 2_592_000_000,
-    }
-    result = result.filter((d) => d.mtime >= now - (ms[filter.updatedRange] ?? 0))
-  }
-  return result
-}
 
 interface ProjectViewProps {
   projectId: string

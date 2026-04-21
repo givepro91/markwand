@@ -22,6 +22,32 @@ interface FileTreeProps {
   onExpandChange: (expanded: string[]) => void
 }
 
+// 디렉토리 → md → image → 그 외 순. 같은 타입 내에서는 localeCompare 알파벳.
+// 분류는 doc.path 기반이 본질(확장자 포함 full path). 디렉토리 노드는
+// doc이 없지만 `!!a.children`로 먼저 걸러지므로 이 분기에는 파일만 들어온다.
+function compareTreeNodes(a: TreeNode, b: TreeNode): number {
+  const aDir = !!a.children
+  const bDir = !!b.children
+  if (aDir !== bDir) return aDir ? -1 : 1
+  if (!aDir) {
+    const aKind = a.doc ? classifyAsset(a.doc.path) : null
+    const bKind = b.doc ? classifyAsset(b.doc.path) : null
+    // rank: md=0, image=1, null=2
+    const rank = (k: ReturnType<typeof classifyAsset>) =>
+      k === 'md' ? 0 : k === 'image' ? 1 : 2
+    const r = rank(aKind) - rank(bKind)
+    if (r !== 0) return r
+  }
+  return a.name.localeCompare(b.name)
+}
+
+function sortTreeRecursively(nodes: TreeNode[]): void {
+  nodes.sort(compareTreeNodes)
+  for (const node of nodes) {
+    if (node.children) sortTreeRecursively(node.children)
+  }
+}
+
 // Doc[] 배열을 디렉토리 트리 구조로 변환한다.
 function buildTree(docs: Doc[], rootPath: string): TreeNode[] {
   const nodeMap = new Map<string, TreeNode>()
@@ -65,9 +91,13 @@ function buildTree(docs: Doc[], rootPath: string): TreeNode[] {
     }
   }
 
-  // rootPath의 직접 자식들을 루트 노드로 반환
+  // rootPath의 직접 자식들을 루트 노드로 반환.
+  // insertion 순서는 doc 등장 순서(mtime 기반일 수 있음)라 md/image가 섞인다.
+  // 타입별 그룹(dir → md → image) + 알파벳으로 재정렬해 결정론적 표시.
   const root = nodeMap.get(rootPath)
-  return root?.children ?? []
+  const result = root?.children ?? []
+  sortTreeRecursively(result)
+  return result
 }
 
 // depth 2까지의 노드 id를 수집한다 (treeExpanded 초기값 생성용)

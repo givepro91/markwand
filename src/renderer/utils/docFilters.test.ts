@@ -165,6 +165,53 @@ describe('applyMetaFilter', () => {
     expect(result).not.toContain(docNoFrontmatter) // 60d ago
   })
 
+  it('updatedRange: active range excludes image assets (md-only guard)', () => {
+    // 날짜 필터가 켜지면 이미지는 제외되어야 한다 (Known Gap v0.3.1).
+    const mdRecent = makeDoc({ path: '/p/recent.md', mtime: NOW - 3600_000 })
+    const imgRecent = makeDoc({ path: '/p/screenshot.png', mtime: NOW - 3600_000 })
+    const imgSvg = makeDoc({ path: '/p/diagram.svg', mtime: NOW - 3600_000 })
+    const result = applyMetaFilter([mdRecent, imgRecent, imgSvg], {
+      ...emptyFilter,
+      updatedRange: 'today',
+    })
+    expect(result).toContain(mdRecent)
+    expect(result).not.toContain(imgRecent)
+    expect(result).not.toContain(imgSvg)
+  })
+
+  it("updatedRange: 'all' keeps images (no md-only guard when filter off)", () => {
+    const mdRecent = makeDoc({ path: '/p/recent.md', mtime: NOW - 3600_000 })
+    const imgRecent = makeDoc({ path: '/p/screenshot.png', mtime: NOW - 3600_000 })
+    const result = applyMetaFilter([mdRecent, imgRecent], {
+      ...emptyFilter,
+      updatedRange: 'all',
+    })
+    expect(result).toContain(mdRecent)
+    expect(result).toContain(imgRecent)
+  })
+
+  it('updatedRange + tags: md-only guard still applies to frontmatter-tagged images', () => {
+    // 이미지에 frontmatter.tags가 달렸더라도(이론상 가능), 날짜 필터가 켜지면
+    // md-only 가드가 복합 조건의 AND 체인에서 이미지를 제거한다.
+    const mdTagged = makeDoc({
+      path: '/p/doc.md',
+      mtime: NOW - 3600_000,
+      frontmatter: { tags: ['shared'] },
+    })
+    const imgTagged = makeDoc({
+      path: '/p/chart.png',
+      mtime: NOW - 3600_000,
+      frontmatter: { tags: ['shared'] },
+    })
+    const result = applyMetaFilter([mdTagged, imgTagged], {
+      ...emptyFilter,
+      tags: ['shared'],
+      updatedRange: '7d',
+    })
+    expect(result).toContain(mdTagged)
+    expect(result).not.toContain(imgTagged)
+  })
+
   it('combined filters: tags AND statuses AND sources — AND logic between categories', () => {
     const result = applyMetaFilter(ALL_DOCS, {
       tags: ['ai'],

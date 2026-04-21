@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, memo } from 'react'
+import { useCallback, useEffect, useRef, useState, memo } from 'react'
 import { getExt } from '../../lib/viewable'
 
 type FitMode = 'fit' | '100%' | 'fill'
@@ -27,6 +27,8 @@ function ImageViewerInner({ path, name, size }: ImageViewerProps) {
   const [mode, setMode] = useState<FitMode>('fit')
   const [dims, setDims] = useState<{ w: number; h: number } | null>(null)
   const [errored, setErrored] = useState(false)
+  // 각 radio 버튼 ref — arrow-key 이동 후 focus 전이에 사용.
+  const radioRefs = useRef<Array<HTMLButtonElement | null>>([])
 
   // URL 계약: app://local/<absolute-path>
   // - `local`은 고정 host placeholder. path 세그먼트를 host에 두면 Chromium이
@@ -52,6 +54,28 @@ function ImageViewerInner({ path, name, size }: ImageViewerProps) {
   const handleError = useCallback(() => {
     setErrored(true)
   }, [])
+
+  // WAI-ARIA radiogroup 계약: ←/→로 이전/다음, Home/End로 처음/끝. 이동 시 focus+select 동시 전이.
+  // radio 그룹 안에서는 양끝에서 감싸는(순환) 동작이 스펙. space/enter는 <button>의 기본 동작으로 setMode가 호출됨.
+  const handleRadioKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLButtonElement>, idx: number) => {
+      let nextIdx: number | null = null
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        nextIdx = (idx - 1 + FIT_MODES.length) % FIT_MODES.length
+      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        nextIdx = (idx + 1) % FIT_MODES.length
+      } else if (e.key === 'Home') {
+        nextIdx = 0
+      } else if (e.key === 'End') {
+        nextIdx = FIT_MODES.length - 1
+      }
+      if (nextIdx === null) return
+      e.preventDefault()
+      setMode(FIT_MODES[nextIdx].id)
+      radioRefs.current[nextIdx]?.focus()
+    },
+    []
+  )
 
   // Fit: contain, 최대 영역 내. 100%: 실픽셀. Fill: cover (과하게 크면 잘릴 수 있음).
   const imgStyle: React.CSSProperties = {
@@ -96,15 +120,21 @@ function ImageViewerInner({ path, name, size }: ImageViewerProps) {
           aria-label="맞춤 모드"
           style={{ display: 'flex', gap: 'var(--sp-1)' }}
         >
-          {FIT_MODES.map((m) => {
+          {FIT_MODES.map((m, idx) => {
             const active = m.id === mode
             return (
               <button
                 key={m.id}
+                ref={(el) => {
+                  radioRefs.current[idx] = el
+                }}
                 type="button"
                 role="radio"
                 aria-checked={active}
+                // roving tabindex — 선택된 라디오만 Tab 타겟. 그룹 내부는 화살표로 이동.
+                tabIndex={active ? 0 : -1}
                 onClick={() => setMode(m.id)}
+                onKeyDown={(e) => handleRadioKeyDown(e, idx)}
                 style={{
                   padding: 'var(--sp-1) var(--sp-3)',
                   borderRadius: 'var(--r-sm)',

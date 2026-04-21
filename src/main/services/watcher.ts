@@ -1,4 +1,5 @@
 import { watch, FSWatcher } from 'chokidar'
+import { stat as fsStat } from 'fs/promises'
 import path from 'path'
 import type { WebContents } from 'electron'
 import type { FsChangeEvent } from '../../preload/types'
@@ -60,18 +61,30 @@ function sendChange(type: ChangeType, filePath: string): void {
       return
     }
 
-    // 이미지 등 non-md 자산은 frontmatter 파싱 스킵 (4KB 헤더 read 회피)
-    if (classifyAsset(filePath) !== 'md') {
-      activeWebContents.send('fs:change', { type, path: filePath } satisfies FsChangeEvent)
-      return
-    }
+    // add/change는 stat으로 size를 같이 실어 보낸다. Doc.size가 갱신되어야
+    // ImageViewer 푸터가 파일 편집 후에도 현재 byte 값을 반영한다.
+    // stat 실패(권한·경쟁 삭제)는 무해 — size는 optional이라 기존 값 유지.
+    void fsStat(filePath)
+      .then((st) => (st.isFile() ? st.size : undefined))
+      .catch(() => undefined)
+      .then(async (size) => {
+        if (!activeWebContents || activeWebContents.isDestroyed()) return
 
-    void parseFrontmatter(filePath).then((frontmatter) => {
-      if (!activeWebContents || activeWebContents.isDestroyed()) return
-      const payload: FsChangeEvent = { type, path: filePath }
-      if (frontmatter !== undefined) payload.frontmatter = frontmatter
-      activeWebContents.send('fs:change', payload)
-    })
+        // 이미지 등 non-md 자산은 frontmatter 파싱 스킵 (4KB 헤더 read 회피)
+        if (classifyAsset(filePath) !== 'md') {
+          const payload: FsChangeEvent = { type, path: filePath }
+          if (size !== undefined) payload.size = size
+          activeWebContents.send('fs:change', payload)
+          return
+        }
+
+        const frontmatter = await parseFrontmatter(filePath)
+        if (!activeWebContents || activeWebContents.isDestroyed()) return
+        const payload: FsChangeEvent = { type, path: filePath }
+        if (frontmatter !== undefined) payload.frontmatter = frontmatter
+        if (size !== undefined) payload.size = size
+        activeWebContents.send('fs:change', payload)
+      })
   }, DEBOUNCE_MS)
 
   debounceTimers.set(key, timer)

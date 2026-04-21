@@ -1,5 +1,6 @@
 import type { Doc, SortOrder } from '../../../src/preload/types'
 import type { MetaFilter } from '../state/store'
+import { classifyAsset } from '../../lib/viewable'
 
 export type GroupByField = 'tag' | 'status' | 'source'
 
@@ -24,7 +25,13 @@ export function applyMetaFilter(docs: Doc[], filter: MetaFilter): Doc[] {
       '7d': 604_800_000,
       '30d': 2_592_000_000,
     }
-    result = result.filter((d) => d.mtime >= now - (ms[filter.updatedRange] ?? 0))
+    // 날짜 필터는 "최근 작성/수정한 문서"를 찾는 의도 — 이미지는 mtime으로 묶일 때
+    // md와 섞여 의미가 흐려진다(스크린샷이 상위를 독점, frontmatter-free라 오탐도 잦음).
+    // 날짜 필터가 활성일 때만 md-only로 제한한다. updatedRange==='all'일 땐
+    // 기존 전체 목록에 이미지가 남는다.
+    result = result.filter(
+      (d) => classifyAsset(d.path) === 'md' && d.mtime >= now - (ms[filter.updatedRange] ?? 0)
+    )
   }
   return result
 }
