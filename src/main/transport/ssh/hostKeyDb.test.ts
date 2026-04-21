@@ -95,4 +95,29 @@ describe('verifyHostKey — DC-4 bypass 0', () => {
       await verifyHostKey(WS_ID, { ...INFO, sha256: 'ATTACKER_HASH' }),
     ).toBe('mismatch')
   })
+
+  it('재연결: 저장된 algorithm 구체 + 새 algorithm==="unknown" → match (Follow-up 버그리포트 2026-04-21)', async () => {
+    // 사용자 재현: 최초 TOFU 시 handshake 이후 저장본 algorithm='ssh-ed25519'.
+    // 재연결 시 ssh2 hostVerifier 가 handshake 이전 호출이라 info.algorithm='unknown' 으로 도달 →
+    // 과거 로직은 entry !== info 비교에서 mismatch 로 오판했다. 이 케이스는 sha256 동일하면 match.
+    await setHostKey(WS_ID, { ...INFO, algorithm: 'ssh-ed25519' })
+    expect(
+      await verifyHostKey(WS_ID, { ...INFO, algorithm: 'unknown' }),
+    ).toBe('match')
+  })
+
+  it('재연결: 저장/수신 모두 algorithm==="unknown" → match (대칭 케이스)', async () => {
+    await setHostKey(WS_ID, { ...INFO, algorithm: 'unknown' })
+    expect(
+      await verifyHostKey(WS_ID, { ...INFO, algorithm: 'unknown' }),
+    ).toBe('match')
+  })
+
+  it('재연결: 수신 algorithm="unknown" + 다른 sha256 → mismatch (algorithm 예외가 sha256 불일치 허용 안 함)', async () => {
+    // 대칭 방어선: info.algorithm="unknown" 허용은 algorithm 비교만. sha256 주 방어선 유지.
+    await setHostKey(WS_ID, { ...INFO, algorithm: 'ssh-ed25519' })
+    expect(
+      await verifyHostKey(WS_ID, { sha256: 'ATTACKER_HASH', algorithm: 'unknown' }),
+    ).toBe('mismatch')
+  })
 })

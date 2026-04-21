@@ -54,7 +54,9 @@ export async function removeHostKey(workspaceId: string): Promise<void> {
  * - sha256 일치 → 'match' (자동 trust)
  * - sha256 불일치 → 'mismatch' (bypass 금지, 연결 중단 + re-trust 플로우 진입)
  *
- * algorithm 이 변경된 경우도 mismatch 로 취급 (정책적으로 보수적).
+ * algorithm 비교는 양쪽이 모두 구체적일 때만 유효. ssh2 의 hostVerifier 는 handshake 이전에
+ * 호출되어 `info.algorithm='unknown'` 인 상태로 도달하므로(Follow-up 버그리포트 2026-04-21),
+ * 한쪽이라도 'unknown' 이면 algorithm 비교는 생략한다. sha256 이 주 방어선(Design §4).
  */
 export async function verifyHostKey(
   workspaceId: string,
@@ -63,7 +65,12 @@ export async function verifyHostKey(
   const entry = await getHostKey(workspaceId)
   if (!entry) return 'unknown'
   if (entry.sha256 !== info.sha256) return 'mismatch'
-  // algorithm 변경은 드물지만 호스트키 교체 징후 — 사용자 재확인 필요.
-  if (entry.algorithm !== info.algorithm && entry.algorithm !== 'unknown') return 'mismatch'
+  // 양쪽 모두 구체적 알고리즘을 가진 경우에만 비교. 'unknown' 은 hostVerifier 단계의
+  // 정상 상태로 허용해 재연결 시 false-mismatch 를 방지.
+  if (
+    entry.algorithm !== info.algorithm &&
+    entry.algorithm !== 'unknown' &&
+    info.algorithm !== 'unknown'
+  ) return 'mismatch'
   return 'match'
 }
