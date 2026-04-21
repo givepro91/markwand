@@ -20,6 +20,8 @@ import type { Workspace, Project, Doc, WorkspaceMode } from '../../preload/types
 const WORKSPACE_SCAN_IGNORE_PATTERNS = [
   '**/node_modules/**',
   '**/.git/**',
+  '**/__fixtures__/**',  // 테스트 fixture 디렉토리 — 실 Doc 아님, 워크스페이스 뷰/필터/drift 대상 제외
+  '**/__snapshots__/**', // vitest 스냅샷
   '**/dist/**',
   '**/.next/**',
   '**/build/**',

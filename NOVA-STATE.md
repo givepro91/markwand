@@ -61,6 +61,7 @@
 ## Known Gaps (미커버 영역)
 | 영역 | 미커버 내용 | 우선순위 |
 |------|-----------|----------|
+| **FilterBar 출처 known vs custom 구분 UI** | GUI 피드백(2026-04-21): frontmatter `source` 값을 동적으로 set 수집해 Claude/Codex/Design/Review 고정 칩과 임의 사용자 값(`unknown-custom` 등)이 동일 레벨에 혼재. 사용자 신뢰도 저하. known-list 정의 + unknown 소스 "기타" 그룹핑 or 시각적 구분 필요 | v0.4 Medium (2b) |
 | ~~docs-chunk 스트리밍~~ | ~~청크 IPC는 구현됐으나 useDocs는 collect 후 일괄 수신~~ | ~~v0.2~~ ✅ 해소: useDocs+InboxView 모두 appendDocs 진행형 렌더 확인 (2026-04-21) |
 | 글로벌 풀텍스트 검색 | 인박스/카드 그리드만 발견성 제공 | v0.2 |
 | frontmatter 자동 태깅 | gray-matter 파싱은 fs:read-doc만 | v0.2 |

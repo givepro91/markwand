@@ -72,11 +72,13 @@ describe('composeDocsFromFileStats', () => {
     }
   })
 
-  it('ignore 패턴 준수 — node_modules/dist 안의 md 는 Doc composition 대상 아님 (LocalScannerDriver.scanDocs 경유)', async () => {
+  it('ignore 패턴 준수 — node_modules/dist/__fixtures__ 안의 md 는 Doc composition 대상 아님 (LocalScannerDriver.scanDocs 경유)', async () => {
     const root = makeTempWorkspace({
       'README.md': '# root',
       'node_modules/pkg/a.md': '# skip',
       'dist/build.md': '# skip',
+      'src/__fixtures__/fm-foo.md': '---\ntags: []\n---\n# fixture', // GUI 피드백: fixture 혼입 방지
+      'src/__snapshots__/snap.md': '# snap',
     })
     try {
       const docs = await collectAll(composeDocsFromFileStats(localTransport, 'proj-3', root))
@@ -84,6 +86,8 @@ describe('composeDocsFromFileStats', () => {
       expect(paths.some((p) => p.endsWith('README.md'))).toBe(true)
       expect(paths.some((p) => p.includes('node_modules'))).toBe(false)
       expect(paths.some((p) => p.includes('dist'))).toBe(false)
+      expect(paths.some((p) => p.includes('__fixtures__'))).toBe(false)
+      expect(paths.some((p) => p.includes('__snapshots__'))).toBe(false)
     } finally {
       fs.rmSync(root, { recursive: true, force: true })
     }

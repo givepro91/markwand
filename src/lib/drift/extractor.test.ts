@@ -320,4 +320,17 @@ describe('extractReferences — edge cases', () => {
     expect(refs).toHaveLength(1)
     expect(refs[0].kind).toBe('hint')
   })
+
+  it('CSS custom property inline backtick (`--badge-bg/text`) 는 경로 아님', () => {
+    // v0.3.2+ Bug fix — 토큰 매핑 표의 `--name/variant` 가 inline 경로로 오판되어
+    // drift missing 노이즈를 유발했다. `--` 로 시작하는 세그먼트는 CSS custom property.
+    const md = '| 프로젝트 배지 | `--badge-bg/text` | 자동 |'
+    expect(extractReferences(md, ROOT)).toHaveLength(0)
+  })
+
+  it('CSS custom property at-ref (`@/docs/--theme-color/accent`) 도 경로 아님', () => {
+    // at-ref 경로 중간에 `--token` 세그가 있으면 동일 거부 (토큰 표에 `@/...` 접두 예시 드문 경우 대비)
+    const md = 'See @/docs/--theme-color/accent for details.'
+    expect(extractReferences(md, ROOT)).toHaveLength(0)
+  })
 })

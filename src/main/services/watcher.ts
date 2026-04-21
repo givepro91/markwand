@@ -29,6 +29,8 @@ const IGNORE_DIR_NAMES = new Set([
   '.venv',
   '.nova',
   '__pycache__',
+  '__fixtures__',
+  '__snapshots__',
   'dist',
   'build',
   'out',

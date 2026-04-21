@@ -54,6 +54,11 @@ function isMeaningfulPathCandidate(s: string): boolean {
   const segs = stripped.split(/[/\\]/).filter(Boolean)
   if (segs.length === 0) return false
 
+  // CSS custom property 패턴 — `--name/value` 형태는 토큰 표기이지 경로 아님.
+  // (예: `--badge-bg/text`, `--color-warning/muted` — markdown 토큰 매핑 표에 흔함)
+  // 파일명이 `--` 로 시작하는 경우는 사실상 없으므로 보수적 거부가 안전.
+  if (segs.some((seg) => seg.startsWith('--'))) return false
+
   // 모든 세그먼트가 숫자만 → 날짜·비율·분수
   if (segs.every((seg) => /^\d+$/.test(seg))) return false
 

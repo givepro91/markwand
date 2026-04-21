@@ -113,6 +113,8 @@ const PROJECT_MARKERS = [
 const SCAN_IGNORE_PATTERNS = [
   '**/node_modules/**',
   '**/.git/**',
+  '**/__fixtures__/**',
+  '**/__snapshots__/**',
   '**/dist/**',
   '**/.next/**',
   '**/build/**',
