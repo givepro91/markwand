@@ -148,15 +148,16 @@ function ImageViewerInner({ path, name, size }: ImageViewerProps) {
           borderRadius: 'var(--r-md)',
           border: '1px solid var(--border)',
           overflow: mode === '100%' ? 'auto' : 'hidden',
-          // 체스보드(투명 알파 채널 인지) — 밝은/어두운 테마 모두 대비 유지.
+          // 체스보드(투명 알파 채널 인지) — 전용 대비 토큰 사용.
+          // 일반 레이아웃 토큰(--bg/--bg-elev)은 차이가 작아 단색으로 보였다.
           backgroundImage:
-            'linear-gradient(45deg, var(--bg-elev) 25%, transparent 25%), ' +
-            'linear-gradient(-45deg, var(--bg-elev) 25%, transparent 25%), ' +
-            'linear-gradient(45deg, transparent 75%, var(--bg-elev) 75%), ' +
-            'linear-gradient(-45deg, transparent 75%, var(--bg-elev) 75%)',
+            'linear-gradient(45deg, var(--image-checker-b) 25%, transparent 25%), ' +
+            'linear-gradient(-45deg, var(--image-checker-b) 25%, transparent 25%), ' +
+            'linear-gradient(45deg, transparent 75%, var(--image-checker-b) 75%), ' +
+            'linear-gradient(-45deg, transparent 75%, var(--image-checker-b) 75%)',
           backgroundSize: '16px 16px',
           backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0',
-          backgroundColor: 'var(--bg)',
+          backgroundColor: 'var(--image-checker-a)',
         }}
       >
         {errored ? (

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Workspace, Project, Doc, ViewMode, SortOrder, ViewLayout, DriftReport } from '../../../src/preload/types'
+import { classifyAsset } from '../../lib/viewable'
 
 export type UpdatedRange = 'today' | '7d' | '30d' | 'all'
 
@@ -179,11 +180,14 @@ export const useAppStore = create<AppState>((set) => ({
   setCmdkHintSeen: (cmdkHintSeen) => set({ cmdkHintSeen }),
   setTrackReadDocs: (trackReadDocs) => set({ trackReadDocs }),
   pruneStaleDocSelection: (available) => {
+    // "사라진 파일" + "이미지 등 non-md 자산"을 모두 제거.
+    // 이미지는 Composer 대상이 아니므로(v0.3.1-C) 선택 집합에 남아있으면 Copy @ref 에
+    // 포함되어 Claude 토큰 낭비. 과거 md 파일이 이미지로 rename된 경우에도 정리 가능.
     let removed = 0
     set((s) => {
       const next = new Set<string>()
       for (const p of s.selectedDocPaths) {
-        if (available.has(p)) next.add(p)
+        if (available.has(p) && classifyAsset(p) === 'md') next.add(p)
         else removed++
       }
       return removed === 0 ? {} : { selectedDocPaths: next }

@@ -83,8 +83,17 @@ function collectDepth2Ids(nodes: TreeNode[], depth = 0): string[] {
   return ids
 }
 
+// 아이콘들은 시각 의미(폴더/문서/이미지)를 스크린리더에도 전달해야 파일 종류 구분 가능.
+// role="img" + aria-label 조합으로 SVG를 accessible graphic으로 선언.
 const FolderIcon = ({ open }: { open: boolean }) => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 16 16"
+    fill="currentColor"
+    role="img"
+    aria-label={open ? '열린 폴더' : '폴더'}
+  >
     {open ? (
       <path d="M.5 3a1 1 0 0 1 1-1h4l1.5 1.5h7.5a1 1 0 0 1 1 1V13a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1V3z" />
     ) : (
@@ -94,7 +103,16 @@ const FolderIcon = ({ open }: { open: boolean }) => (
 )
 
 const FileIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    role="img"
+    aria-label="문서 파일"
+  >
     <path d="M4 1.5h6.5L13 4v10.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-12a1 1 0 0 1 1-1z" />
     <path d="M10 1.5V4h2.5" />
   </svg>
@@ -102,7 +120,16 @@ const FileIcon = () => (
 
 // 이미지 파일을 md와 시각 구분하기 위한 16px 아이콘. 사각 프레임 + 산/해 실루엣.
 const ImageIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    role="img"
+    aria-label="이미지 파일"
+  >
     <rect x="1.5" y="2.5" width="13" height="11" rx="1" />
     <circle cx="5.5" cy="6" r="1" fill="currentColor" stroke="none" />
     <path d="M2 12l3.5-3.5 3 3 2.5-2.5L14 12" />
@@ -159,7 +186,7 @@ function FileTreeNode({ node, style }: { node: NodeApi<TreeNode>; style: React.C
         else node.select()
       }}
     >
-      {!isDir && docPath ? (
+      {!isDir && docPath && classifyAsset(node.data.name) === 'md' ? (
         <Checkbox
           checked={composerChecked}
           size="sm"
@@ -168,6 +195,8 @@ function FileTreeNode({ node, style }: { node: NodeApi<TreeNode>; style: React.C
           onChange={() => toggleDocSelection(docPath)}
         />
       ) : (
+        // 이미지 등 non-md 자산은 Composer 선택 대상 아님.
+        // `@/path/image.png` 복사가 Claude/Codex에서 무의미하거나 토큰 낭비.
         <span style={{ width: 14, flexShrink: 0 }} />
       )}
       <span

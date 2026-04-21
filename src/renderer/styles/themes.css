@@ -14,6 +14,11 @@
   --badge-text:    #0550ae;
   --shadow:        0 1px 3px rgba(31,35,40,0.12);
 
+  /* ImageViewer 체스보드 — 알파 채널 인지를 위한 전용 대비 토큰.
+     --bg/--bg-elev는 차이가 작아(흰 ↔ 옅은 회색) 거의 단색으로 보였다. */
+  --image-checker-a: #ffffff;
+  --image-checker-b: #d8dde3;
+
   --shiki-foreground:   #24292e;
   --shiki-background:   #f6f8fa;
 }
@@ -32,6 +37,10 @@
   --badge-bg:      #388bfd1a;
   --badge-text:    #79c0ff;
   --shadow:        0 1px 3px rgba(0,0,0,0.4);
+
+  /* 다크 대비율 ~3:1 (WCAG 1.4.11 non-text contrast 기준) */
+  --image-checker-a: #1f252d;
+  --image-checker-b: #3a4450;
 
   --shiki-foreground:   #c9d1d9;
   --shiki-background:   #161b22;

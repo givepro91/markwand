@@ -9,6 +9,7 @@ import { useWorkspace } from './hooks/useWorkspace'
 import { useViewMode } from './hooks/useViewMode'
 import { useDrift } from './hooks/useDrift'
 import { useAppStore } from './state/store'
+import { classifyAsset } from '../lib/viewable'
 import type { Doc, Project } from '../../src/preload/types'
 
 // 뷰는 lazy 로드 — startup에서 shiki/react-arborist/mermaid를 미리 로드하지 않는다.
@@ -110,11 +111,14 @@ export default function App() {
   }, [docs])
 
   // P1.5 — docs가 처음 로드되는 시점에 lastSelectedDocPaths를 stale 필터 후 복원 (1회).
+  // v0.3.1: 이전 세션에 이미지가 선택돼 있었어도 복원에서 제외 — Composer 대상은 md 전용.
   useEffect(() => {
     if (pendingRestore === null) return
     if (docs.length === 0) return
     const available = new Set<string>(docs.map((d) => d.path))
-    const surviving = pendingRestore.filter((p) => available.has(p))
+    const surviving = pendingRestore.filter(
+      (p) => available.has(p) && classifyAsset(p) === 'md'
+    )
     setPendingRestore(null)
     if (surviving.length === 0) return
     useAppStore.getState().replaceDocSelection(surviving)
