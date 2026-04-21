@@ -19,7 +19,7 @@ interface WorkspacePickerProps {
   onSelect: (id: string) => void
   onAdd: () => void
   /**
-   * Follow-up FS2 — experimentalFeatures.sshTransport flag on 일 때만 "+ SSH Remote 추가" 옵션 노출.
+   * Follow-up FS2 — experimentalFeatures.sshTransport flag on 일 때만 "+ 원격 서버(SSH) 추가" 옵션 노출.
    * flag off 시 DOM 에서 완전 제거(disabled 아님 — Plan S3.1 결정 준수).
    */
   onAddSsh?: () => void
@@ -41,12 +41,12 @@ export function WorkspacePicker({
   if (workspaces.length === 0) {
     return (
       <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
-        <Button variant="primary" size="sm" onClick={onAdd} aria-label="워크스페이스 추가">
-          + 워크스페이스 추가
+        <Button variant="primary" size="sm" onClick={onAdd} aria-label="내 컴퓨터의 폴더 추가">
+          + 내 컴퓨터 폴더
         </Button>
         {experimentalSsh && onAddSsh && (
-          <Button variant="ghost" size="sm" onClick={onAddSsh} aria-label="SSH Remote 워크스페이스 추가">
-            + SSH Remote
+          <Button variant="ghost" size="sm" onClick={onAddSsh} aria-label="원격 SSH 서버의 폴더 추가">
+            + 원격 SSH 서버
           </Button>
         )}
       </div>
@@ -88,14 +88,14 @@ export function WorkspacePicker({
               return (
                 <>
                   {local.length > 0 && (
-                    <optgroup label="로컬">
+                    <optgroup label="내 컴퓨터">
                       {local.map((w) => (
                         <option key={w.id} value={w.id}>{w.name}</option>
                       ))}
                     </optgroup>
                   )}
                   {remote.length > 0 && (
-                    <optgroup label="SSH Remote">
+                    <optgroup label="원격 SSH 서버">
                       {remote.map((w) => (
                         <option key={w.id} value={w.id}>🌐 {w.name}</option>
                       ))}
@@ -104,9 +104,9 @@ export function WorkspacePicker({
                 </>
               )
             })()}
-            <option value="__add__">+ 워크스페이스 추가</option>
+            <option value="__add__">+ 내 컴퓨터 폴더 추가</option>
             {experimentalSsh && onAddSsh && (
-              <option value="__add_ssh__">+ SSH Remote 추가</option>
+              <option value="__add_ssh__">+ 원격 서버(SSH) 추가</option>
             )}
           </select>
           <span

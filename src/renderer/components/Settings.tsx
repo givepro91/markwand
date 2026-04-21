@@ -160,7 +160,7 @@ export function Settings() {
               </div>
             )}
 
-            {/* Follow-up FS2 — Experimental 섹션 */}
+            {/* Follow-up FS2/FS9 — 베타 기능 섹션 */}
             <div
               style={{
                 borderTop: '1px solid var(--border)',
@@ -178,18 +178,18 @@ export function Settings() {
                   margin: '0 0 var(--sp-2)',
                 }}
               >
-                Experimental
+                베타 기능
               </h4>
               <label
                 style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', cursor: 'pointer' }}
-                title="SSH 원격 워크스페이스 등록/스캔을 활성화합니다. 변경 후 재시작 필요."
+                title="원격 SSH 서버의 마크다운을 읽기 전용으로 불러옵니다. 변경 후 앱 재시작 필요."
               >
                 <Checkbox
                   checked={sshEnabled}
                   onChange={handleSshToggle}
-                  aria-label="SSH Remote Transport"
+                  aria-label="원격 SSH 서버 연결"
                 />
-                <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text)' }}>SSH Remote Transport</span>
+                <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text)' }}>원격 SSH 서버 연결</span>
               </label>
               <p
                 style={{
@@ -198,7 +198,7 @@ export function Settings() {
                   margin: 'var(--sp-1) 0 0 calc(16px + var(--sp-2))',
                 }}
               >
-                원격 SSH 서버의 마크다운 문서를 읽기 전용으로 탐색합니다. 변경 후 <strong>앱 재시작</strong>이 필요합니다.
+                원격 서버의 마크다운 문서를 읽기 전용으로 볼 수 있습니다. 변경 후 <strong>앱을 재시작</strong>해주세요.
               </p>
             </div>
           </div>

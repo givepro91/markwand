@@ -94,5 +94,13 @@ contextBridge.exposeInMainWorld('api', {
     },
     // Follow-up FS5 — ~/.ssh/config 호스트 import (feature flag on 필수)
     loadConfig: () => ipcRenderer.invoke('ssh:load-config'),
+    // Follow-up FS9 — 원격 폴더 탐색 (임시 연결 + readdir)
+    browseFolder: (input: {
+      host: string
+      port: number
+      user: string
+      auth: { kind: 'agent' } | { kind: 'key-file'; path: string }
+      path: string
+    }) => ipcRenderer.invoke('ssh:browse-folder', input),
   },
 })

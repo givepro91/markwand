@@ -129,6 +129,34 @@ const SshRootInput = z
     message: 'INVALID_SSH_ROOT (must be POSIX absolute path with depth ≥ 2)',
   })
 
+// Follow-up FS9 — ssh:browse-folder input. 원격 폴더 탐색용 임시 연결 + readdir.
+// path 는 POSIX 절대경로만 수용. depth 는 '/' 부터 허용 (picker 탐색용 — add-ssh 의 root 제약과 별개).
+const BrowsePathInput = z
+  .string()
+  .min(1)
+  .max(512)
+  .refine((s) => s.startsWith('/') && !s.includes('\0'), {
+    message: 'INVALID_BROWSE_PATH',
+  })
+
+export function parseSshBrowseFolderInput(raw: unknown): {
+  host: string
+  port: number
+  user: string
+  auth: { kind: 'agent' } | { kind: 'key-file'; path: string }
+  path: string
+} {
+  return z
+    .object({
+      host: z.string().min(1).max(253),
+      port: z.number().int().min(1).max(65535),
+      user: z.string().min(1).max(64),
+      auth: SshAuthSchema,
+      path: BrowsePathInput,
+    })
+    .parse(raw)
+}
+
 export function parseWorkspaceAddSshInput(raw: unknown): {
   name: string
   host: string

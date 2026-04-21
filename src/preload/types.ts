@@ -169,6 +169,13 @@ export interface LoadSshConfigResult {
   rejected: Array<{ alias: string; reason: string }>
 }
 
+/** Follow-up FS9 — 원격 폴더 탐색 결과 (picker 용). */
+export interface SshBrowseFolderResult {
+  path: string
+  parent: string | null
+  entries: { name: string; isDirectory: boolean }[]
+}
+
 /** M3 S2 — transport:status 이벤트 payload */
 export interface TransportStatusEvent {
   workspaceId: string
@@ -242,6 +249,14 @@ export interface WindowApi {
     onStatus: (cb: (data: TransportStatusEvent) => void) => () => void
     /** Follow-up FS5 — ~/.ssh/config 호스트 import. feature flag on 필수. */
     loadConfig: () => Promise<LoadSshConfigResult>
+    /** Follow-up FS9 — 원격 폴더 탐색 (임시 연결). feature flag on 필수. */
+    browseFolder: (input: {
+      host: string
+      port: number
+      user: string
+      auth: SshAuthConfig
+      path: string
+    }) => Promise<SshBrowseFolderResult>
   }
 }
 
