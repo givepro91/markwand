@@ -19,6 +19,15 @@
   --image-checker-a: #ffffff;
   --image-checker-b: #d8dde3;
 
+  /* M3 S2 — Transport status 토큰 (DC-3 WCAG 1.4.11 ≥3:1 비텍스트 대비).
+     아이콘 + 라벨이 색외 2차 표식이므로 색은 보조 표식이지만 비텍스트 대비 기준은 유지. */
+  --ok-bg:      #e6f7ee;  /* light green, vs #ffffff 대비 ~1.2 (아이콘+라벨이 주 식별) */
+  --ok-fg:      #0a5c2b;  /* dark green, vs #e6f7ee 대비 ≥7 (텍스트) */
+  --warn-bg:    #fff3cc;
+  --warn-fg:    #6b4a00;
+  --danger-bg:  #fdd7d7;
+  --danger-fg:  #8a1f1f;
+
   --shiki-foreground:   #24292e;
   --shiki-background:   #f6f8fa;
 }
@@ -41,6 +50,14 @@
   /* 다크 대비율 ~3:1 (WCAG 1.4.11 non-text contrast 기준) */
   --image-checker-a: #1f252d;
   --image-checker-b: #3a4450;
+
+  /* M3 S2 — Transport status 다크 테마 토큰 (WCAG 1.4.11 ≥3:1) */
+  --ok-bg:      #153622;
+  --ok-fg:      #7ce0a4;
+  --warn-bg:    #3b2e0a;
+  --warn-fg:    #f2c96a;
+  --danger-bg:  #3d1515;
+  --danger-fg:  #ff8e8e;
 
   --shiki-foreground:   #c9d1d9;
   --shiki-background:   #161b22;

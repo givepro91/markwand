@@ -94,6 +94,49 @@ export interface ComposerEstimate {
   missing: string[] // workspace 밖이거나 stat 실패한 경로
 }
 
+/**
+ * M3 S2 — SSH 상태 전이 어휘 (DC-3). 고정 3종: connected · connecting · offline.
+ * pool 미사용/로컬 워크스페이스 상태는 idle 로 표시하지 않고 UI 에서 TransportBadge 자체를 숨긴다.
+ */
+export type TransportStatus = 'connected' | 'connecting' | 'offline'
+
+/**
+ * M3 S2 — TOFU 모달 payload. main hostVerifier 가 renderer 에 보내는 정보.
+ * DC-4: 사용자 응답은 반드시 nonce 로 라우팅 (race/timeout 방어).
+ */
+export interface HostKeyPromptPayload {
+  nonce: string
+  host: string
+  port: number
+  /** 알려진 경우 알고리즘 (v1.0 handshake 사후 갱신이 어려우므로 주로 'unknown' 으로 도착) */
+  algorithm: string
+  /** SHA256 fingerprint — base64, no trailing '='. 현대 OpenSSH 표준 */
+  sha256: string
+  /** MD5 legacy hex (옵션, fold-out 표시용) */
+  md5?: string
+  /**
+   * 연결 타입: 'trust-new' (최초) | 'mismatch' (저장 fingerprint 와 다름, bypass 불가)
+   * 'mismatch' 일 때는 UI 가 bypass 버튼을 노출하지 않고 "Remove & re-trust" 플로우만 허용.
+   */
+  kind: 'trust-new' | 'mismatch'
+  /** mismatch 시 저장된 기존 sha256 (UI 에 "Expected vs Received" 노출용) */
+  expectedSha256?: string
+  /** workspace id — renderer 가 store 전이·라우팅에 사용 */
+  workspaceId: string
+}
+
+/** M3 S2 — transport:status 이벤트 payload */
+export interface TransportStatusEvent {
+  workspaceId: string
+  status: TransportStatus
+  /** 보충 라벨 (e.g. 호스트명) — aria-live 낭독 문구에 활용 */
+  label?: string
+  /** reconnect attempt (connecting 시) */
+  attempt?: number
+  /** 다음 재시도까지 ms (connecting+backoff 시) */
+  nextDelayMs?: number
+}
+
 // window.api 타입 정의 (renderer에서 사용)
 export interface WindowApi {
   workspace: {
@@ -132,6 +175,15 @@ export interface WindowApi {
   prefs: {
     get: (key: string) => Promise<unknown>
     set: (key: string, value: unknown) => Promise<void>
+  }
+  /** M3 S2 — SSH Transport UI 연동 채널. feature flag off 시 호출 경로 없음. */
+  ssh: {
+    /** main → renderer: hostKey 확인 요청 (TOFU 또는 mismatch). nonce 로 라우팅 */
+    onHostKeyPrompt: (cb: (data: HostKeyPromptPayload) => void) => () => void
+    /** renderer → main: 사용자 응답. trust=true 면 연결 허용, false 면 중단 */
+    respondHostKey: (nonce: string, trust: boolean) => Promise<void>
+    /** main → renderer: transport 상태 전이 */
+    onStatus: (cb: (data: TransportStatusEvent) => void) => () => void
   }
 }
 

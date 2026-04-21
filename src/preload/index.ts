@@ -1,5 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { ThemeType, TerminalType, Doc, FsChangeEvent } from './types'
+import type {
+  ThemeType,
+  TerminalType,
+  Doc,
+  FsChangeEvent,
+  HostKeyPromptPayload,
+  TransportStatusEvent,
+} from './types'
 
 // ipcRenderer 객체를 직접 노출하지 않는다.
 // invoke 래퍼만 contextBridge를 통해 노출한다. (보안 P0)
@@ -60,5 +67,21 @@ contextBridge.exposeInMainWorld('api', {
   prefs: {
     get: (key: string) => ipcRenderer.invoke('prefs:get', { key }),
     set: (key: string, value: unknown) => ipcRenderer.invoke('prefs:set', { key, value }),
+  },
+
+  // M3 S2 — SSH Transport UI 채널. feature flag off 사용자도 API 표면은 존재하나 호출 안 함.
+  ssh: {
+    onHostKeyPrompt: (cb: (data: HostKeyPromptPayload) => void) => {
+      const wrapper = (_e: Electron.IpcRendererEvent, data: HostKeyPromptPayload) => cb(data)
+      ipcRenderer.on('ssh:host-key-prompt', wrapper)
+      return () => ipcRenderer.off('ssh:host-key-prompt', wrapper)
+    },
+    respondHostKey: (nonce: string, trust: boolean) =>
+      ipcRenderer.invoke('ssh:respond-host-key', { nonce, trust }),
+    onStatus: (cb: (data: TransportStatusEvent) => void) => {
+      const wrapper = (_e: Electron.IpcRendererEvent, data: TransportStatusEvent) => cb(data)
+      ipcRenderer.on('transport:status', wrapper)
+      return () => ipcRenderer.off('transport:status', wrapper)
+    },
   },
 })

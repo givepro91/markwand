@@ -11,6 +11,8 @@ import { registerPrefsHandlers } from './ipc/prefs'
 import { registerClaudeHandlers } from './ipc/claude'
 import { registerComposerHandlers } from './ipc/composer'
 import { registerDriftHandlers } from './ipc/drift'
+import { registerSshIpcHandlers } from './ipc/ssh'
+import { setActiveWebContents as setSshActiveWebContents } from './transport/ssh/hostKeyPromptBridge'
 import { getStore } from './services/store'
 import { parseShellShowItemInput } from './security/validators'
 
@@ -61,7 +63,12 @@ async function createWindow(): Promise<BrowserWindow> {
   })
 
   mainWindow = win
-  win.on('closed', () => { mainWindow = null })
+  // M3 S2 — SSH host key prompt / transport status 이벤트 대상 webContents 주입.
+  setSshActiveWebContents(win.webContents)
+  win.on('closed', () => {
+    mainWindow = null
+    setSshActiveWebContents(null)
+  })
 
   return win
 }
@@ -81,6 +88,7 @@ async function initializeApp(): Promise<void> {
   registerComposerHandlers()
   registerDriftHandlers()
   registerShellHandlers()
+  registerSshIpcHandlers()
 
   // 저장된 워크스페이스 루트로 프로토콜 allowlist 초기화
   const store = await getStore()

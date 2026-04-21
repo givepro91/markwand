@@ -1,5 +1,14 @@
 import { create } from 'zustand'
-import type { Workspace, Project, Doc, ViewMode, SortOrder, ViewLayout, DriftReport } from '../../../src/preload/types'
+import type {
+  Workspace,
+  Project,
+  Doc,
+  ViewMode,
+  SortOrder,
+  ViewLayout,
+  DriftReport,
+  TransportStatusEvent,
+} from '../../../src/preload/types'
 import { classifyAsset } from '../../lib/viewable'
 
 export type UpdatedRange = 'today' | '7d' | '30d' | 'all'
@@ -93,6 +102,11 @@ interface AppState {
   pruneDriftReports: (availablePaths: Set<string>) => void
   toggleIgnoredRef: (docPath: string, resolvedPath: string) => void
   clearIgnoredRefs: (docPath: string) => void
+
+  // M3 S2 — Transport 상태 (workspaceId 별). 값 없음 = 'idle'(UI 미표시).
+  transportStatuses: Record<string, TransportStatusEvent>
+  setTransportStatus: (event: TransportStatusEvent) => void
+  clearTransportStatus: (workspaceId: string) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -114,6 +128,17 @@ export const useAppStore = create<AppState>((set) => ({
   commandPaletteOpen: false,
   metaFilter: { tags: [], statuses: [], sources: [], updatedRange: 'all' },
   setMetaFilter: (metaFilter) => set({ metaFilter }),
+
+  transportStatuses: {},
+  setTransportStatus: (event) =>
+    set((s) => ({ transportStatuses: { ...s.transportStatuses, [event.workspaceId]: event } })),
+  clearTransportStatus: (workspaceId) =>
+    set((s) => {
+      if (!(workspaceId in s.transportStatuses)) return s
+      const next = { ...s.transportStatuses }
+      delete next[workspaceId]
+      return { transportStatuses: next }
+    }),
 
   selectedDocPaths: new Set<string>(),
   composerCollapsed: false,

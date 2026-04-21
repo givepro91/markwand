@@ -89,6 +89,14 @@ export function parseShellShowItemInput(raw: unknown): { path: string } {
   return z.object({ path: PathInput }).parse(raw)
 }
 
+// M3 S2 — SSH IPC ─────────────────────────────────────────────
+// ssh:respond-host-key. nonce 는 crypto.randomUUID() (36자 UUID).
+const NonceInput = z.string().uuid()
+
+export function parseSshRespondHostKeyInput(raw: unknown): { nonce: string; trust: boolean } {
+  return z.object({ nonce: NonceInput, trust: z.boolean() }).parse(raw)
+}
+
 // Composer ──────────────────────────────────────────────────
 
 const ComposerPathList = z.array(PathInput).min(1).max(200)

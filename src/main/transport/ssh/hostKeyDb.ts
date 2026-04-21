@@ -25,10 +25,15 @@ export async function setHostKey(
 ): Promise<SshKnownHostEntry> {
   const store = await getStore()
   const all = { ...store.get('sshKnownHosts') }
+  const existing = all[workspaceId]
+  // firstSeenAt 은 **최초 trust 시각** 을 보존한다. 재연결 시 같은 sha256 이면 기존 값 유지.
+  // sha256 이 변경된 경우(mismatch 후 "Remove & re-trust") 만 새 firstSeenAt 기록.
+  const firstSeenAt =
+    existing && existing.sha256 === info.sha256 ? existing.firstSeenAt : Date.now()
   const entry: SshKnownHostEntry = {
     sha256: info.sha256,
     algorithm: info.algorithm,
-    firstSeenAt: Date.now(),
+    firstSeenAt,
   }
   all[workspaceId] = entry
   store.set('sshKnownHosts', all)
