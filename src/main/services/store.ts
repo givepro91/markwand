@@ -1,5 +1,21 @@
 import type { Workspace, ViewMode, SortOrder, ThemeType, TerminalType } from '../../preload/types'
 
+/**
+ * SSH TOFU 저장소 엔트리 — workspaceId 기준 (M3 Plan §S2.1).
+ * - sha256: 서버 호스트키 SHA256 fingerprint (base64, no trailing '=')
+ * - algorithm: 'ssh-ed25519' / 'ssh-rsa' / 'ecdsa-sha2-*' — handshake 에서 추출 (S1 Evaluator m-3)
+ * - firstSeenAt: 최초 trust 시각 (Date.now ms)
+ *
+ * 보안 원칙 (DC-4):
+ *   - 키 내용 직렬화 금지 — fingerprint 만 저장
+ *   - sha256 불일치 시 재연결 금지(bypass 0). "Remove & re-trust" 만 허용.
+ */
+export interface SshKnownHostEntry {
+  sha256: string
+  algorithm: string
+  firstSeenAt: number
+}
+
 export interface StoreSchema {
   workspaces: Workspace[]
   activeWorkspaceId: string | null
@@ -9,6 +25,8 @@ export interface StoreSchema {
   treeExpanded: Record<string, string[]>
   sortOrder: SortOrder
   terminal: TerminalType
+  /** M3 S2 — SSH TOFU 저장소. workspaceId(ssh:<hex>) → hostKey entry. */
+  sshKnownHosts: Record<string, SshKnownHostEntry>
 }
 
 // electron-store v10은 ESM 전용이므로 동적 import로 로드한다 (R2 대응)
@@ -31,6 +49,7 @@ export async function getStore(): Promise<import('electron-store').default<Store
       treeExpanded: {},
       sortOrder: 'recent',
       terminal: 'Terminal',
+      sshKnownHosts: {},
     },
     schema: {
       workspaces: {
@@ -69,6 +88,7 @@ export async function getStore(): Promise<import('electron-store').default<Store
         enum: ['Terminal', 'iTerm2', 'Ghostty'],
         default: 'Terminal',
       },
+      sshKnownHosts: { type: 'object', default: {} },
     },
   })
 

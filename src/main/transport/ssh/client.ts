@@ -1,20 +1,20 @@
-// SshClient — ssh2 Client 래퍼. Plan §S1 PoC 범위.
+// SshClient — ssh2 Client 래퍼. S1 PoC + S2 확장(ProxyJump 1-hop · handshake algorithm).
 //
 // 책임:
-//   - connect(): ssh2 Client 연결 수립 + SFTP subsystem 오픈
-//   - dispose(): 연결 정리 (end → drain 대기)
+//   - connect(): ssh2 Client 연결 수립 + SFTP subsystem 오픈 + ProxyJump 체인 (옵션)
+//   - dispose(): 연결 정리 (end → drain 대기, ProxyJump 는 역순)
 //   - hostVerifier 콜백 훅 (S2 TOFU 모달과 연결)
+//   - handshake 이벤트로 HostKeyInfo.algorithm 사후 업데이트 (S1 Evaluator m-3)
 //   - getSftp(): PromisifiedSftp 반환 (미연결 시 SSH_NOT_CONNECTED)
 //
-// S1 범위에서 제외 (S2 이관):
-//   - reconnect backoff
-//   - ProxyJump 1-hop 수동 체인
-//   - 상태 머신 (connecting/connected/offline) — useTransportStatus 연동
+// S2 후반부(다음 세션) 이관:
+//   - 상태 머신 (connecting/connected/offline) UI 연동 — useTransportStatus 훅
 //   - nonce IPC + 20s 타임아웃 (DC-4 race 방어) — 이 레이어는 hostVerifier 콜백만 노출
 
 import crypto from 'node:crypto'
 import fs from 'node:fs'
-import { Client, type ConnectConfig, type SFTPWrapper } from 'ssh2'
+import type { Duplex } from 'node:stream'
+import { Client, type ClientChannel, type ConnectConfig, type SFTPWrapper } from 'ssh2'
 import { promisifySftp, type PromisifiedSftp } from './util/promisifiedSftp'
 import { SshErrorCode, type HostKeyInfo, type SshConnectOptions } from './types'
 
@@ -27,6 +27,8 @@ export class SshClient {
   private sftpWrapper: SFTPWrapper | null = null
   private promisifiedSftp: PromisifiedSftp | null = null
   private hostKeyInfo: HostKeyInfo | null = null
+  /** ProxyJump 1-hop 체인의 jump Client (dispose 역순 종료용) */
+  private jumpClient: Client | null = null
 
   constructor(private readonly options: SshConnectOptions) {}
 
@@ -49,70 +51,58 @@ export class SshClient {
   async connect(): Promise<void> {
     if (this.client) throw new Error('already connected')
 
-    const client = new Client()
-    const config: ConnectConfig = {
-      host: this.options.host,
-      port: this.options.port,
-      username: this.options.username,
-      readyTimeout: this.options.readyTimeout ?? DEFAULT_READY_TIMEOUT,
-      keepaliveInterval: this.options.keepaliveInterval ?? DEFAULT_KEEPALIVE_INTERVAL,
-      keepaliveCountMax: this.options.keepaliveCountMax ?? DEFAULT_KEEPALIVE_COUNT_MAX,
-      // ssh2 HostVerifier 시그니처는 (key, verify) => void (비동기 callback 패턴) 과
-      // SyncHostVerifier = (key) => boolean 두 가지. Promise 직접 반환은 ssh2 런타임이
-      // Promise 객체를 `verify(...)` 에 전달해 truthy 로 평가 → 의도치 않은 trust 발생.
-      // 반드시 verify 콜백을 명시 호출해야 DC-4 "bypass 0" 이 보장된다 (S1 Evaluator C-1).
-      hostVerifier: (key: Buffer, verify: (result: boolean) => void) => {
-        const info = buildHostKeyInfo(this.options.host, this.options.port, key)
-        this.hostKeyInfo = info
-        const verifier = this.options.hostVerifier
-        if (!verifier) {
-          verify(false) // 콜백 미제공 → DC-4 기본 reject
-          return
-        }
-        verifier(info)
-          .then((ok) => verify(ok === true))
-          .catch(() => verify(false))
-      },
-    }
-
-    // 인증 수단 추가 — agent OR key-file.
-    if (this.options.auth.kind === 'agent') {
-      const socketPath = this.options.auth.socketPath ?? process.env['SSH_AUTH_SOCK']
-      if (!socketPath) {
-        throw new Error(`${SshErrorCode.AUTH_FAILED} (no SSH_AUTH_SOCK)`)
-      }
-      config.agent = socketPath
-    } else {
-      // key-file
-      const keyPath = this.options.auth.path
-      let privateKey: Buffer
+    // ProxyJump 1-hop 체인 — jump 를 먼저 연결해 forwardOut 으로 target 까지 sock 포워딩.
+    // v1.0 은 재귀 금지 (jump.proxyJump 가 설정돼 있어도 스킵 — 다중 hop v1.1).
+    let jumpSock: Duplex | undefined
+    if (this.options.proxyJump) {
+      const jumpOpts = this.options.proxyJump
+      const hop = new Client()
       try {
-        privateKey = fs.readFileSync(keyPath)
+        await this.connectRaw(hop, this.buildConnectConfig(jumpOpts, undefined))
       } catch (err) {
-        throw new Error(
-          `${SshErrorCode.AUTH_FAILED} (key read: ${(err as Error).message})`,
-        )
+        hop.end()
+        throw err
       }
-      config.privateKey = privateKey
-      if (this.options.auth.passphrase) {
-        config.passphrase = this.options.auth.passphrase
+      this.jumpClient = hop
+      try {
+        jumpSock = await new Promise<Duplex>((resolve, reject) => {
+          hop.forwardOut(
+            '127.0.0.1',
+            0,
+            this.options.host,
+            this.options.port,
+            (err: Error | undefined, s: ClientChannel) =>
+              err ? reject(mapConnectError(err)) : resolve(s),
+          )
+        })
+      } catch (err) {
+        hop.end()
+        this.jumpClient = null
+        throw err
       }
     }
 
-    // 연결 ready 대기.
-    await new Promise<void>((resolve, reject) => {
-      const onReady = () => {
-        client.off('error', onError)
-        resolve()
+    const client = new Client()
+    const config = this.buildConnectConfig(this.options, jumpSock)
+
+    // handshake 이벤트로 서버 hostkey algorithm 사후 업데이트 (S1 Evaluator m-3).
+    // hostVerifier 단계에서는 key buffer 만 받아 algorithm='unknown' 으로 info 생성 후,
+    // handshake 완료 시점에 negotiated.serverHostKey 로 실제 값 덮어씀.
+    client.on('handshake', (negotiated) => {
+      if (this.hostKeyInfo && negotiated && typeof negotiated.serverHostKey === 'string') {
+        this.hostKeyInfo = { ...this.hostKeyInfo, algorithm: negotiated.serverHostKey }
       }
-      const onError = (err: Error) => {
-        client.off('ready', onReady)
-        reject(mapConnectError(err))
-      }
-      client.once('ready', onReady)
-      client.once('error', onError)
-      client.connect(config)
     })
+
+    try {
+      await this.connectRaw(client, config)
+    } catch (err) {
+      if (this.jumpClient) {
+        this.jumpClient.end()
+        this.jumpClient = null
+      }
+      throw err
+    }
 
     // SFTP subsystem 오픈.
     const sftp = await new Promise<SFTPWrapper>((resolve, reject) => {
@@ -128,28 +118,117 @@ export class SshClient {
   }
 
   async dispose(): Promise<void> {
-    if (!this.client) return
     const client = this.client
+    const jump = this.jumpClient
     this.client = null
     this.sftpWrapper = null
     this.promisifiedSftp = null
-    await new Promise<void>((resolve) => {
-      const onClose = () => resolve()
-      client.once('close', onClose)
-      client.end()
-      // 이벤트 누락 가드 — 1s 초과 시 강제 resolve (close 이벤트를 못 받는 케이스 대비)
-      setTimeout(() => {
-        client.off('close', onClose)
+    this.jumpClient = null
+
+    // 역순 dispose — final 먼저, 그 다음 jump (Plan §S2.3 권고).
+    if (client) await endAndWait(client)
+    if (jump) await endAndWait(jump)
+  }
+
+  /** ssh2 Client connect 를 Promise 로 래핑 — ready/error 이벤트 경쟁 */
+  private async connectRaw(client: Client, config: ConnectConfig): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
+      const onReady = () => {
+        client.off('error', onError)
         resolve()
-      }, 1000).unref()
+      }
+      const onError = (err: Error) => {
+        client.off('ready', onReady)
+        reject(mapConnectError(err))
+      }
+      client.once('ready', onReady)
+      client.once('error', onError)
+      client.connect(config)
     })
+  }
+
+  /**
+   * SshConnectOptions → ssh2 ConnectConfig 변환.
+   * sock 옵션이 있으면 host/port 대신 기존 stream 사용 (ProxyJump 1-hop target 연결).
+   * hostVerifier 는 this 에 의존하므로 여기선 설정하지 않고 호출부에서 덮어쓴다 (target 전용).
+   */
+  private buildConnectConfig(
+    opts: SshConnectOptions,
+    sock: Duplex | undefined,
+  ): ConnectConfig {
+    const config: ConnectConfig = {
+      host: opts.host,
+      port: opts.port,
+      username: opts.username,
+      readyTimeout: opts.readyTimeout ?? DEFAULT_READY_TIMEOUT,
+      keepaliveInterval: opts.keepaliveInterval ?? DEFAULT_KEEPALIVE_INTERVAL,
+      keepaliveCountMax: opts.keepaliveCountMax ?? DEFAULT_KEEPALIVE_COUNT_MAX,
+    }
+    if (sock !== undefined) {
+      // sock 옵션은 ssh2 에서 Duplex stream 으로 취급. forwardOut 결과가 이에 부합.
+      // @types/ssh2 ConnectConfig 에 sock 이 명시되지 않아 타입 어설션 필요.
+      ;(config as unknown as { sock: Duplex }).sock = sock
+    }
+    // 인증 수단.
+    if (opts.auth.kind === 'agent') {
+      const socketPath = opts.auth.socketPath ?? process.env['SSH_AUTH_SOCK']
+      if (!socketPath) {
+        throw new Error(`${SshErrorCode.AUTH_FAILED} (no SSH_AUTH_SOCK)`)
+      }
+      config.agent = socketPath
+    } else {
+      const keyPath = opts.auth.path
+      let privateKey: Buffer
+      try {
+        privateKey = fs.readFileSync(keyPath)
+      } catch (err) {
+        throw new Error(`${SshErrorCode.AUTH_FAILED} (key read: ${(err as Error).message})`)
+      }
+      config.privateKey = privateKey
+      if (opts.auth.passphrase) config.passphrase = opts.auth.passphrase
+    }
+    // target 전용 hostVerifier — jump 에는 this.hostKeyInfo 추적 불필요(별도 fingerprint 정책).
+    // jump 도 추적하려면 별도 SshClient 인스턴스로 관리해야 하지만 v1.0 단순화.
+    config.hostVerifier = (key: Buffer, verify: (result: boolean) => void) => {
+      const info = buildHostKeyInfo(opts.host, opts.port, key)
+      const isTarget = sock !== undefined || opts === this.options
+      // target 일 때만 메인 hostKeyInfo 업데이트 (jump 의 key 는 별도 추적 안 함 v1.0).
+      if (isTarget) {
+        this.hostKeyInfo = info
+      }
+      // Evaluator M-1 (ProxyJump 동작 가능화): jump 전용 hostVerifier 가 없으면 target 의
+      // hostVerifier 로 fallback. 사용자 입장에선 "target 과 jump 를 같은 콜백이 검증" —
+      // info.host/port 로 두 호출을 구분 가능. DC-4 bypass 0 원칙은 여전히 유지 (모든 호출에서
+      // verifier 반환값 기반으로 verify 실행).
+      const verifier = opts.hostVerifier ?? (isTarget ? undefined : this.options.hostVerifier)
+      if (!verifier) {
+        verify(false) // 콜백 미제공 → DC-4 기본 reject
+        return
+      }
+      verifier(info)
+        .then((ok) => verify(ok === true))
+        .catch(() => verify(false))
+    }
+    return config
   }
 }
 
+function endAndWait(client: Client): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const onClose = () => resolve()
+    client.once('close', onClose)
+    client.end()
+    // 이벤트 누락 가드 — 1s 초과 시 강제 resolve
+    setTimeout(() => {
+      client.off('close', onClose)
+      resolve()
+    }, 1000).unref()
+  })
+}
+
 /**
- * 호스트 키 Buffer → HostKeyInfo (SHA256 base64 + MD5 legacy hex + algorithm 추측)
- * 알고리즘은 ssh2 hostVerifier 콜백 시점에 전달되지 않으므로 'unknown-from-key-buffer' 고정.
- * S2 에서 ssh2 client 의 'handshake' 이벤트로 알고리즘 확보 후 업데이트 가능.
+ * 호스트 키 Buffer → HostKeyInfo (SHA256 base64 + MD5 legacy hex + algorithm placeholder).
+ * algorithm 은 'unknown' 으로 초기화되며 handshake 이벤트에서 실제 값으로 교체된다 (S1 m-3).
  */
 function buildHostKeyInfo(host: string, port: number, keyBuf: Buffer): HostKeyInfo {
   const sha256 = crypto

@@ -22,6 +22,12 @@ export interface SshConnectOptions {
   keepaliveCountMax?: number
   /** 초기 handshake timeout ms — 기본 20000 (ssh2 default 유지) */
   readyTimeout?: number
+  /**
+   * ProxyJump 1-hop — jump host 를 먼저 연결한 뒤 target 까지 sock 포워딩.
+   * Design §2.3, Plan §S2.3. v1.0 은 단일 hop (재귀 금지).
+   * 설정된 경우 target 은 jump 내부 네트워크에서 해석되며 readyTimeout 은 target 연결에만 적용.
+   */
+  proxyJump?: SshConnectOptions
 }
 
 /**

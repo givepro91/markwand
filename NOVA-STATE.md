@@ -1,8 +1,8 @@
 # Nova State
 
 ## Current
-- **Goal**: v1.0 SSH M3 Transport PoC 진행 중. S0 + S1 완료(2 스프린트). 남은 스프린트: S2(TOFU+ssh_config+상태머신, 2.5d) → S3(Feature Flag+Workspace UX, 1d) → S4(원격 watcher+통합테스트, 1.5d) = **5d**.
-- **Phase**: **S1 완료** (SshTransport 기본 PoC + DC-4 bypass 검증). Evaluator CONDITIONAL PASS — Critical 1 + Major 2 반영 완료. 다음: S2 착수 or S1.1 Electron 33 ABI 실측(사용자 pnpm dev).
+- **Goal**: v1.0 SSH M3 Transport PoC 진행 중. S0 + S1 + **S2 전반부** 완료. 남은: S2 후반부(UI/IPC 통합, 1d) → S3(Feature Flag+Workspace UX, 1d) → S4(원격 watcher+통합테스트, 1.5d) = **3.5d**.
+- **Phase**: **S2 전반부 완료** — hostKeyDb TOFU · ssh_config 파서 · reconnect backoff · ProxyJump 1-hop · handshake algorithm. Evaluator CONDITIONAL PASS — Major 3 + Minor 2 반영. 다음: S2 후반부(TOFU 모달 UI + useTransportStatus + nonce IPC).
 - **Blocker**: none
 - **Remote**: git@github-givepro91:givepro91/markwand.git (main) — origin = `08c4138` (U2 실 워크스페이스 벤치 커밋). M3·M4 Plan 커밋 예정.
 - **Active Plan**: **docs/plans/remote-fs-transport-m3-m4.md** (v1.0 M3·M4, refined — Critic CONDITIONAL PASS 전 항목 반영)

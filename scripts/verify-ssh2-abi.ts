@@ -222,6 +222,14 @@ async function main() {
     const mode = await transport.scanner.detectWorkspaceMode(REMOTE_WORKSPACE)
     record('SshScannerDriver.detectWorkspaceMode', mode === 'container', `mode=${mode}`)
 
+    // S2 handshake algorithm 실측 (S1 Evaluator m-3 반영) — 'unknown' 에서 실제 값으로 교체됐는지
+    const algo = transport.client.acceptedHostKey?.algorithm
+    record(
+      'S2 handshake algorithm 추출',
+      typeof algo === 'string' && algo !== 'unknown' && algo.length > 0,
+      `algorithm=${algo}`,
+    )
+
     await transport.dispose()
     record('SshTransport.dispose', true)
   } catch (err) {
