@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('api', {
       user: string
       auth: { kind: 'agent' } | { kind: 'key-file'; path: string }
       root: string
+      mode?: 'container' | 'single'
     }) => ipcRenderer.invoke('workspace:add-ssh', input),
     remove: (id: string) => ipcRenderer.invoke('workspace:remove', { id }),
     scan: (workspaceId: string) => ipcRenderer.invoke('workspace:scan', { workspaceId }),

@@ -136,6 +136,7 @@ export function parseWorkspaceAddSshInput(raw: unknown): {
   user: string
   auth: { kind: 'agent' } | { kind: 'key-file'; path: string }
   root: string
+  mode: 'container' | 'single'
 } {
   return z
     .object({
@@ -145,6 +146,8 @@ export function parseWorkspaceAddSshInput(raw: unknown): {
       user: z.string().min(1).max(64),
       auth: SshAuthSchema,
       root: SshRootInput,
+      // Follow-up FS8 — 기본 single (속도 우선 — container 는 depth 2 스캔으로 원격 RTT × N 비용 큼)
+      mode: z.enum(['container', 'single']).default('single'),
     })
     .parse(raw)
 }

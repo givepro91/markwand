@@ -24,6 +24,7 @@ interface Props {
     user: string
     auth: SshAuthConfig
     root: string
+    mode: 'container' | 'single'
   }) => Promise<void>
 }
 
@@ -39,6 +40,8 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
   const [authKind, setAuthKind] = useState<'agent' | 'key-file'>('agent')
   const [keyFilePath, setKeyFilePath] = useState('')
   const [root, setRoot] = useState('')
+  // Follow-up FS8 — 기본 'single' (속도 우선). container 는 명시 선택 시만.
+  const [mode, setMode] = useState<'container' | 'single'>('single')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -88,6 +91,7 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
     setAuthKind('agent')
     setKeyFilePath('')
     setRoot('')
+    setMode('single')
     setError(null)
     setLoading(false)
     setSelectedAlias('')
@@ -139,6 +143,7 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
           user: user.trim(),
           auth,
           root: root.trim(),
+          mode,
         })
         reset()
         onClose()
@@ -158,7 +163,7 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
         setLoading(false)
       }
     },
-    [authKind, host, keyFilePath, loading, name, onClose, onSubmit, port, reset, root, user],
+    [authKind, host, keyFilePath, loading, mode, name, onClose, onSubmit, port, reset, root, user],
   )
 
   if (!open) return null
@@ -422,6 +427,45 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
               disabled={loading}
             />
             <span style={hintStyle}>절대경로 + 최소 depth 2 (예: /home/user/workspace)</span>
+          </div>
+
+          <div style={fieldStyle}>
+            <label style={labelStyle}>등록 방식</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', marginTop: 'var(--sp-1)' }}>
+              <label style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'flex-start', fontSize: 'var(--fs-sm)', cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="mode"
+                  value="single"
+                  checked={mode === 'single'}
+                  onChange={() => setMode('single')}
+                  disabled={loading}
+                  style={{ marginTop: '3px' }}
+                />
+                <span>
+                  <strong>단일 프로젝트</strong>{' '}
+                  <span style={{ color: 'var(--accent)' }}>(추천)</span>
+                  <br />
+                  <span style={hintStyle}>이 폴더 자체를 1개 프로젝트로 등록. 원격 SSH 환경에서 가장 빠름.</span>
+                </span>
+              </label>
+              <label style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'flex-start', fontSize: 'var(--fs-sm)', cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="mode"
+                  value="container"
+                  checked={mode === 'container'}
+                  onChange={() => setMode('container')}
+                  disabled={loading}
+                  style={{ marginTop: '3px' }}
+                />
+                <span>
+                  <strong>컨테이너</strong>
+                  <br />
+                  <span style={hintStyle}>하위 depth 2 까지 프로젝트 자동 탐색. 원격에선 RTT × N 비용으로 느릴 수 있음.</span>
+                </span>
+              </label>
+            </div>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--sp-2)', marginTop: 'var(--sp-4)' }}>

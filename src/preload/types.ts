@@ -195,6 +195,8 @@ export interface WindowApi {
       auth: SshAuthConfig
       /** 원격 workspace root (POSIX 절대경로, depth ≥ 2 필수 — 예: `/home/user/projects`) */
       root: string
+      /** Follow-up FS8 — container(depth 2 스캔) | single(root 자체를 단일 프로젝트). 기본 single (속도 우선) */
+      mode?: WorkspaceMode
     }) => Promise<Workspace>
     remove: (id: string) => Promise<void>
     scan: (workspaceId: string) => Promise<Project[]>

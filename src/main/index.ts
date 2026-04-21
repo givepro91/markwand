@@ -5,6 +5,7 @@ import { app, BrowserWindow, protocol, ipcMain, shell } from 'electron'
 import { join } from 'path'
 import { ensureLoginPath } from './security/path'
 import { registerAppProtocol, setProtocolWorkspaceRoots } from './security/protocol'
+import { getLocalWorkspaceRoots } from './ipc/workspace'
 import { registerWorkspaceHandlers } from './ipc/workspace'
 import { registerFsHandlers } from './ipc/fs'
 import { registerPrefsHandlers } from './ipc/prefs'
@@ -90,10 +91,10 @@ async function initializeApp(): Promise<void> {
   registerShellHandlers()
   registerSshIpcHandlers()
 
-  // 저장된 워크스페이스 루트로 프로토콜 allowlist 초기화
+  // 저장된 워크스페이스 루트로 프로토콜 allowlist 초기화 (로컬만 — SSH 제외)
   const store = await getStore()
   const workspaces = store.get('workspaces')
-  const roots = workspaces.map((w) => w.root)
+  const roots = getLocalWorkspaceRoots(workspaces)
   setProtocolWorkspaceRoots(roots)
 
   await createWindow()

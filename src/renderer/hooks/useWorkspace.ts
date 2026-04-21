@@ -52,6 +52,7 @@ export function useWorkspace() {
       user: string
       auth: SshAuthConfig
       root: string
+      mode?: 'container' | 'single'
     }) => {
       const workspace = await window.api.workspace.addSsh(input)
       addWorkspace(workspace)

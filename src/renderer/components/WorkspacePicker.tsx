@@ -81,9 +81,29 @@ export function WorkspacePicker({
               textOverflow: 'ellipsis',
             }}
           >
-            {workspaces.map((w) => (
-              <option key={w.id} value={w.id}>{w.name}</option>
-            ))}
+            {/* Follow-up FS8 — 로컬 / SSH 그룹 분리로 시각적 구분 (optgroup). */}
+            {(() => {
+              const local = workspaces.filter((w) => !w.transport || w.transport.type === 'local')
+              const remote = workspaces.filter((w) => w.transport?.type === 'ssh')
+              return (
+                <>
+                  {local.length > 0 && (
+                    <optgroup label="로컬">
+                      {local.map((w) => (
+                        <option key={w.id} value={w.id}>{w.name}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {remote.length > 0 && (
+                    <optgroup label="SSH Remote">
+                      {remote.map((w) => (
+                        <option key={w.id} value={w.id}>🌐 {w.name}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                </>
+              )
+            })()}
             <option value="__add__">+ 워크스페이스 추가</option>
             {experimentalSsh && onAddSsh && (
               <option value="__add_ssh__">+ SSH Remote 추가</option>

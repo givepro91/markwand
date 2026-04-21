@@ -43,14 +43,19 @@ const WORKSPACE_SCAN_IGNORE_PATTERNS = [
   '**/.turbo/**',
 ]
 
-function getWorkspaceRoots(workspaces: Workspace[]): string[] {
-  // Follow-up FS7 — app:// 프로토콜 allowlist 는 로컬 워크스페이스 root 만.
-  // SSH workspace root (POSIX remote path) 가 포함되면 Chromium 이 app:// 요청을 로컬
-  // file:// 로 fallthrough 시도해 500 HANDLER_EXCEPTION 발생. 로컬만 allowlist 하면
-  // SSH 이미지는 403 + SafeImage alt placeholder 로 정상 fallback.
+// Follow-up FS7 — app:// 프로토콜 allowlist 는 로컬 워크스페이스 root 만.
+// SSH workspace root (POSIX remote path) 가 포함되면 Chromium 이 app:// 요청을 로컬
+// file:// 로 fallthrough 시도해 500 HANDLER_EXCEPTION 발생. 로컬만 allowlist 하면
+// SSH 이미지는 403 + SafeImage alt placeholder 로 정상 fallback.
+// export 되어 main/index.ts 초기화 경로도 동일 필터 적용.
+export function getLocalWorkspaceRoots(workspaces: Workspace[]): string[] {
   return workspaces
     .filter((w) => !w.transport || w.transport.type === 'local')
     .map((w) => w.root)
+}
+
+function getWorkspaceRoots(workspaces: Workspace[]): string[] {
+  return getLocalWorkspaceRoots(workspaces)
 }
 
 /**
@@ -413,20 +418,15 @@ export function registerWorkspaceHandlers(): void {
       // hostVerifier 생략 — bridge 기본 경로로 TOFU 자동 트리거.
     })
 
-    // Follow-up FS0 — 원격 root 에서 workspace mode 자동 판정.
-    // detectWorkspaceMode 실패 시 안전한 기본값 'container' (scanProjectsSsh depth 2 탐색 시도).
-    let detectedMode: WorkspaceMode = 'container'
-    try {
-      detectedMode = await transport.scanner.detectWorkspaceMode(input.root)
-    } catch {
-      // readdir 실패 또는 경로 부재 — workspace 는 등록하되 scanProjects 가 빈 목록 반환
-    }
+    // Follow-up FS8 — mode 를 사용자가 선택 (기본 single). 속도 우선 원격 환경에선 container 는
+    // 신중하게 선택 (depth 2 스캔으로 RTT × N 프로젝트 비용 큼). 명시 요청 시에만 container.
+    const mode: WorkspaceMode = input.mode
 
     const workspace: Workspace = {
       id,
       name: input.name,
       root: input.root,
-      mode: detectedMode,
+      mode,
       transport: {
         type: 'ssh',
         host: input.host,

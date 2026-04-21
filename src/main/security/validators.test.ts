@@ -125,4 +125,24 @@ describe('parseWorkspaceAddSshInput — root 필수 + depth 검증', () => {
     })
     expect(parsed.auth).toEqual({ kind: 'key-file', path: '/Users/alice/.ssh/id_ed25519' })
   })
+
+  it('mode 미지정 시 기본값 "single" (FS8 — 속도 우선 원격 기본)', () => {
+    const parsed = parseWorkspaceAddSshInput({ ...baseInput, root: '/home/alice' })
+    expect(parsed.mode).toBe('single')
+  })
+
+  it('mode="container" 명시 수용', () => {
+    const parsed = parseWorkspaceAddSshInput({
+      ...baseInput,
+      root: '/home/alice',
+      mode: 'container',
+    })
+    expect(parsed.mode).toBe('container')
+  })
+
+  it('mode="invalid" — 거부', () => {
+    expect(() =>
+      parseWorkspaceAddSshInput({ ...baseInput, root: '/home/alice', mode: 'invalid' }),
+    ).toThrow()
+  })
 })
