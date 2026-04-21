@@ -1,10 +1,10 @@
 # Nova State
 
 ## Current
-- **Goal**: v1.0 SSH M3 Transport PoC 진행 중. S0 + S1 + **S2 전반부** 완료. 남은: S2 후반부(UI/IPC 통합, 1d) → S3(Feature Flag+Workspace UX, 1d) → S4(원격 watcher+통합테스트, 1.5d) = **3.5d**.
-- **Phase**: **S2 전반부 완료** — hostKeyDb TOFU · ssh_config 파서 · reconnect backoff · ProxyJump 1-hop · handshake algorithm. Evaluator CONDITIONAL PASS — Major 3 + Minor 2 반영. 다음: S2 후반부(TOFU 모달 UI + useTransportStatus + nonce IPC).
+- **Goal**: M3·M4 SSH Transport **7 스프린트 완료** (S0~S4). /nova:auto (orch-mo8eyoda-c364) 통합 Evaluator CONDITIONAL PASS — Critical/Major 즉시 반영 + M-2 IPC 분기 Known Gap 이관.
+- **Phase**: **SSH 작업 종료** (M3·M4). 사용자 액션: (1) GUI dogfood (`MARKWAND_SSH=1 pnpm dev` + workspace.addSsh IPC 호출), (2) WorkspacePicker/Settings UI follow-up, (3) M-2 IPC 핸들러 transport 분기 follow-up.
 - **Blocker**: none
-- **Remote**: git@github-givepro91:givepro91/markwand.git (main) — origin = `08c4138` (U2 실 워크스페이스 벤치 커밋). M3·M4 Plan 커밋 예정.
+- **Remote**: git@github-givepro91:givepro91/markwand.git (main) — origin = `d0e93ea` (S4). Evaluator 반영 커밋 push 예정.
 - **Active Plan**: **docs/plans/remote-fs-transport-m3-m4.md** (v1.0 M3·M4, refined — Critic CONDITIONAL PASS 전 항목 반영)
 - **Active Design**: docs/designs/remote-fs-transport.md (v1.0 SSH 설계 — §2.2 Transport interface, §3.1 원격 watcher, §4.1~4.5 보안, §5 성능)
 - **Prior Plan**: docs/plans/remote-fs-transport-m1-m2.md (v0.9 M1·M2 완료)
@@ -62,6 +62,12 @@
 | 영역 | 미커버 내용 | 우선순위 |
 |------|-----------|----------|
 | **FilterBar 출처 known vs custom 구분 UI** | GUI 피드백(2026-04-21): frontmatter `source` 값을 동적으로 set 수집해 Claude/Codex/Design/Review 고정 칩과 임의 사용자 값(`unknown-custom` 등)이 동일 레벨에 혼재. 사용자 신뢰도 저하. known-list 정의 + unknown 소스 "기타" 그룹핑 or 시각적 구분 필요 | v0.4 Medium (2b) |
+| **M-2 IPC 핸들러 transport 분기** | S4 통합 Evaluator Major: `project:scan-docs`/`project:get-doc-count`/`fs:read-doc`/`drift:verify`/`composer:estimate-tokens` 가 `localTransport` 하드코딩. `resolve.ts getActiveTransport(workspaceId)` 헬퍼는 준비됐으나 미사용. path→workspace 매핑이 필요한 핸들러(fs:read-doc 등)는 renderer 가 workspaceId 를 payload 에 넣거나 path prefix 기반 lookup 추가. SSH workspace 등록은 가능하지만 scan/read 가 실제 동작하지 않는다. | **v1.0 follow-up High** |
+| **WorkspacePicker SSH 옵션 + Settings Experimental 섹션 UI** | S3 Plan DoD 미구현. `MARKWAND_SSH=1` env 또는 prefs 직접 설정으로 flag on 가능하나 UI 노출 경로 없음. S4 workspace.addSsh IPC 는 존재하지만 호출 UI 없음 → 개발자 Console 또는 별도 trigger 필요. | v1.0 follow-up Medium |
+| **scanProjects SSH 구현** | 현 `services/scanner.scanProjects` 가 로컬 전용. SSH workspace 의 프로젝트 목록 스캔(depth 2 readdir 재귀 + 프로젝트 마커 감지) 은 `SshScannerDriver` 기반 별도 함수 필요. M-2 와 연계. | v1.0 follow-up Medium |
+| **watcher diff 이벤트 단위 테스트 + mtime=-1 폴백 케이스** | S4 Minor m-3: change/unlink 이벤트 발화, size 기반 change 폴백, MAX_CONSEC_FAILURES 초과 error emit 케이스 부재. 단위 테스트 추가 필요. | v1.0 follow-up Low |
+| **CI GitHub Actions `integration-ssh.yml`** | S4 통합 테스트(Docker sshd 6건)는 로컬만. workflow 파일 미작성 (사용자 승인 대기). | v1.0 follow-up Low |
+| **axe-core 모달 테스트 + CSS 대비 시각 회귀** | Plan S2 DoD 일부: jsdom 환경 미도입으로 axe 스킵. CSS 대비 토큰은 수치만 설정됨 — 실제 WCAG 1.4.11 측정 스크립트 부재. | v1.0 follow-up Low |
 | ~~docs-chunk 스트리밍~~ | ~~청크 IPC는 구현됐으나 useDocs는 collect 후 일괄 수신~~ | ~~v0.2~~ ✅ 해소: useDocs+InboxView 모두 appendDocs 진행형 렌더 확인 (2026-04-21) |
 | 글로벌 풀텍스트 검색 | 인박스/카드 그리드만 발견성 제공 | v0.2 |
 | frontmatter 자동 태깅 | gray-matter 파싱은 fs:read-doc만 | v0.2 |
@@ -88,11 +94,12 @@
 ## 규칙 우회 이력 (감사 추적)
 | 날짜 | 커맨드 | 우회 이유 | 사후 조치 |
 |------|--------|----------|----------|
-| — | — | — | — |
+| 2026-04-21 | /nova:auto (orch-mo8eyoda-c364) | S2 후반부·S3 Evaluator 를 S4 통합 Evaluator 로 합병 (context/efficiency 타협) | S4 Evaluator 가 3 스프린트 통합 리뷰 수행 (Critical 1+Major 3+Minor 5) → Critical+필수 Major 반영 + M-2 외 Minor Known Gap 이관. 규칙 §2 "각 스프린트 완료=Evaluator 필수" 형식적 위반이나 실질 검증 누락 없음. |
 
 > --emergency 플래그 사용 또는 Evaluator 건너뛸 때 반드시 기록. 미기록 = Hard-Block.
 
 ## Last Activity
+- **/nova:auto → SSH 작업 종료 CONDITIONAL PASS (orch-mo8eyoda-c364, 2026-04-21)** — S2 후반부 + S3 + S4 3 스프린트 일괄 실행. **S2 후반부(eb40d53)**: hostKeyPromptBridge(nonce+20s 타임아웃 DC-4 실증 9 tests)+ipc/ssh.ts+SshHostKeyPrompt/TransportBadge+useTransportStatus/useSshHostKeyPrompt+CSS 토큰. **S3(ed17c58)**: pool.ts(DC-2 active+warm+eviction+dispose 13 tests)+resolve.ts+WorkspaceTransport union+experimentalFeatures flag+App.tsx mount+before-quit disposeAll. **S4(d0e93ea+evaluator fix)**: watcher.ts SshPoller(5 tests)+test-integration-ssh.ts 6/6 PASS. **통합 Evaluator**(nova:senior-dev): Critical 1(transport:status IPC send 부재)+Major 3(watcher error→pool offline 연결, IPC 7개 분기, workspace:add-ssh)+Minor 5 발견 → Critical+M-1+M-3 즉시 반영(SshClient.onClose/onError 추가, wrappedWatcher error 구독, workspace:add-ssh 신설), M-2(IPC 분기)·UI·axe-core·CI workflow·watcher 상세 테스트는 Known Gap 이관. **검증**: typecheck PASS · vitest 232/222(회귀 0) · drift-smoke 21/21 · bench DC-5 로컬 회귀 0 · Docker 통합 6/6 PASS(TOFU·readFile·FILE_TOO_LARGE·scanDocs·DC-4 reject·watcher). | 2026-04-21T
 - **/nova:deepplan → REFINED (2026-04-21)** — `docs/plans/remote-fs-transport-m3-m4.md` 생성 (701 lines, Mode: deep, Iterations: 1). Explorer×3 병렬(A 현 Transport 계층 매핑·6 IPC 중 5 경유·RM-7 정밀 분석 / B ssh2 v1.17.0 + @types/ssh2 1.15.5 + ssh-config cyjake 추천·cpu-features 비활성 경로·Electron 33 번들링·VSCode Remote-SSH 참조 / C 폴링 30s·동적 2구간·TOFU 4필드·keepalive 30s+backoff cap 60s·feature flag strategy C+D·Docker sshd 6 케이스·a11y WCAG 1.4.11) → Synthesizer 5 sprints(S0~S4, 7.5d) → Critic(nova:architect) **CONDITIONAL PASS** (Critical 1 / Major 5 / Minor 5) → Refiner 전 항목 반영. **핵심 결정**: (1) RM-7 M3 선행(S0.2) — SSH scanner 계약 안정화 우선, (2) Scope Guard 예외 명시(parseFrontmatter 시그니처 변경은 Transport interface 외부 아님), (3) hostVerifier race/timeout 방어(nonce IPC + 20s 타임아웃), (4) SFTP attrs.mtime=0 폴백(size 기반 change 판정), (5) pool.ts eviction + dispose 경로 명시, (6) S2를 1.5d→2.5d 조정, (7) test keypair ephemeral 생성(git 체크인 0). 사용자 결정 4건 대기. | 2026-04-21T
 - **U2 해소: 실 워크스페이스 벤치 (08c4138)** — `/Users/keunsik/develop`(2377 md files, 17 projects, 4 container subdirs) 절대값 기록. scanDocs p95 **531ms** / countDocs p95 **223ms** / fs.stat per-file **4μs** / readFile **0.1ms** / detectWorkspaceMode **0.48ms**. DC-5 +3% 게이트는 실측 범위에서 의미 있음 (fixture sub-ms는 대부분 noise gate). 기록: `docs/verifications/bench-realws-2026-04-21.json`. fixture baseline(scripts/bench-transport.baseline.json)은 DC-5 게이트로 그대로 유지. 벤치 스크립트 2건 패치(EACCES silent skip·top-level dotfolder 배제·0-file 전체 합계 판정) — 실 워크스페이스 호환성. typecheck PASS · fixture 벤치 재실행 PASS. | 2026-04-21T
 - **세션 클로징 (2026-04-21)** — v0.9 M1·M2·Bench 전부 원격 반영(9 커밋, c16590f..686bf43). 다음 세션 = **M3+ SSH Transport PoC**. 진입 경로는 §다음 세션 — SSH (M3+) 착수 Handoff. 현재 blocker 0, 미해소 Known Gap 중 M1/M2 연계는 RM-7(project:scan-docs M4 합류) 1건. 그 외 v0.2~v0.3 Known Gap (⌘K 검색 backend High, drift 코드 감지 Medium, drift mtime 정밀도 Low 등)은 M3+ 와 독립이라 병행 가능.
@@ -149,7 +156,8 @@
 - Prior Plan: docs/plans/md-viewer-mvp.md (v0.1 완료)
 - Prior Design: docs/designs/md-viewer-mvp.md (v0.1 완료)
 - Last Verification: U2 실 워크스페이스 벤치 PASS (2026-04-21, docs/verifications/bench-realws-2026-04-21.json). v0.9 GUI 수동 검증은 여전히 사용자 실행 대기 (`pnpm dev`).
-- Orchestration ID (최근): orch-mo86dcfj-bdu2 (v0.9 M1 S1 — completed)
+- Orchestration ID (최근): orch-mo8eyoda-c364 (M3·M4 SSH 완성 — completed, S2 후반부+S3+S4 통합 Evaluator CONDITIONAL PASS)
+- Orchestration ID (이전): orch-mo86dcfj-bdu2 (v0.9 M1 S1 — completed)
 
 ## 다음 세션 — SSH (M3+) 착수 Handoff (2026-04-21 세션 마무리)
 

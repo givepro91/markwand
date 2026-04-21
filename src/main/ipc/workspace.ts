@@ -11,7 +11,10 @@ import {
   parseScanInput,
   parseScanDocsInput,
   parseWorkspaceRemoveInput,
+  parseWorkspaceAddSshInput,
 } from '../security/validators'
+import { isSshTransportEnabled } from '../services/store'
+import { createSshTransport, computeSshTransportId } from '../transport/ssh'
 import type { Workspace, Project, Doc, WorkspaceMode } from '../../preload/types'
 
 // LocalScannerDriver.countDocs 가 patterns/ignore 를 받도록 설계 (§2.2 rev. M1). 기존
@@ -202,6 +205,50 @@ export function registerWorkspaceHandlers(): void {
     // workspace.add 후 watch는 v0.2의 명시적 새로고침 버튼에서 재도입.
     void event
 
+    return workspace
+  })
+
+  // M3 S4 Evaluator M-3 MVP — SSH workspace 등록 경로.
+  // feature flag off 시 거부. TOFU 플로우는 createSshTransport 내부에서 자동 처리 (bridge 모달).
+  // 연결 성공 시 workspace 엔트리 저장 + SshTransport 는 pool 에 그대로 유지(dispose 안 함).
+  ipcMain.handle('workspace:add-ssh', async (_event, raw: unknown) => {
+    if (!(await isSshTransportEnabled())) {
+      throw new Error('SSH_TRANSPORT_DISABLED')
+    }
+    const input = parseWorkspaceAddSshInput(raw)
+    const id = `ssh:${computeSshTransportId(input.user, input.host, input.port)}`
+    const store = await getStore()
+    const workspaces = store.get('workspaces')
+    if (workspaces.find((w) => w.id === id)) {
+      throw new Error('SSH_WORKSPACE_ALREADY_EXISTS')
+    }
+
+    // 연결 시도 — TOFU 모달 renderer 에서 응답 대기. 연결 실패 시 throw → 사용자 UI 에서 에러 표시.
+    const transport = await createSshTransport({
+      host: input.host,
+      port: input.port,
+      username: input.user,
+      auth: input.auth,
+      // hostVerifier 생략 — bridge 기본 경로로 TOFU 자동 트리거.
+    })
+
+    const workspace: Workspace = {
+      id,
+      name: input.name,
+      root: '/', // 원격 루트. scanProjects SSH 는 v1.1 범위 — UI 는 빈 목록 또는 수동 path 지정 필요.
+      mode: 'container',
+      transport: {
+        type: 'ssh',
+        host: input.host,
+        port: input.port,
+        user: input.user,
+        auth: input.auth,
+        hostKeyFingerprint: transport.client.acceptedHostKey?.sha256,
+      },
+      addedAt: Date.now(),
+      lastOpened: null,
+    }
+    store.set('workspaces', [...workspaces, workspace])
     return workspace
   })
 

@@ -104,6 +104,30 @@ export function parseSshRespondHostKeyInput(raw: unknown): { nonce: string; trus
   return z.object({ nonce: NonceInput, trust: z.boolean() }).parse(raw)
 }
 
+// M3 S4 Evaluator M-3 — workspace:add-ssh payload.
+const SshAuthSchema = z.union([
+  z.object({ kind: z.literal('agent') }),
+  z.object({ kind: z.literal('key-file'), path: PathInput }),
+])
+
+export function parseWorkspaceAddSshInput(raw: unknown): {
+  name: string
+  host: string
+  port: number
+  user: string
+  auth: { kind: 'agent' } | { kind: 'key-file'; path: string }
+} {
+  return z
+    .object({
+      name: z.string().min(1).max(128),
+      host: z.string().min(1).max(253), // RFC 1035 hostname
+      port: z.number().int().min(1).max(65535),
+      user: z.string().min(1).max(64),
+      auth: SshAuthSchema,
+    })
+    .parse(raw)
+}
+
 // Composer ──────────────────────────────────────────────────
 
 const ComposerPathList = z.array(PathInput).min(1).max(200)

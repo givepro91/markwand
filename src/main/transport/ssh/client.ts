@@ -48,6 +48,15 @@ export class SshClient {
     return this.promisifiedSftp
   }
 
+  /** S4 Evaluator C-1 — 연결 종료 이벤트 구독 (transport:status offline 전이용) */
+  onClose(cb: () => void): void {
+    this.client?.on('close', cb)
+  }
+
+  onError(cb: (err: Error) => void): void {
+    this.client?.on('error', cb)
+  }
+
   async connect(): Promise<void> {
     if (this.client) throw new Error('already connected')
 

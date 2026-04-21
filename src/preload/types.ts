@@ -161,6 +161,14 @@ export interface WindowApi {
   workspace: {
     list: () => Promise<Workspace[]>
     add: (root: string) => Promise<Workspace>
+    /** M3 S4 — SSH workspace 등록. feature flag on 필수. TOFU 모달 플로우 자동 진입. */
+    addSsh: (input: {
+      name: string
+      host: string
+      port: number
+      user: string
+      auth: SshAuthConfig
+    }) => Promise<Workspace>
     remove: (id: string) => Promise<void>
     scan: (workspaceId: string) => Promise<Project[]>
     refresh: (workspaceId: string) => Promise<Project[]>

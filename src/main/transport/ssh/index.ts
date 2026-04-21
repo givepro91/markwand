@@ -10,8 +10,10 @@ import { createSshScannerDriver } from './scanner'
 import { createSshWatcherDriver } from './watcher'
 import { requestHostKeyTrust } from './hostKeyPromptBridge'
 import { setHostKey } from './hostKeyDb'
+import { onTransportOffline } from '../pool'
 import type { Transport } from '../types'
 import type { HostKeyInfo, SshConnectOptions } from './types'
+import type { TransportStatus, TransportStatusEvent } from '../../../preload/types'
 
 export { SshClient } from './client'
 export { createSshFsDriver } from './fs'
@@ -75,9 +77,33 @@ export async function createSshTransport(options: SshConnectOptions): Promise<Ss
     if (finalKey) await setHostKey(id, finalKey)
   }
 
+  // S4 Evaluator C-1 — transport:status IPC 전파. main → renderer 이벤트.
+  emitStatus(id, options, 'connected')
+  client.onClose(() => {
+    emitStatus(id, options, 'offline')
+    void onTransportOffline(id).catch(() => undefined)
+  })
+  client.onError(() => {
+    emitStatus(id, options, 'offline')
+  })
+
   const fs = createSshFsDriver(client)
   const scanner = createSshScannerDriver(client)
   const watcher = createSshWatcherDriver(client)
+
+  // S4 Evaluator M-1 — watcher error 이벤트 → pool onTransportOffline 연결.
+  // SshPoller 가 MAX_CONSEC_FAILURES 초과 시 emit('error') 하면 pool 에서 즉시 evict.
+  const wrappedWatcher: typeof watcher = {
+    watch(roots, opts) {
+      const handle = watcher.watch(roots, opts)
+      handle.on('error', (err: Error) => {
+        process.stderr.write(`[ssh-transport ${id}] watcher error → pool evict: ${err.message}\n`)
+        emitStatus(id, options, 'offline')
+        void onTransportOffline(id).catch(() => undefined)
+      })
+      return handle
+    },
+  }
 
   return {
     id,
@@ -85,10 +111,34 @@ export async function createSshTransport(options: SshConnectOptions): Promise<Ss
     client,
     fs,
     scanner,
-    watcher,
+    watcher: wrappedWatcher,
     exec: undefined, // M6 (별도 Plan)
     async dispose() {
       await client.dispose()
     },
+  }
+}
+
+// S4 Evaluator C-1 — renderer 에 상태 전파.
+// 단일 창 앱이라 BrowserWindow.getAllWindows()[0]?.webContents 로 연결. require('electron') 은
+// main process 전용 — Node CLI/test 경로에선 throw 하므로 try/catch silent drop.
+function emitStatus(
+  id: string,
+  options: SshConnectOptions,
+  status: TransportStatus,
+): void {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { BrowserWindow } = require('electron') as typeof import('electron')
+    const wc = BrowserWindow.getAllWindows()[0]?.webContents
+    if (!wc || wc.isDestroyed()) return
+    const event: TransportStatusEvent = {
+      workspaceId: id,
+      status,
+      label: `${options.username}@${options.host}${options.port !== 22 ? ':' + options.port : ''}`,
+    }
+    wc.send('transport:status', event)
+  } catch {
+    // main process 가 아닌 환경(test/CLI) — silent drop
   }
 }
