@@ -8,6 +8,10 @@ const UuidInput = z.string().uuid()
 // projectId는 scanner가 SHA1 hex 16자로 생성한다 (UUID 아님). 길이/문자 제한만 적용.
 const ProjectIdInput = z.string().regex(/^[a-f0-9]{8,32}$/, 'INVALID_PROJECT_ID')
 
+// M3 S3 — workspaceId 는 로컬(UUID v4) 또는 SSH(`ssh:<hex16>`). 두 포맷 수용.
+const SshWorkspaceIdInput = z.string().regex(/^ssh:[a-f0-9]{16}$/, 'INVALID_SSH_WS_ID')
+const WorkspaceIdInput = z.union([UuidInput, SshWorkspaceIdInput])
+
 export const ALLOWED_PREFS_KEYS = new Set([
   'viewMode',
   'theme',
@@ -25,6 +29,8 @@ export const ALLOWED_PREFS_KEYS = new Set([
   'lastSelectedDocPaths',
   // 사이드바 리사이즈 핸들 (v0.3)
   'sidebarWidth',
+  // M3 S3: experimental flag. 재시작 후 반영.
+  'experimentalFeatures.sshTransport',
 ])
 
 // ── parse 함수들 ──────────────────────────────────────────────
@@ -38,11 +44,12 @@ export function parseWorkspaceAddInput(raw: unknown): { root: string } {
 }
 
 export function parseWorkspaceRemoveInput(raw: unknown): { id: string } {
-  return z.object({ id: UuidInput }).parse(raw)
+  // M3 S3: 로컬 UUID + SSH(ssh:<hex16>) 양쪽 수용.
+  return z.object({ id: WorkspaceIdInput }).parse(raw)
 }
 
 export function parseScanInput(raw: unknown): { workspaceId: string } {
-  return z.object({ workspaceId: UuidInput }).parse(raw)
+  return z.object({ workspaceId: WorkspaceIdInput }).parse(raw)
 }
 
 export function parseScanDocsInput(raw: unknown): { projectId: string } {

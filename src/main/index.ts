@@ -142,3 +142,16 @@ app.on('window-all-closed', () => {
     app.quit()
   }
 })
+
+// M3 S3 — 앱 종료 시 SSH transport pool 전체 정리 (dispose 역순).
+app.on('before-quit', async (event) => {
+  const { disposeAll } = await import('./transport/pool')
+  try {
+    event.preventDefault()
+    await disposeAll()
+  } catch (err) {
+    process.stderr.write(`[main] transport pool disposeAll error: ${String(err)}\n`)
+  } finally {
+    app.exit(0)
+  }
+})

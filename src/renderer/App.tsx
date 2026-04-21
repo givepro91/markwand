@@ -5,9 +5,11 @@ import { ComposerTray } from './components/ComposerTray'
 import { ComposerOnboarding } from './components/ComposerOnboarding'
 import { CommandPalette } from './components/CommandPalette'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { SshHostKeyPrompt } from './components/SshHostKeyPrompt'
 import { useWorkspace } from './hooks/useWorkspace'
 import { useViewMode } from './hooks/useViewMode'
 import { useDrift } from './hooks/useDrift'
+import { useTransportStatusSubscription } from './hooks/useTransportStatus'
 import { useAppStore } from './state/store'
 import { classifyAsset } from '../lib/viewable'
 import type { Doc, Project } from '../../src/preload/types'
@@ -30,6 +32,9 @@ const ViewFallback = () => (
 )
 
 export default function App() {
+  // M3 S3 — SSH transport 상태 이벤트 구독 (flag off 여도 구독 비용 미미, 이벤트가 없음)
+  useTransportStatusSubscription()
+
   const { workspaces, activeWorkspaceId, addWorkspace, removeWorkspace, setActiveWorkspaceId } =
     useWorkspace()
   const { viewMode, setViewMode } = useViewMode()
@@ -315,6 +320,8 @@ export default function App() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg)', color: 'var(--text)' }}>
+      {/* M3 S2 후반부 — TOFU 모달. queue 비었을 때 null 반환이라 상시 mount 안전. */}
+      <SshHostKeyPrompt />
       {showInitialOverlay && (
         <div className="app-loading-overlay" role="status" aria-live="polite">
           <span className="ui-spinner lg" aria-hidden="true" />

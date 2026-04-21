@@ -16,6 +16,11 @@ export interface SshKnownHostEntry {
   firstSeenAt: number
 }
 
+export interface ExperimentalFeatures {
+  /** M3 S3 — SSH Transport (alpha). 기본 false. 개발자 옵션 Settings → Experimental 에서 활성. */
+  sshTransport: boolean
+}
+
 export interface StoreSchema {
   workspaces: Workspace[]
   activeWorkspaceId: string | null
@@ -27,6 +32,8 @@ export interface StoreSchema {
   terminal: TerminalType
   /** M3 S2 — SSH TOFU 저장소. workspaceId(ssh:<hex>) → hostKey entry. */
   sshKnownHosts: Record<string, SshKnownHostEntry>
+  /** M3 S3 — experimental flag 모음. 신규 기능을 기본 off 로 배송하기 위한 layer. */
+  experimentalFeatures: ExperimentalFeatures
 }
 
 // electron-store v10은 ESM 전용이므로 동적 import로 로드한다 (R2 대응)
@@ -50,6 +57,7 @@ export async function getStore(): Promise<import('electron-store').default<Store
       sortOrder: 'recent',
       terminal: 'Terminal',
       sshKnownHosts: {},
+      experimentalFeatures: { sshTransport: false },
     },
     schema: {
       workspaces: {
@@ -64,9 +72,16 @@ export async function getStore(): Promise<import('electron-store').default<Store
             // M1 (2026-04-21): transport 필드 추가. schema required 에는 넣지 않음 —
             // 기존 저장 엔트리는 아래 런타임 마이그레이션에서 { type: 'local' } 로 승격.
             transport: {
+              // M3 S3: type 에 'ssh' 추가. ssh 변형은 host/port/user 필수 + auth 객체.
+              // schema 는 'type' 만 엄격 검증하고 나머지 필드는 선택(ssh 변형이면 ipc 핸들러에서 검증).
               type: 'object',
               properties: {
-                type: { type: 'string', enum: ['local'] },
+                type: { type: 'string', enum: ['local', 'ssh'] },
+                host: { type: 'string' },
+                port: { type: 'number' },
+                user: { type: 'string' },
+                auth: { type: 'object' },
+                hostKeyFingerprint: { type: 'string' },
               },
               required: ['type'],
             },
@@ -89,6 +104,13 @@ export async function getStore(): Promise<import('electron-store').default<Store
         default: 'Terminal',
       },
       sshKnownHosts: { type: 'object', default: {} },
+      experimentalFeatures: {
+        type: 'object',
+        properties: {
+          sshTransport: { type: 'boolean', default: false },
+        },
+        default: { sshTransport: false },
+      },
     },
   })
 
@@ -114,5 +136,22 @@ export async function getStore(): Promise<import('electron-store').default<Store
     storeInstance.set('workspaces', migrated)
   }
 
+  // M3 S3: experimentalFeatures 필드가 없는 구 사용자에게 default 주입.
+  const ef = storeInstance.get('experimentalFeatures') as ExperimentalFeatures | undefined
+  if (!ef || typeof ef.sshTransport !== 'boolean') {
+    storeInstance.set('experimentalFeatures', { sshTransport: false })
+  }
+
   return storeInstance
+}
+
+/**
+ * M3 S3 — SSH Transport feature flag 판정.
+ * env MARKWAND_SSH=1 이 override 1순위 (개발자 편의), 그 외 electron-store 값.
+ */
+export async function isSshTransportEnabled(): Promise<boolean> {
+  if (process.env['MARKWAND_SSH'] === '1') return true
+  const store = await getStore()
+  const ef = store.get('experimentalFeatures') as ExperimentalFeatures | undefined
+  return ef?.sshTransport === true
 }

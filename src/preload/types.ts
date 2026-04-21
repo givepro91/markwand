@@ -8,7 +8,26 @@ export type ViewLayout = 'grid' | 'list'
 export type WorkspaceMode = 'container' | 'single'
 
 // Transport 구분 — M1 에서는 'local' 만. M3 SSH 착수 시 SshTransportConfig 변형 추가.
-export type WorkspaceTransport = { type: 'local' }
+/**
+ * M3 S3 — Workspace transport 타입 확장 (Design §2.3).
+ * SSH 변형은 host/port/user + 인증 방식 + TOFU fingerprint 를 포함.
+ * 키 내용은 저장 금지 — 경로만 (DC-4 · Design §4.3).
+ */
+export type SshAuthConfig =
+  | { kind: 'agent' }
+  | { kind: 'key-file'; path: string }
+
+export type WorkspaceTransport =
+  | { type: 'local' }
+  | {
+      type: 'ssh'
+      host: string
+      port: number
+      user: string
+      auth: SshAuthConfig
+      /** TOFU 시 저장된 SHA256 fingerprint — hostKeyDb 와 중복이나 UI 디스플레이 용 */
+      hostKeyFingerprint?: string
+    }
 
 export interface Workspace {
   id: string
