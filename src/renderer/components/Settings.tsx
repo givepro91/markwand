@@ -5,10 +5,24 @@ import { useAppStore } from '../state/store'
 export function Settings() {
   const [open, setOpen] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
+  const [sshEnabled, setSshEnabled] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const trackReadDocs = useAppStore((s) => s.trackReadDocs)
   const setTrackReadDocs = useAppStore((s) => s.setTrackReadDocs)
+
+  // Follow-up FS2 — Experimental SSH Transport flag 동기화.
+  useEffect(() => {
+    window.api.prefs
+      .get('experimentalFeatures.sshTransport')
+      .then((v) => setSshEnabled(v === true))
+      .catch(() => undefined)
+  }, [])
+
+  const handleSshToggle = useCallback(async (next: boolean) => {
+    setSshEnabled(next)
+    await window.api.prefs.set('experimentalFeatures.sshTransport', next)
+  }, [])
 
   useEffect(() => {
     if (!open) return
@@ -145,6 +159,48 @@ export function Settings() {
                 </div>
               </div>
             )}
+
+            {/* Follow-up FS2 — Experimental 섹션 */}
+            <div
+              style={{
+                borderTop: '1px solid var(--border)',
+                paddingTop: 'var(--sp-3)',
+                marginTop: 'var(--sp-2)',
+              }}
+            >
+              <h4
+                style={{
+                  fontSize: 'var(--fs-xs)',
+                  fontWeight: 'var(--fw-semibold)',
+                  color: 'var(--text-muted)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  margin: '0 0 var(--sp-2)',
+                }}
+              >
+                Experimental
+              </h4>
+              <label
+                style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', cursor: 'pointer' }}
+                title="SSH 원격 워크스페이스 등록/스캔을 활성화합니다. 변경 후 재시작 필요."
+              >
+                <Checkbox
+                  checked={sshEnabled}
+                  onChange={handleSshToggle}
+                  aria-label="SSH Remote Transport"
+                />
+                <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text)' }}>SSH Remote Transport</span>
+              </label>
+              <p
+                style={{
+                  fontSize: 'var(--fs-xs)',
+                  color: 'var(--text-muted)',
+                  margin: 'var(--sp-1) 0 0 calc(16px + var(--sp-2))',
+                }}
+              >
+                원격 SSH 서버의 마크다운 문서를 읽기 전용으로 탐색합니다. 변경 후 <strong>앱 재시작</strong>이 필요합니다.
+              </p>
+            </div>
           </div>
         </div>
       )}

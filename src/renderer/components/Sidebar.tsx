@@ -10,6 +10,9 @@ interface SidebarProps {
   viewMode: ViewMode
   onWorkspaceSelect: (id: string) => void
   onWorkspaceAdd: () => void
+  /** Follow-up FS2 — SSH workspace 추가 트리거. experimentalSsh 가 true 일 때만 호출됨. */
+  onWorkspaceAddSsh?: () => void
+  experimentalSsh?: boolean
   onWorkspaceRemove: (id: string) => Promise<void>
   onViewModeChange: (mode: ViewMode) => void
 }
@@ -26,6 +29,8 @@ export function Sidebar({
   viewMode,
   onWorkspaceSelect,
   onWorkspaceAdd,
+  onWorkspaceAddSsh,
+  experimentalSsh,
   onWorkspaceRemove,
   onViewModeChange,
 }: SidebarProps) {
@@ -50,6 +55,8 @@ export function Sidebar({
           activeId={activeWorkspaceId}
           onSelect={onWorkspaceSelect}
           onAdd={onWorkspaceAdd}
+          onAddSsh={onWorkspaceAddSsh}
+          experimentalSsh={experimentalSsh}
           onRemove={onWorkspaceRemove}
         />
       </div>

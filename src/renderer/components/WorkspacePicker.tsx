@@ -18,17 +18,38 @@ interface WorkspacePickerProps {
   activeId: string | null
   onSelect: (id: string) => void
   onAdd: () => void
+  /**
+   * Follow-up FS2 — experimentalFeatures.sshTransport flag on 일 때만 "+ SSH Remote 추가" 옵션 노출.
+   * flag off 시 DOM 에서 완전 제거(disabled 아님 — Plan S3.1 결정 준수).
+   */
+  onAddSsh?: () => void
+  experimentalSsh?: boolean
   onRemove: (id: string) => Promise<void>
 }
 
-export function WorkspacePicker({ workspaces, activeId, onSelect, onAdd, onRemove }: WorkspacePickerProps) {
+export function WorkspacePicker({
+  workspaces,
+  activeId,
+  onSelect,
+  onAdd,
+  onAddSsh,
+  experimentalSsh = false,
+  onRemove,
+}: WorkspacePickerProps) {
   const [showManage, setShowManage] = useState(false)
 
   if (workspaces.length === 0) {
     return (
-      <Button variant="primary" size="sm" onClick={onAdd} aria-label="워크스페이스 추가">
-        + 워크스페이스 추가
-      </Button>
+      <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+        <Button variant="primary" size="sm" onClick={onAdd} aria-label="워크스페이스 추가">
+          + 워크스페이스 추가
+        </Button>
+        {experimentalSsh && onAddSsh && (
+          <Button variant="ghost" size="sm" onClick={onAddSsh} aria-label="SSH Remote 워크스페이스 추가">
+            + SSH Remote
+          </Button>
+        )}
+      </div>
     )
   }
 
@@ -42,6 +63,7 @@ export function WorkspacePicker({ workspaces, activeId, onSelect, onAdd, onRemov
             onChange={(e) => {
               const val = e.target.value
               if (val === '__add__') onAdd()
+              else if (val === '__add_ssh__' && onAddSsh) onAddSsh()
               else if (val) onSelect(val)
             }}
             style={{
@@ -63,6 +85,9 @@ export function WorkspacePicker({ workspaces, activeId, onSelect, onAdd, onRemov
               <option key={w.id} value={w.id}>{w.name}</option>
             ))}
             <option value="__add__">+ 워크스페이스 추가</option>
+            {experimentalSsh && onAddSsh && (
+              <option value="__add_ssh__">+ SSH Remote 추가</option>
+            )}
           </select>
           <span
             style={{

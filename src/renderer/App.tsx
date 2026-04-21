@@ -6,6 +6,7 @@ import { ComposerOnboarding } from './components/ComposerOnboarding'
 import { CommandPalette } from './components/CommandPalette'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { SshHostKeyPrompt } from './components/SshHostKeyPrompt'
+import { SshWorkspaceAddModal } from './components/SshWorkspaceAddModal'
 import { useWorkspace } from './hooks/useWorkspace'
 import { useViewMode } from './hooks/useViewMode'
 import { useDrift } from './hooks/useDrift'
@@ -35,8 +36,17 @@ export default function App() {
   // M3 S3 — SSH transport 상태 이벤트 구독 (flag off 여도 구독 비용 미미, 이벤트가 없음)
   useTransportStatusSubscription()
 
-  const { workspaces, activeWorkspaceId, addWorkspace, removeWorkspace, setActiveWorkspaceId } =
+  const { workspaces, activeWorkspaceId, addWorkspace, addSshWorkspace, removeWorkspace, setActiveWorkspaceId } =
     useWorkspace()
+  // Follow-up FS2 — experimentalFeatures.sshTransport flag + SSH 추가 모달 상태.
+  const [experimentalSsh, setExperimentalSsh] = useState(false)
+  const [sshModalOpen, setSshModalOpen] = useState(false)
+  useEffect(() => {
+    window.api.prefs
+      .get('experimentalFeatures.sshTransport')
+      .then((v) => setExperimentalSsh(v === true))
+      .catch(() => undefined)
+  }, [])
   const { viewMode, setViewMode } = useViewMode()
   const activeProjectId = useAppStore((s) => s.activeProjectId)
   const setActiveProjectId = useAppStore((s) => s.setActiveProjectId)
@@ -257,6 +267,19 @@ export default function App() {
     return ws
   }, [addWorkspace, setViewMode])
 
+  // Follow-up FS2 — SSH 추가 모달 트리거.
+  const handleAddSshWorkspace = useCallback(() => {
+    setSshModalOpen(true)
+  }, [])
+
+  const handleSshSubmit = useCallback(
+    async (input: Parameters<typeof addSshWorkspace>[0]) => {
+      const ws = await addSshWorkspace(input)
+      if (ws) setViewMode('all')
+    },
+    [addSshWorkspace, setViewMode],
+  )
+
   const projectsLoading = useAppStore((s) => s.projectsLoading)
   const docCountProgress = useAppStore((s) => s.docCountProgress)
 
@@ -301,6 +324,8 @@ export default function App() {
           viewMode={viewMode}
           onWorkspaceSelect={handleWorkspaceSelect}
           onWorkspaceAdd={handleAddWorkspace}
+          onWorkspaceAddSsh={handleAddSshWorkspace}
+          experimentalSsh={experimentalSsh}
           onWorkspaceRemove={removeWorkspace}
           onViewModeChange={setViewMode}
         />
@@ -314,6 +339,11 @@ export default function App() {
           />
         </main>
         <CommandPalette />
+        <SshWorkspaceAddModal
+          open={sshModalOpen}
+          onClose={() => setSshModalOpen(false)}
+          onSubmit={handleSshSubmit}
+        />
       </div>
     )
   }
@@ -322,6 +352,12 @@ export default function App() {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg)', color: 'var(--text)' }}>
       {/* M3 S2 후반부 — TOFU 모달. queue 비었을 때 null 반환이라 상시 mount 안전. */}
       <SshHostKeyPrompt />
+      {/* Follow-up FS2 — SSH workspace 추가 폼. flag on + experimental 체크 시에만 트리거. */}
+      <SshWorkspaceAddModal
+        open={sshModalOpen}
+        onClose={() => setSshModalOpen(false)}
+        onSubmit={handleSshSubmit}
+      />
       {showInitialOverlay && (
         <div className="app-loading-overlay" role="status" aria-live="polite">
           <span className="ui-spinner lg" aria-hidden="true" />
@@ -351,6 +387,8 @@ export default function App() {
         viewMode={viewMode}
         onWorkspaceSelect={handleWorkspaceSelect}
         onWorkspaceAdd={handleAddWorkspace}
+        onWorkspaceAddSsh={handleAddSshWorkspace}
+        experimentalSsh={experimentalSsh}
         onWorkspaceRemove={removeWorkspace}
         onViewModeChange={setViewMode}
       />
