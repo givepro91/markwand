@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-21T09:42:19.886Z",
+  "timestamp": "2026-04-21T12:26:15.042Z",
   "target": "markwand@127.0.0.1:2222",
   "results": [
     {
@@ -26,6 +26,21 @@
       "name": "T-hostkey-reject-001 hostVerifier false → 연결 차단 (DC-4)",
       "ok": true,
       "detail": "rejected 확인"
+    },
+    {
+      "name": "T-ipc-scan-001 scanProjectsViaSftp → Project[] ≥ 1",
+      "ok": true,
+      "detail": "1 project(s), proj-a markers=[package.json]"
+    },
+    {
+      "name": "T-ipc-docs-001 composeDocsFromFileStats(SSH) → Doc[] ≥ 1",
+      "ok": true,
+      "detail": "2 docs, note-1.md 포함"
+    },
+    {
+      "name": "T-ipc-read-001 SshFsDriver.stat + readFile → content",
+      "ok": true,
+      "detail": "size=88, content=88B"
     },
     {
       "name": "T-watcher-manual-001 SshPoller manual 기본 동작",

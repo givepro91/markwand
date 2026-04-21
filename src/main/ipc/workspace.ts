@@ -148,6 +148,10 @@ const SSH_PROJECT_MARKERS = [
   'Makefile',
 ]
 
+// 로컬 scanner.ts PROJECT_SCAN_IGNORE 의 **의도적 슈퍼셋** — D-2 트레이드오프.
+// 로컬 대비 `__fixtures__`, `__snapshots__` 추가 포함: 원격 fixture/snapshot 디렉토리를 프로젝트
+// 마커 탐색 대상에서 제외해 원격 테스트 자산이 사용자 프로젝트로 오인되는 경우를 방지.
+// 로컬과 완전 동일 집합이 아님을 주석으로 명시 (Evaluator M-2).
 const SSH_PROJECT_SCAN_IGNORE = new Set([
   'node_modules', 'dist', 'build', 'out', 'target', 'vendor', 'coverage',
   '__pycache__', '__fixtures__', '__snapshots__',

@@ -12,6 +12,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { execSync } from 'node:child_process'
 import { createSshTransport } from '../src/main/transport/ssh'
+import { scanProjectsViaSftp, composeDocsFromFileStats } from '../src/main/ipc/workspace'
 
 const SSH_HOST = process.env['SSH_HOST'] ?? '127.0.0.1'
 const SSH_PORT = parseInt(process.env['SSH_PORT'] ?? '2222', 10)
@@ -168,6 +169,82 @@ async function main() {
     }
     if (connected) throw new Error('DC-4 위반: hostVerifier false 인데 연결 성공')
     return 'rejected 확인'
+  })
+
+  // ─────────────────────────────────────────────────────────────────
+  // Follow-up FS3 — IPC e2e 경로 검증 3건 (M-2 Known Gap 해소 실증)
+  // ─────────────────────────────────────────────────────────────────
+
+  // T-ipc-scan-001: scanProjectsViaSftp (FS0 신규 함수) — 원격 workspace 에서 프로젝트 목록 반환.
+  await runTest('T-ipc-scan-001 scanProjectsViaSftp → Project[] ≥ 1', async () => {
+    const t = await createSshTransport({
+      host: SSH_HOST,
+      port: SSH_PORT,
+      username: SSH_USER,
+      auth: defaultAuth(),
+      hostVerifier: async () => true,
+    })
+    try {
+      const sftp = t.client.getSftp()
+      const projects = await scanProjectsViaSftp(sftp, 'ssh:test', REMOTE_WS, 'container')
+      if (projects.length < 1) {
+        throw new Error(`expected ≥1 project, got ${projects.length}`)
+      }
+      const projA = projects.find((p) => p.root.endsWith('proj-a'))
+      if (!projA) throw new Error('proj-a 미발견')
+      if (projA.markers.length < 1) throw new Error(`proj-a markers 비어있음`)
+      return `${projects.length} project(s), proj-a markers=[${projA.markers.join(',')}]`
+    } finally {
+      await t.dispose()
+    }
+  })
+
+  // T-ipc-docs-001: composeDocsFromFileStats(sshTransport, ...) — SSH transport 로 Doc 스트림.
+  await runTest('T-ipc-docs-001 composeDocsFromFileStats(SSH) → Doc[] ≥ 1', async () => {
+    const t = await createSshTransport({
+      host: SSH_HOST,
+      port: SSH_PORT,
+      username: SSH_USER,
+      auth: defaultAuth(),
+      hostVerifier: async () => true,
+    })
+    try {
+      const docs: { path: string; projectId: string; name: string }[] = []
+      for await (const chunk of composeDocsFromFileStats(t, 'proj-a', `${REMOTE_WS}/proj-a`)) {
+        for (const d of chunk) docs.push(d)
+      }
+      if (docs.length < 1) throw new Error(`expected ≥1 docs, got ${docs.length}`)
+      const note1 = docs.find((d) => d.path.endsWith('note-1.md'))
+      if (!note1) throw new Error('note-1.md 미발견')
+      if (note1.projectId !== 'proj-a') throw new Error(`projectId 불일치: ${note1.projectId}`)
+      return `${docs.length} docs, note-1.md 포함`
+    } finally {
+      await t.dispose()
+    }
+  })
+
+  // T-ipc-read-001: SSH transport.fs.stat + readFile 경로 — fs:read-doc IPC 에 쓰이는 핵심 path.
+  await runTest('T-ipc-read-001 SshFsDriver.stat + readFile → content', async () => {
+    const t = await createSshTransport({
+      host: SSH_HOST,
+      port: SSH_PORT,
+      username: SSH_USER,
+      auth: defaultAuth(),
+      hostVerifier: async () => true,
+    })
+    try {
+      const docPath = `${REMOTE_WS}/proj-a/docs/note-1.md`
+      const stat = await t.fs.stat(docPath)
+      if (stat.size <= 0) throw new Error(`expected size>0, got ${stat.size}`)
+      const buf = await t.fs.readFile(docPath, { maxBytes: 2 * 1024 * 1024 })
+      const content = buf.toString('utf-8')
+      if (!content.includes('fixture-note-1')) {
+        throw new Error('content marker missing')
+      }
+      return `size=${stat.size}, content=${content.length}B`
+    } finally {
+      await t.dispose()
+    }
   })
 
   // T-watcher-manual-001: SshPoller manual 모드 smoke (실제 tick 대기 없이 handle 생성 + close)
