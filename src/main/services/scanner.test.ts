@@ -3,6 +3,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { parseFrontmatter } from './scanner'
+import { localFs } from '../transport/local/fs'
 
 const FIXTURES = path.resolve(__dirname, '../../__fixtures__')
 
@@ -12,7 +13,7 @@ const FIXTURES = path.resolve(__dirname, '../../__fixtures__')
 
 describe('parseFrontmatter — fixture variants', () => {
   it('fm-01: full fields — tags[], status, updated ISO→ms, source', async () => {
-    const fm = await parseFrontmatter(path.join(FIXTURES, 'fm-01-full.md'))
+    const fm = await parseFrontmatter(localFs,path.join(FIXTURES, 'fm-01-full.md'))
     expect(fm).not.toBeUndefined()
     // tags must be string[]
     expect(Array.isArray(fm!.tags)).toBe(true)
@@ -25,7 +26,7 @@ describe('parseFrontmatter — fixture variants', () => {
   })
 
   it('fm-02: updated already a number — pass-through unchanged', async () => {
-    const fm = await parseFrontmatter(path.join(FIXTURES, 'fm-02-updated-ms.md'))
+    const fm = await parseFrontmatter(localFs,path.join(FIXTURES, 'fm-02-updated-ms.md'))
     expect(fm).not.toBeUndefined()
     expect(fm!.tags).toEqual(['backend', 'api'])
     expect(fm!.status).toBe('published')
@@ -34,7 +35,7 @@ describe('parseFrontmatter — fixture variants', () => {
   })
 
   it('fm-03: tags as plain string (YAML) — no crash, contract violation detected', async () => {
-    const fm = await parseFrontmatter(path.join(FIXTURES, 'fm-03-tags-string-violation.md'))
+    const fm = await parseFrontmatter(localFs,path.join(FIXTURES, 'fm-03-tags-string-violation.md'))
     expect(fm).not.toBeUndefined()
     // gray-matter parses `tags: single-tag-as-string` as a string, not array
     // This is a Doc shape contract violation — tags MUST be string[]
@@ -53,7 +54,7 @@ describe('parseFrontmatter — fixture variants', () => {
   })
 
   it('fm-04: no tags, source=review — absent tags is fine', async () => {
-    const fm = await parseFrontmatter(path.join(FIXTURES, 'fm-04-no-tags-review.md'))
+    const fm = await parseFrontmatter(localFs,path.join(FIXTURES, 'fm-04-no-tags-review.md'))
     expect(fm).not.toBeUndefined()
     expect(fm!.tags).toBeUndefined()
     expect(fm!.status).toBe('published')
@@ -62,7 +63,7 @@ describe('parseFrontmatter — fixture variants', () => {
   })
 
   it('fm-05: empty tags array, no updated — empty array preserved', async () => {
-    const fm = await parseFrontmatter(path.join(FIXTURES, 'fm-05-empty-tags.md'))
+    const fm = await parseFrontmatter(localFs,path.join(FIXTURES, 'fm-05-empty-tags.md'))
     expect(fm).not.toBeUndefined()
     expect(fm!.tags).toEqual([])
     expect(fm!.status).toBe('draft')
@@ -71,7 +72,7 @@ describe('parseFrontmatter — fixture variants', () => {
   })
 
   it('fm-06: 4 tags, no status, no source — partial frontmatter ok', async () => {
-    const fm = await parseFrontmatter(path.join(FIXTURES, 'fm-06-multi-tags-no-source.md'))
+    const fm = await parseFrontmatter(localFs,path.join(FIXTURES, 'fm-06-multi-tags-no-source.md'))
     expect(fm).not.toBeUndefined()
     expect(fm!.tags).toEqual(['frontend', 'react', 'typescript', 'performance'])
     expect(fm!.status).toBeUndefined()
@@ -80,7 +81,7 @@ describe('parseFrontmatter — fixture variants', () => {
   })
 
   it('fm-07: tags with special chars and timezone offset ISO date', async () => {
-    const fm = await parseFrontmatter(path.join(FIXTURES, 'fm-07-special-chars.md'))
+    const fm = await parseFrontmatter(localFs,path.join(FIXTURES, 'fm-07-special-chars.md'))
     expect(fm).not.toBeUndefined()
     expect(Array.isArray(fm!.tags)).toBe(true)
     expect(fm!.tags).toContain('한국어 태그')
@@ -93,7 +94,7 @@ describe('parseFrontmatter — fixture variants', () => {
   })
 
   it('fm-08: no frontmatter at all — returns undefined', async () => {
-    const fm = await parseFrontmatter(path.join(FIXTURES, 'fm-08-no-frontmatter.md'))
+    const fm = await parseFrontmatter(localFs,path.join(FIXTURES, 'fm-08-no-frontmatter.md'))
     expect(fm).toBeUndefined()
   })
 })
@@ -104,7 +105,7 @@ describe('parseFrontmatter — fixture variants', () => {
 
 describe('parseFrontmatter — edge cases (no crash)', () => {
   it('malformed YAML — returns undefined, no throw', async () => {
-    const fm = await parseFrontmatter(path.join(FIXTURES, 'fm-malformed-yaml.md'))
+    const fm = await parseFrontmatter(localFs,path.join(FIXTURES, 'fm-malformed-yaml.md'))
     // gray-matter may parse partial data or throw internally; parseFrontmatter must catch
     // Result: either undefined (caught error) or partially parsed object — never throws
     expect(true).toBe(true) // reaching here means no crash
@@ -115,7 +116,7 @@ describe('parseFrontmatter — edge cases (no crash)', () => {
   })
 
   it('nonexistent file — returns undefined, no throw', async () => {
-    const fm = await parseFrontmatter('/nonexistent/path/ghost.md')
+    const fm = await parseFrontmatter(localFs,'/nonexistent/path/ghost.md')
     expect(fm).toBeUndefined()
   })
 
@@ -128,7 +129,7 @@ describe('parseFrontmatter — edge cases (no crash)', () => {
     const content = `---\ntags: [large-file]\nstatus: draft\n---\n${longComment}${'body content '.repeat(500)}`
     fs.writeFileSync(tmpFile, content, 'utf8')
     try {
-      const fm = await parseFrontmatter(tmpFile)
+      const fm = await parseFrontmatter(localFs,tmpFile)
       // frontmatter IS within first 4KB, so should parse
       expect(fm).not.toBeUndefined()
       expect(fm!.tags).toEqual(['large-file'])
@@ -146,7 +147,7 @@ describe('parseFrontmatter — edge cases (no crash)', () => {
     fs.writeFileSync(tmpFile, header)
     fs.appendFileSync(tmpFile, body)
     try {
-      const fm = await parseFrontmatter(tmpFile)
+      const fm = await parseFrontmatter(localFs,tmpFile)
       // parseFrontmatter only reads 4096 bytes, so it should handle this fine
       expect(fm).not.toBeUndefined()
       expect(fm!.tags).toEqual(['huge'])
@@ -160,7 +161,7 @@ describe('parseFrontmatter — edge cases (no crash)', () => {
     const tmpFile = path.join(tmpDir, 'markwand-qa-invalid-updated.md')
     fs.writeFileSync(tmpFile, `---\nupdated: "not-a-date-at-all"\ntags: [test]\n---\n# body`)
     try {
-      const fm = await parseFrontmatter(tmpFile)
+      const fm = await parseFrontmatter(localFs,tmpFile)
       expect(fm).not.toBeUndefined()
       // normalizeUpdated returns undefined for invalid strings → deleted
       expect(fm!.updated).toBeUndefined()
@@ -176,7 +177,7 @@ describe('parseFrontmatter — edge cases (no crash)', () => {
 
 describe('Doc shape contract', () => {
   it('tags field from valid YAML array is string[]', async () => {
-    const fm = await parseFrontmatter(path.join(FIXTURES, 'fm-01-full.md'))
+    const fm = await parseFrontmatter(localFs,path.join(FIXTURES, 'fm-01-full.md'))
     expect(fm).not.toBeUndefined()
     expect(Array.isArray(fm!.tags)).toBe(true)
     for (const tag of fm!.tags as unknown[]) {
@@ -187,7 +188,7 @@ describe('Doc shape contract', () => {
   it('updated field is always a number (ms) when present', async () => {
     const fixtures = ['fm-01-full.md', 'fm-02-updated-ms.md', 'fm-06-multi-tags-no-source.md']
     for (const fname of fixtures) {
-      const fm = await parseFrontmatter(path.join(FIXTURES, fname))
+      const fm = await parseFrontmatter(localFs,path.join(FIXTURES, fname))
       expect(fm).not.toBeUndefined()
       expect(typeof fm!.updated).toBe('number')
       expect(Number.isFinite(fm!.updated as number)).toBe(true)
@@ -195,7 +196,7 @@ describe('Doc shape contract', () => {
   })
 
   it('tags as YAML plain string violates string[] contract — detects mismatch', async () => {
-    const fm = await parseFrontmatter(path.join(FIXTURES, 'fm-03-tags-string-violation.md'))
+    const fm = await parseFrontmatter(localFs,path.join(FIXTURES, 'fm-03-tags-string-violation.md'))
     expect(fm).not.toBeUndefined()
     // Explicit contract check: tags SHOULD be array
     const isArray = Array.isArray(fm!.tags)

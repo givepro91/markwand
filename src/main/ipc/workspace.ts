@@ -2,16 +2,17 @@ import { dialog, ipcMain, BrowserWindow } from 'electron'
 import { randomUUID } from 'crypto'
 import path from 'path'
 import { getStore } from '../services/store'
-import { scanProjects, scanDocs } from '../services/scanner'
+import { scanProjects, parseFrontmatter, HEADER_READ_BYTES } from '../services/scanner'
 import { localTransport } from '../transport/local'
-import { VIEWABLE_GLOB } from '../../lib/viewable'
+import type { Transport } from '../transport/types'
+import { VIEWABLE_GLOB, classifyAsset } from '../../lib/viewable'
 import { setProtocolWorkspaceRoots } from '../security/protocol'
 import {
   parseScanInput,
   parseScanDocsInput,
   parseWorkspaceRemoveInput,
 } from '../security/validators'
-import type { Workspace, Project, WorkspaceMode } from '../../preload/types'
+import type { Workspace, Project, Doc, WorkspaceMode } from '../../preload/types'
 
 // LocalScannerDriver.countDocs 가 patterns/ignore 를 받도록 설계 (§2.2 rev. M1). 기존
 // scanner.ts 의 SCAN_IGNORE_PATTERNS 상수와 동일 내용을 여기에 선언 — 향후 M3 SSH에서도
@@ -35,6 +36,46 @@ const WORKSPACE_SCAN_IGNORE_PATTERNS = [
 
 function getWorkspaceRoots(workspaces: Workspace[]): string[] {
   return workspaces.map((w) => w.root)
+}
+
+/**
+ * Transport-agnostic Doc composition — M3 §S0.2 RM-7 해소.
+ *
+ * `ScannerDriver.scanDocs` 가 반환하는 FileStat 스트림을 기반으로 Doc 객체를 구성한다.
+ * md 파일은 frontmatter 파싱(parseFrontmatter + FsDriver 경유), 이미지는 skip. 50개씩 chunk.
+ * 기존 `services/scanner.scanDocs` 의 내부 `fs.promises.stat`·`fs.promises.open` 직접 호출
+ * 을 전부 transport 레이어로 이전했으므로 SSH Transport 도입 시 동일 헬퍼 재사용 가능.
+ */
+export async function* composeDocsFromFileStats(
+  transport: Transport,
+  projectId: string,
+  projectRoot: string,
+  chunkSize = 50
+): AsyncGenerator<Doc[]> {
+  let chunk: Doc[] = []
+  for await (const stat of transport.scanner.scanDocs(
+    projectRoot,
+    [VIEWABLE_GLOB],
+    WORKSPACE_SCAN_IGNORE_PATTERNS
+  )) {
+    const doc: Doc = {
+      path: stat.path,
+      projectId,
+      name: path.basename(stat.path),
+      mtime: stat.mtimeMs > 0 ? stat.mtimeMs : Date.now(),
+    }
+    if (stat.size !== undefined) doc.size = stat.size
+    if (classifyAsset(stat.path) === 'md') {
+      const fm = await parseFrontmatter(transport.fs, stat.path, { maxBytes: HEADER_READ_BYTES })
+      if (fm !== undefined) doc.frontmatter = fm
+    }
+    chunk.push(doc)
+    if (chunk.length >= chunkSize) {
+      yield chunk
+      chunk = []
+    }
+  }
+  if (chunk.length > 0) yield chunk
 }
 
 // scanProjects 결과 캐시 + in-flight 중복 방지.
@@ -236,8 +277,8 @@ export function registerWorkspaceHandlers(): void {
     if (!projectRoot) throw new Error('PROJECT_NOT_FOUND')
 
     const t0 = Date.now()
-    const allDocs = []
-    for await (const chunk of scanDocs(projectId, projectRoot)) {
+    const allDocs: Doc[] = []
+    for await (const chunk of composeDocsFromFileStats(localTransport, projectId, projectRoot)) {
       event.sender.send('project:docs-chunk', chunk)
       allDocs.push(...chunk)
     }

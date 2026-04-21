@@ -1,0 +1,26 @@
+# Docker sshd fixture — Plan §S4 R11.
+# 실행:
+#   ./gen-keypair.sh              # 최초 1회, ephemeral keypair 생성
+#   docker compose up -d sshd     # 백그라운드 기동
+#   SSH_HOST=127.0.0.1 SSH_PORT=2222 SSH_USER=markwand ...
+#   docker compose down           # 정리
+#
+# linuxserver/openssh-server 이미지: multi-arch, 환경변수만으로 key-based auth 세팅.
+services:
+  sshd:
+    image: lscr.io/linuxserver/openssh-server:latest
+    container_name: markwand-test-sshd
+    ports:
+      - "2222:2222"
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "UTC"
+      USER_NAME: "markwand"
+      PUBLIC_KEY_FILE: "/keys/id_ed25519.pub"
+      SUDO_ACCESS: "false"
+      PASSWORD_ACCESS: "false"
+    volumes:
+      - ./keys:/keys:ro
+      - ./remote-workspace:/config/workspace:ro
+    restart: "no"

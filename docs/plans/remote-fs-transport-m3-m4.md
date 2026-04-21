@@ -563,17 +563,21 @@ export class SshPoller implements WatcherDriver {
 - [ ] ssh2 + @types/ssh2 + ssh-config 설치 (pnpm --no-optional)
 - [ ] package.json build.buildDependenciesFromSource:false + asarUnpack
 - [ ] `build/entitlements.mac.plist` 신규
-- [ ] U1 검증 + `docs/investigations/ssh2-abi-2026-04-22.md` 기록
+- [ ] U1 검증 + `docs/investigations/ssh2-abi-<YYYY-MM-DD>.md` 기록 (날짜는 실행일)
 - [ ] **SFTP attrs.mtime 실측** (Critic M-2): Docker sshd fixture에서 readdir 시 `attrs.mtime > 0` 확인. fallback 패키지 고려 시 동일 실측 반복.
 - [ ] RM-7 해소: `services/scanner.ts`의 Doc generator 로직을 IPC 핸들러 헬퍼 `composeDocsFromFileStats`로 이식 + `parseFrontmatter(fs, path, opts?)` 시그니처 변경
 - [ ] 단위 테스트: composeDocsFromFileStats 3건, parseFrontmatter 2건
-- **DoD**: typecheck + vitest 전체 PASS + drift-smoke 21/21 + bench-transport ≤3% + U1 기록 + Docker sshd 연결 1회 성공 + attrs.mtime 실측 결과 기록
+- **DoD**: typecheck + vitest 전체 PASS + drift-smoke 21/21 + bench-transport ≤3% + U1 기록 + Docker sshd 연결 1회 성공 (Node runtime) + attrs.mtime 실측 결과 기록
+- **DoD scope-down** (S0 Evaluator C-1 반영): **Electron 33 context 에서 ssh2 `new Client()` 인스턴스화 실측은 S1.1 로 이연**. S0 는 Node runtime(`pnpm tsx`) 에서만 검증. S1.1 에서 `pnpm dev` 시 main process 모듈 로드 경로에 dynamic import 1회 포함 — 실패 시 `ssh2-electron-no-cpu-features` fallback 에스컬레이트.
+- **의도적 시맨틱 변경** (S0 Evaluator M-1): `LocalScannerDriver.scanDocs` 가 `fs.stat` 실패 시 **Doc 미생성** (silent skip). 기존 `services/scanner.scanDocs` 의 `mtime=Date.now()` 가짜 Doc 생성 패턴을 중단. 다음 scan 에서 파일 회복 시 정상 수집. SSH Transport 에도 동일 원칙 적용.
 
 ### S1 — SshTransport 기본 PoC (2d)
 - [ ] `src/main/transport/ssh/{client,fs,scanner,index,types}.ts` + `util/promisifiedSftp.ts` 신규 (6 파일)
+- [ ] **S1.1 Electron ABI 실측** (S0 Evaluator C-1 이연): `pnpm dev` 기동 후 main process 에서 `new Client()` 1회 dynamic import + 인스턴스화. 결과를 `docs/investigations/ssh2-abi-*.md` 에 "Electron 33 실측" 섹션으로 추가.
+- [ ] **SshFsDriver.readStream 서버측 범위 최적화** (S0 Evaluator M-2): `parseFrontmatter` 호출 시 transport 가 SSH 인 경우 `sftp.createReadStream(path, { start: 0, end: maxBytes - 1 })` 로 구현. 로컬 64KB 첫 청크 낭비 패턴이 SSH 로 전파되지 않도록 차단. 단위 테스트: `sftp.createReadStream` mock 에서 end 옵션 전달 확인 1건.
 - [ ] 단위 테스트 3 파일 (fs.test.ts, scanner.test.ts, client.test.ts)
 - [ ] Docker sshd smoke: 연결 + readFile + scanDocs 10 entries PASS
-- **DoD**: typecheck + SshTransport unit tests + Docker smoke + U1 재확인
+- **DoD**: typecheck + SshTransport unit tests + Docker smoke + **Electron 33 ABI 실측 PASS** + readStream 범위 요청 단위 테스트 PASS
 
 ### S2 — TOFU + ssh_config + keepalive + 상태 머신 (**2.5d**, Critic M-5 반영)
 - [ ] `src/main/transport/ssh/{hostKeyDb,config,reconnect}.ts` + `src/renderer/components/{SshHostKeyPrompt,SshHostKeyChanged,TransportBadge}.tsx`

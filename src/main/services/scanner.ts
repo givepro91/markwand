@@ -3,10 +3,11 @@ import path from 'path'
 import { createHash } from 'crypto'
 import fg from 'fast-glob'
 import matter from 'gray-matter'
-import type { Project, Doc, DocFrontmatter, WorkspaceMode } from '../../preload/types'
-import { VIEWABLE_GLOB, classifyAsset } from '../../lib/viewable'
+import type { Project, DocFrontmatter, WorkspaceMode } from '../../preload/types'
+import type { FsDriver } from '../transport/types'
+import { VIEWABLE_GLOB } from '../../lib/viewable'
 
-const HEADER_READ_BYTES = 4096
+export const HEADER_READ_BYTES = 4096
 
 function normalizeUpdated(value: unknown): number | undefined {
   if (value === undefined || value === null) return undefined
@@ -42,32 +43,53 @@ function normalizeTags(value: unknown): string[] | undefined {
   return undefined
 }
 
-export async function parseFrontmatter(absPath: string): Promise<DocFrontmatter | undefined> {
+/**
+ * Doc 의 YAML frontmatter(파일 앞 HEADER_READ_BYTES 바이트) 를 파싱한다.
+ * RM-7 해소(M3 Plan §S0.2) — Transport 추상 경유로 원격(SSH) 파일에도 동작 가능해짐.
+ *
+ * 구현 상세: FsDriver.readStream 을 opts 없이 호출하고 maxBytes 도달 시 iterator 를 조기
+ * break 한다. Node Readable(fs.createReadStream)은 `for await` break 시 stream.destroy() 호출
+ * 되어 후속 데이터 읽기가 중단된다. SSH 구현 시 SshFsDriver.readStream 의 서버측 범위 요청
+ * 최적화(sftp.createReadStream({start, end}))로 연장 가능.
+ */
+export async function parseFrontmatter(
+  fsDriver: FsDriver,
+  absPath: string,
+  opts?: { maxBytes?: number }
+): Promise<DocFrontmatter | undefined> {
+  const maxBytes = opts?.maxBytes ?? HEADER_READ_BYTES
   try {
-    const fd = await fs.promises.open(absPath, 'r')
-    try {
-      const buf = Buffer.alloc(HEADER_READ_BYTES)
-      const { bytesRead } = await fd.read(buf, 0, HEADER_READ_BYTES, 0)
-      const head = buf.subarray(0, bytesRead).toString('utf8')
-      const { data } = matter(head)
-      if (!data || Object.keys(data).length === 0) return undefined
-      const fm: DocFrontmatter = { ...data }
-      const updatedNormalized = normalizeUpdated(data.updated)
-      if (updatedNormalized !== undefined) {
-        fm.updated = updatedNormalized
-      } else {
-        delete fm.updated
+    const chunks: Buffer[] = []
+    let total = 0
+    for await (const chunk of fsDriver.readStream(absPath)) {
+      const remaining = maxBytes - total
+      if (remaining <= 0) break
+      const buf = Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength)
+      if (buf.byteLength > remaining) {
+        chunks.push(buf.subarray(0, remaining))
+        total += remaining
+        break
       }
-      const tagsNormalized = normalizeTags(data.tags)
-      if (tagsNormalized !== undefined) {
-        fm.tags = tagsNormalized
-      } else {
-        delete fm.tags
-      }
-      return fm
-    } finally {
-      await fd.close()
+      chunks.push(buf)
+      total += buf.byteLength
     }
+    const head = Buffer.concat(chunks).toString('utf8')
+    const { data } = matter(head)
+    if (!data || Object.keys(data).length === 0) return undefined
+    const fm: DocFrontmatter = { ...data }
+    const updatedNormalized = normalizeUpdated(data.updated)
+    if (updatedNormalized !== undefined) {
+      fm.updated = updatedNormalized
+    } else {
+      delete fm.updated
+    }
+    const tagsNormalized = normalizeTags(data.tags)
+    if (tagsNormalized !== undefined) {
+      fm.tags = tagsNormalized
+    } else {
+      delete fm.tags
+    }
+    return fm
   } catch {
     return undefined
   }
@@ -85,7 +107,9 @@ const PROJECT_MARKERS = [
   'Makefile',
 ]
 
-// scanDocs에서 제외할 디렉토리 패턴 14종
+// scanProjects/countDocs 에서 제외할 디렉토리 패턴 14종.
+// (참고: scanDocs 는 M3 §S0.2 RM-7 리팩터에서 제거됐고 IPC 헬퍼 composeDocsFromFileStats 가
+// LocalScannerDriver.scanDocs(FileStat) + Doc composition 으로 대체했다.)
 const SCAN_IGNORE_PATTERNS = [
   '**/node_modules/**',
   '**/.git/**',
@@ -257,62 +281,7 @@ export async function countDocs(projectRoot: string): Promise<number> {
   return count
 }
 
-/**
- * 프로젝트 루트 하위의 모든 viewable asset(md + 이미지)을 fast-glob으로 스캔한다.
- * 50개씩 청크로 반환하는 async generator.
- * - md: frontmatter 파싱
- * - 이미지: frontmatter 없음 (스킵하여 네트워크/IO 절약)
- */
-export async function* scanDocs(
-  projectId: string,
-  projectRoot: string,
-  chunkSize = 50
-): AsyncGenerator<Doc[]> {
-  const stream = fg.stream(VIEWABLE_GLOB, {
-    cwd: projectRoot,
-    ignore: SCAN_IGNORE_PATTERNS,
-    absolute: true,
-    onlyFiles: true,
-    followSymbolicLinks: false,
-    dot: true, // .secret/ 등 hidden 폴더 안의 파일도 포함
-    caseSensitiveMatch: false,
-  })
-
-  let chunk: Doc[] = []
-
-  for await (const entry of stream) {
-    const absPath = entry as string
-    let mtime = 0
-    let size: number | undefined
-    try {
-      const stat = await fs.promises.stat(absPath)
-      mtime = stat.mtimeMs
-      size = stat.size
-    } catch {
-      mtime = Date.now()
-    }
-
-    const doc: Doc = {
-      path: absPath,
-      projectId,
-      name: path.basename(absPath),
-      mtime,
-    }
-    if (size !== undefined) doc.size = size
-    // md 만 헤더 4KB 읽어 frontmatter 파싱 — 이미지는 스킵.
-    if (classifyAsset(absPath) === 'md') {
-      const frontmatter = await parseFrontmatter(absPath)
-      if (frontmatter !== undefined) doc.frontmatter = frontmatter
-    }
-    chunk.push(doc)
-
-    if (chunk.length >= chunkSize) {
-      yield chunk
-      chunk = []
-    }
-  }
-
-  if (chunk.length > 0) {
-    yield chunk
-  }
-}
+// M3 §S0.2 RM-7 해소: 기존 scanDocs AsyncGenerator<Doc[]> 는 `src/main/ipc/workspace.ts`의
+// `composeDocsFromFileStats` 헬퍼로 이식됐다. 헬퍼는 `LocalScannerDriver.scanDocs(FileStat)`
+// 스트림 + Doc composition(parseFrontmatter · classifyAsset 활용)을 조합해 transport 경유를
+// 보장한다. 이로써 SSH transport 도입 시 동일 헬퍼를 재사용할 수 있다.

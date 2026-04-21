@@ -51,8 +51,11 @@ export const localScanner: ScannerDriver = {
             isSymlink: st.isSymbolicLink(),
           }
         } catch {
-          // stat 실패는 silent skip — 기존 scanner.scanDocs 동작과 동일 시맨틱 유지를 위해
-          // mtime fallback(Date.now())가 아닌 "없던 셈" 처리. 호출자(IPC)가 fallback 담당.
+          // stat 실패 = silent skip (의도적 설계 개선, M3 S0 Evaluator M-1).
+          // 기존 services/scanner.scanDocs 는 stat 실패 시 Date.now() 를 mtime 으로 박아
+          // Doc 을 계속 생성했으나, 실패 원인(race: 파일 삭제 중 / EMFILE / perm)에서 "가짜 mtime" 은
+          // UI 상 정렬 왜곡 · drift 판정 오류로 이어짐. 다음 scan 시 파일이 회복되면 정상 수집되므로
+          // 일시적 누락 > 가짜 Doc 생성이 안전한 트레이드오프. SSH Transport(M3)에서도 동일 원칙.
         }
       }
     })()

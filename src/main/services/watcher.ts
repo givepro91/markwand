@@ -4,6 +4,7 @@ import path from 'path'
 import type { WebContents } from 'electron'
 import type { FsChangeEvent } from '../../preload/types'
 import { parseFrontmatter } from './scanner'
+import { localTransport } from '../transport/local'
 import { isViewable, classifyAsset } from '../../lib/viewable'
 
 type ChangeType = FsChangeEvent['type']
@@ -78,7 +79,7 @@ function sendChange(type: ChangeType, filePath: string): void {
           return
         }
 
-        const frontmatter = await parseFrontmatter(filePath)
+        const frontmatter = await parseFrontmatter(localTransport.fs, filePath)
         if (!activeWebContents || activeWebContents.isDestroyed()) return
         const payload: FsChangeEvent = { type, path: filePath }
         if (frontmatter !== undefined) payload.frontmatter = frontmatter

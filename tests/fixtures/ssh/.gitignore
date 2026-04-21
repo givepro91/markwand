@@ -1,0 +1,5 @@
+# Ephemeral test keypair — 절대 git에 체크인 금지.
+# tests/fixtures/ssh/gen-keypair.sh 로 로컬/CI에서 생성.
+keys/id_ed25519
+keys/id_ed25519.pub
+.nova/
