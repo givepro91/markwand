@@ -91,6 +91,7 @@
 > --emergency 플래그 사용 또는 Evaluator 건너뛸 때 반드시 기록. 미기록 = Hard-Block.
 
 ## Last Activity
+- **세션 클로징 (2026-04-21)** — v0.9 M1·M2·Bench 전부 원격 반영(9 커밋, c16590f..686bf43). 다음 세션 = **M3+ SSH Transport PoC**. 진입 경로는 §다음 세션 — SSH (M3+) 착수 Handoff. 현재 blocker 0, 미해소 Known Gap 중 M1/M2 연계는 RM-7(project:scan-docs M4 합류) 1건. 그 외 v0.2~v0.3 Known Gap (⌘K 검색 backend High, drift 코드 감지 Medium, drift mtime 정밀도 Low 등)은 M3+ 와 독립이라 병행 가능.
 - /nova:auto 연속 — v0.9 M1·M2 보조·Bench 3개 스프린트 완료. **S2 M2 Hash 보조 (bce47fc)**: `src/lib/drift/hash.ts` sha256 contentHash + (path, mtimeMs, size) 키 인메모리 Map 캐시 + invalidateHash/clearHashCache API. `VerifiedReference.hashAtCheck?` 필드 추가. `drift:verify`가 판정 직후 병행 계산(디렉토리/크기초과/IO 실패 silent undefined fallback). 판정은 mtime 유지 (U-M2-1 승인 scope). hash.test.ts 5/5 PASS. **S3 Bench Harness (9c5a076)**: `scripts/bench-transport.ts` 5 hot path 측정(scanDocs/countDocs/fs.stat/readFile/detectWorkspaceMode), fixture 자동 생성(5 projects × 50 md × 3단 계층, tmpdir), 3회 반복 p50/p95/p99 + stdDev, baseline.json 비교, **noise floor 로직**(절대 <0.5ms 또는 baseline <1ms 스킵 — sub-ms fixture 과민 방지). `pnpm run bench:transport` script. baseline은 머신별이라 gitignore. 2차 실행 PASS 확인. typecheck PASS · 전체 suite 131/141 PASS · drift-smoke 21/21 PASS · 회귀 0. | 2026-04-21T
 - /nova:auto → CONDITIONAL PASS — v0.9 M1 Transport Interface + LocalTransport 래핑 (S1 완료). 4 커밋(baseline 35bcd58 · C2 신규 파일 ac6a5dc · C3 IPC 위임 39310b9 · C4 테스트 81edc9e + fix) 원격 push 완료. typecheck PASS · drift-smoke 21/21 PASS · 신규 29 테스트 PASS · 전체 136 tests(126 PASS, 10 pre-existing fail). **Evaluator 판정**(nova:senior-dev, 실증 기반): CONDITIONAL PASS — Major 1(`project:scan-docs` 미위임 — Plan §M1.3 defer·Known Gap 이관, M4 watcher 작업과 묶어 처리) + Minor 2(설계서 Transport.watcher/exec optional 조정·scanDocs import 잔류). **Known Risk Hard 동시 해소**: `fs:read-doc 파일 크기 무제한` → FsDriver.readFile({maxBytes:2MB}) size-first 계약. **Scope Guard 준수**: ssh2/hash/sha256 0건. 순환 import 0건. assertInWorkspace `{posix?:boolean}` opt 추가(M3 사전 계약, 사용처 0). workspace.transport: {type:'local'} 필드 lazy 마이그레이션. Orchestration orch-mo86dcfj-bdu2. | 2026-04-21T
 - /nova:deepplan → PASS — docs/plans/remote-fs-transport-m1-m2.md (v0.9 M1·M2 선행, Mode: deep, Iterations: 1). Explorer×3 병렬(43 FS 호출 지점 전수조사 · 5 hot path 성능 영향 +1~3% 추정 · sha256/전체 content/인메모리 Map 캐시) → Synthesizer 20파일·3일 추정 → Critic(nova:architect) CONDITIONAL PASS · 5 수정 지시 반영 → Refiner. **주요 발견**: M2 순수 hash 치환은 mtime 기반과 등가 불가(doc 기준점 ref hash 저장 없이는 stale 판정 불가능) → S2 범위 축소(hash는 보조 필드만). 설계서 §2.2 rev. M1 선수정(detectWorkspaceMode + readFile maxBytes 계약). Known Risk `fs:read-doc 무제한` Hard는 M1에서 동시 해소. U-M2-1 사용자 승인 필요. | 2026-04-21T
@@ -135,20 +136,80 @@
 - /nova:auto --deep → PASS — md-viewer MVP v0.1 (53파일 신규, Plan/Design+Dev 2 Wave+QA 2 Wave+Fix 2 Wave) | 2026-04-20T03:18Z
 
 ## Refs
-- **Current Plan**: docs/plans/remote-fs-transport-m1-m2.md (v0.9 M1·M2 선행, draft)
-- **Current Design**: docs/designs/remote-fs-transport.md (v1.0 SSH Transport — 설계 + §2.2 rev. M1, M1~M8 로드맵)
+- **Active Design**: docs/designs/remote-fs-transport.md (v1.0 SSH Transport — §2.2 rev. M1 적용, M3~M8 대기)
+- **Next Plan slot**: `docs/plans/remote-fs-transport-m3-m4.md` (미작성 — 다음 세션 `/nova:deepplan` 으로 생성)
+- Completed Plan: docs/plans/remote-fs-transport-m1-m2.md (v0.9 M1·M2·Bench, approved 2026-04-21)
 - Prior Plan: docs/plans/image-viewer-mvp.md (v0.3 Viewable Asset — S1+S2 완료)
 - Prior Plan: docs/plans/markwand-context-composer-mvp.md (v0.2 Context Composer, 일부 스코프 피벗)
 - Prior Design: docs/designs/markwand-context-composer.md (v0.2)
 - Prior Plan: docs/plans/md-viewer-mvp.md (v0.1 완료)
 - Prior Design: docs/designs/md-viewer-mvp.md (v0.1 완료)
-- Last Verification: v0.3 S2 GUI 실측 PASS — `pnpm dev` + 이미지 3개 렌더 확인 (2026-04-21, Chromium host normalization 이슈 해소 후)
-- Orchestration ID: orch-mo6k958z-f1gh (v0.1)
+- Last Verification: v0.3 S2 GUI 실측 PASS — `pnpm dev` + 이미지 3개 렌더 확인 (2026-04-21, Chromium host normalization 이슈 해소 후). **v0.9 (M1·M2 보조·Bench) GUI 수동 검증은 다음 세션 대기.**
+- Orchestration ID (최근): orch-mo86dcfj-bdu2 (v0.9 M1 S1 — completed)
 
-## 다음 단계 (사용자 액션)
+## 다음 세션 — SSH (M3+) 착수 Handoff (2026-04-21 세션 마무리)
+
+**이 세션 완료 산출**:
+- v0.9 보조 릴리스 후보가 origin/main 에 올라감 (c6f0422..686bf43)
+- M1 LocalTransport abstraction 가동 (IPC 6 핸들러 위임 + 2MB readFile 가드 + 보안 테스트 10건 + unit 19건)
+- M2 hash 보조 계산 가동 (VerifiedReference.hashAtCheck, 판정은 mtime 유지 — U-M2-1 scope)
+- Bench harness 가동 (`pnpm run bench:transport` + noise floor 3%)
+- Design Contract DC-1~DC-7 + Q1~Q4 ux-audit 답안 이미 확정 (참조만 하면 됨)
+
+**다음 세션 진입 직전 먼저 할 일 (선택)**:
+1. `pnpm dev` 로 v0.9 GUI 수동 검증 — 17 projects 로드 + drift 패널 + 이미지 뷰어 회귀 0 확인
+2. `pnpm run bench:transport -- --workspace=/Users/keunsik/develop` 로 **실 워크스페이스 절대값 벤치** 기록 (U2 해소)
+
+**다음 세션 SSH 진입 경로 (권장)**:
+```bash
+# 1) M3·M4 스프린트 Plan 작성 (deepplan 권장 — ssh2 ABI·원격 watcher·TOFU UI 설계 복잡)
+/nova:deepplan --target docs/plans/remote-fs-transport-m3-m4.md \
+  --scope "M3 SSH Transport PoC (ssh2 + SftpFsDriver + SshScannerDriver) + M4 원격 watcher 폴링"
+
+# 2) Plan 승인 후 구현
+/nova:auto
+```
+
+**M3 진입 전 반드시 결정할 것**:
+- U1 ssh2 NPM × Electron 33+ ABI 호환 — M3 PoC 1주차 검증 필수
+- RM-7 `project:scan-docs` 미위임을 M3 작업 전에 선행 처리할지, M4 watcher 때 같이 할지 (권장: M4 때 묶기)
+- Feature flag 전략 — 워크스페이스 타입에 `'ssh'` 추가 시 UI 어디에 노출 (초기엔 개발자 옵션만)
+- Docker sshd fixture CI 통합 범위 (R11)
+
+**이미 결정된 것 (재확인 불필요)**:
+- DC-1 write 금지 (v1.0 내내, v1.1에서 sidecar 재평가)
+- DC-2 hybrid 동시성 (로컬 N + 원격 active 1 + warm 1)
+- DC-3 `useTransportStatus` 단일 훅 + aria-live + 포커스 복원 + 색외 2차 표식
+- DC-4 hostKey bypass 0 + 키 내용 저장 금지
+- DC-5 hot path p95 회귀 ≤ 3%
+- DC-6 M3+는 v0.3 피드백 사이클 후 (또는 사용자가 직접 진입 결정)
+- DC-7 Docker sshd + a11y 전용 테스트
+- 상태 어휘: `connected` / `connecting` / `offline` 3종 고정
+- workspaceId = (host, port, user) 조합 기반
+- `~/.ssh/config` 파싱으로 Host 자동완성
+- ProxyJump 1급 지원 + keepalive 기본 on + key-file 대등
+
+**원격 push 상태**:
+- origin/main = `686bf43` (2026-04-21 세션 마지막). v0.3.2 + v0.9 M1·M2·Bench 전부 반영.
+- 이 세션 동안 9개 커밋 생성 (세션 시작 전 c16590f 대비).
+
+**다음 세션 첫 명령어 후보**:
+```bash
+# A. GUI 검증 먼저 (안전)
+pnpm dev
+# 골든 패스 확인 후 문제 없으면 B로
+
+# B. 실 워크스페이스 벤치 기록 (선택)
+pnpm run bench:transport -- --workspace=/Users/keunsik/develop
+
+# C. M3+ Plan 작성 진입
+/nova:deepplan --target docs/plans/remote-fs-transport-m3-m4.md --scope "M3 SSH Transport PoC + M4 원격 watcher"
+```
+
+## 다음 단계 (사용자 액션) — 이전 v0.3 골든 패스 (유효 — v0.9 GUI 회귀 검증에도 재사용)
 
 ```bash
-cd /Users/jay/develop/md-viewer
+cd /Users/keunsik/develop/givepro91/markwand
 
 # 1. 개발 모드로 실행 (HMR)
 pnpm dev
@@ -156,7 +217,7 @@ pnpm dev
 # 2. 또는 프로덕션 빌드 + dmg
 pnpm dist:mac
 # Gatekeeper 우회 (첫 실행)
-xattr -d com.apple.quarantine "/Applications/md-viewer.app"
+xattr -d com.apple.quarantine "/Applications/Markwand.app"
 # 또는 우클릭 → 열기 → "그래도 열기"
 ```
 
@@ -167,3 +228,5 @@ xattr -d com.apple.quarantine "/Applications/md-viewer.app"
 4. Inbox 뷰 전환 → 4단 시간 그룹 확인
 5. 다크 토글 → 코드/머메이드 동기화 확인
 6. ProjectView 헤더 "Open in Claude" → claude CLI 실행 확인
+7. **v0.9 추가**: drift 패널 열기 → `hashAtCheck` 필드 포함 여부 DevTools 에서 확인 (IPC 페이로드)
+8. **v0.9 추가**: 대용량(>2MB) md 파일 열기 시도 → `FILE_TOO_LARGE` 에러 노출 (기존 Known Risk 해소 동작)

@@ -129,41 +129,54 @@
     "id": "orch-mo86dcfj-bdu2",
     "task": "v0.9 M1 Transport Interface 도입 + LocalTransport 래핑 (S1). Plan: docs/plans/remote-fs-transport-m1-m2.md (approved). Design: docs/designs/remote-fs-transport.md §2.2 rev. M1.",
     "complexity": "complex",
-    "status": "running",
+    "status": "completed",
     "phases": [
       {
         "name": "C1 Baseline 커밋",
         "role": "Orchestrator",
-        "status": "running",
-        "startedAt": "2026-04-21T05:20:25.700Z"
+        "status": "completed",
+        "startedAt": "2026-04-21T05:20:25.700Z",
+        "result": "PASS — 35bcd58 commit + push (c16590f..35bcd58). v0.3.2 c6f0422도 같이 원격 반영.",
+        "completedAt": "2026-04-21T05:21:20.487Z"
       },
       {
         "name": "C2 Transport 신규 파일",
         "role": "Generator",
-        "status": "pending"
+        "status": "completed",
+        "result": "PASS — ac6a5dc. 4 신규 파일 258 줄. typecheck PASS.",
+        "completedAt": "2026-04-21T05:24:22.085Z"
       },
       {
         "name": "C3 IPC 위임 수정",
         "role": "Generator",
-        "status": "pending"
+        "status": "completed",
+        "result": "PASS — 39310b9. 7 파일 88/22 diff. typecheck PASS, drift-smoke 21/21 PASS 회귀 0. project:scan-docs 는 M1 스코프 제외 (문서화).",
+        "completedAt": "2026-04-21T05:28:59.322Z"
       },
       {
         "name": "C4 테스트 작성",
         "role": "Generator",
-        "status": "pending"
+        "status": "completed",
+        "result": "PASS — 81edc9e. 3 신규 테스트 파일 29 케이스 / 29 PASS. 전체 스위트 회귀 0 (126/136 PASS, 10 pre-existing).",
+        "completedAt": "2026-04-21T05:30:40.210Z"
       },
       {
         "name": "Evaluator 검증",
         "role": "Evaluator",
-        "status": "pending"
+        "status": "completed",
+        "startedAt": "2026-04-21T05:30:40.904Z",
+        "result": "CONDITIONAL PASS — Major 1(project:scan-docs 미위임 → Plan defer·Known Gap 이관) + Minor 2(interface watcher/exec optional·scanDocs import 잔류). Fix 완료 47fd29c.",
+        "completedAt": "2026-04-21T05:35:35.146Z"
       },
       {
         "name": "Fix (필요 시)",
         "role": "Generator",
-        "status": "pending"
+        "status": "completed",
+        "result": "PASS — Plan defer + 설계서 optional + Known Gap 이관 (47fd29c). push 완료.",
+        "completedAt": "2026-04-21T05:35:36.600Z"
       }
     ],
     "createdAt": "2026-04-21T05:20:15.919Z",
-    "updatedAt": "2026-04-21T05:20:25.700Z"
+    "updatedAt": "2026-04-21T05:35:36.600Z"
   }
 }
