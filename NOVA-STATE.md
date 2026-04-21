@@ -1,12 +1,13 @@
 # Nova State
 
 ## Current
-- **Goal**: v0.2 drift 감지 — 기능 완성 + 사용자 피드백 기반 UX 수습 완료
-- **Phase**: built + 사용자 실기 사이클 반복으로 false-positive·UX 이슈 수습 완료
+- **Goal**: v0.3 이미지 뷰어 MVP 완료 — Markwand를 "md 뷰어" → "Viewable Asset 큐레이터"로 확장
+- **Phase**: v0.3 S1+S2 구현·독립 Evaluator 2회 통과·GUI 실측 PASS. app:// URL 계약 정정으로 SafeImage 잠재 버그 동반 해소.
 - **Blocker**: none
-- **Remote**: git@github-givepro91:givepro91/markwand.git (main) — push 대기 (이 세션 13커밋 추가)
-- **Active Plan**: docs/plans/markwand-context-composer-mvp.md (일부 스코프 피벗됨)
-- **Active Design**: docs/designs/markwand-context-composer.md (일부 스코프 피벗됨)
+- **Remote**: git@github-givepro91:givepro91/markwand.git (main) — 이 세션 4 커밋 추가 (docs + S1 + IPC guards + S2 URL 계약). push 예정.
+- **Active Plan**: docs/plans/image-viewer-mvp.md (v0.3 — S1+S2 완료)
+- **Active Design**: docs/designs/remote-fs-transport.md (v1.0 SSH — 설계만, 구현 대기)
+- **Prior Plan/Design**: docs/plans/markwand-context-composer-mvp.md, docs/designs/markwand-context-composer.md (v0.2 — 일부 스코프 피벗)
 
 ## Scope Pivot (2026-04-20)
 - **Drop**: `Send to Claude Code`·`Send to Codex` 자동 런칭, codex-launcher, context-builder, AppleScript Composer 모드
@@ -38,9 +39,9 @@
 ## Recently Done (최근 3개)
 | Task | Completed | Verdict | Ref |
 |------|-----------|---------|-----|
+| v0.3 이미지 뷰어 MVP — S1 Data Path + S2 Viewer Route + ImageViewer + `app://local/<path>` URL 계약 정정 (Chromium host 소문자 정규화 우회) + SafeImage 동반 fix | 2026-04-21 | PASS | `7ccb1e7`/`156a1ae`/`426d2d1` |
+| docs(plans,designs) — v0.3 `image-viewer-mvp` Plan + v1.0 `remote-fs-transport` SSH Transport Design 작성 (675 lines, Explorer 조사 기반) | 2026-04-21 | PASS | `a20826d` |
 | GitHub 원격 초기 푸시 (markwand repo, id_rsa 강제 지정으로 jay-swk/givepro91 키 충돌 우회) | 2026-04-20 | PASS | github:givepro91/markwand |
-| 문서 내 검색 커스텀 구현 (TreeWalker + CSS Highlight API, Electron findInPage 대체) + SafeImage fallback | 2026-04-20 | CONDITIONAL PASS | perf/UX |
-| 문서 내 검색 next 버튼 딜레이 최적화 (MarkdownViewer memo + components useMemo + slugCounter 클로저化) | 2026-04-20 | CONDITIONAL PASS | /nova:review perf |
 
 ## Known Risks
 | 위험 | 심각도 | 실측치 | 상태 |
@@ -71,6 +72,13 @@
 | **drift — 코드 파일 변경 자동 감지** | watcher 가 `.md` 만 감시 → 코드 수정 시 stale 배지 자동 갱신 X. 수동 재검증 또는 문서 저장이 트리거 | v0.3 Medium |
 | **drift — mtime 정밀도 / git checkout** | FAT32·동일-초 내 저장 시 ok 오판 / git checkout 이 mtime 덮어써 stale 오판. content hash 기반 판정 필요 | v0.3 Low |
 | **사이드바 리사이즈 a11y** | `role="separator"` 만 있고 `aria-valuenow/min/max` 부재. 키보드(↑↓/←→)로 폭 조절 미지원. VoiceOver 사용자는 현재 폭 인지 및 조작 불가 | v0.3 Low |
+| **Composer 이미지 `@ref` 허용** | ComposerTray/estimateTokens가 이미지 Doc 선택을 차단하지 않음. `@/path/image.png` 복사가 Claude Code에서 무의미하거나 토큰 낭비 — 선택 차단 or 별도 toast 필요 | v0.3.1 Medium |
+| **`updatedRange` 필터 이미지 포함** | InboxView·AllProjectsView의 날짜 필터가 frontmatter 무관이라 이미지도 "오늘/7일/30일" 목록에 섞임. 의도인지 결정 후 classifyAsset 가드 | v0.3.1 Medium |
+| **ImageIcon a11y** | FileTree의 새 ImageIcon이 `aria-hidden="true"`라 스크린리더에 파일 종류(md vs image) 미전달. aria-label 혹은 visually-hidden span 필요 | v0.3.1 Low |
+| **ImageViewer 라디오 그룹 arrow-key** | `role="radio"` 부여했으나 ←/→ 이동 핸들러 없음. Tab/Enter만 동작. WAI-ARIA 계약 위반 | v0.3.1 Low |
+| **체스보드 대비 토큰** | ImageViewer 투명 영역 인지용 체스보드를 `--bg`/`--bg-elev`로 그림 — 라이트/다크 모두 두 토큰 차이가 작아 거의 단색. 고정 대비 토큰 `--image-checker-a/b` 신설 필요 | v0.3.1 Low |
+| **watcher change 이벤트 size 미갱신** | FsChangeEvent에 size 없음. 사용자가 이미지를 편집 저장하면 mtime은 갱신되나 Doc.size는 스캔 시점 값으로 고정 → ImageViewer 푸터가 stale bytes 표시 | v0.3.1 Low |
+| **FileTree 파일 정렬 — md vs image interleave** | buildTree가 알파벳 기본 정렬이라 md와 이미지가 섞임. "문서 먼저, 이미지 나중" 정책 or 타입별 그룹핑 옵션 필요 (Plan R3 이연) | v0.3.1 Low |
 
 ## 규칙 우회 이력 (감사 추적)
 | 날짜 | 커맨드 | 우회 이유 | 사후 조치 |
@@ -80,6 +88,10 @@
 > --emergency 플래그 사용 또는 Evaluator 건너뛸 때 반드시 기록. 미기록 = Hard-Block.
 
 ## Last Activity
+- feat(viewer): ImageViewer + ProjectView 라우팅 + `app://local/<path>` URL 계약 정정 (`7ccb1e7`) — Chromium custom scheme host 소문자 정규화 우회. path 세그먼트를 host에 두면 `/Users/...`가 `users/...`로 변환되어 workspace `startsWith` 비교가 항상 실패하는 증상. 고정 host `local` + pathname 대소문자 보존. SafeImage도 동일 버그여서 동반 fix. Evaluator FAIL(C1 URL 인코딩 `#` 미처리·C2 errored path 변경 고착)→반영→PASS. GUI 실측 이미지 3개 렌더 확인.
+- fix(ipc): fs:read-doc · drift:verify가 이미지 경로 거부 (`156a1ae`) — Evaluator M1·M2. 2MB 미만 이미지 바이너리가 utf-8로 읽혀 matter() 파싱되던 경로 차단 (NOT_A_TEXT_DOC / emptyReport).
+- feat(viewable): 이미지 확장자를 1급 viewable asset으로 승격 (`426d2d1`) — S1 Data Path. src/lib/viewable.ts 신규(VIEWABLE_EXTS/classifyAsset/VIEWABLE_GLOB) + scanner/watcher/useDocs/FileTree/preload Doc.size. md 기존 흐름 회귀 0.
+- docs(plans,designs): v0.3 이미지 MVP Plan + v1.0 SSH Remote FS Transport Design (`a20826d`) — CPS 구조 + 변경 지점 파일:라인 표 + Transport 4계층 아키텍처 + M1~M8 로드맵 + Open Question 4건. 구현 없이 설계만. | 2026-04-21T
 - feat(sidebar): 파일명 잘림 해결 — FileTree title 툴팁 + ProjectView 리사이즈 핸들(180~600 clamp, 기본 260, prefs 영속). pointer API + setPointerCapture + rAF throttle + pointercancel 원복 + IPC race guard + unmountedRef(StrictMode 재마운트 리셋 포함). 4 파일 수정(validators.ts allowlist, FileTree.tsx, ProjectView.tsx, globals.css). /nova:auto → Evaluator CONDITIONAL→반영 → Reviewer Critical 2건(listener 누수·setPointerCapture) 반영 → StrictMode 버그 추가 수정. Known Gap: a11y 키보드 리사이즈·aria-valuenow 미지원. | 2026-04-21T
 - feat(drift): DriftPanel "📋 이슈 복사" 버튼 — missing/stale 참조를 AI 프롬프트 형식으로 클립보드 복사. buildCopyIssuesPrompt 순수 함수 + 섹션/꼬리 3-way 분기(missing-only·stale-only·both) + ignored 제외 + targetMtime undefined fallback + raw 백틱 이스케이프. /nova:auto → Evaluator CONDITIONAL(Critical 0, Major 2는 pre-existing 스코프 밖) → Review PASS. typecheck/build PASS. (`3d17d00`) | 2026-04-21T
 - fix(drift): 위치로 이동 — inline 백틱 스트립 (`1711d5e`) | 2026-04-21T
@@ -114,11 +126,13 @@
 - /nova:auto --deep → PASS — md-viewer MVP v0.1 (53파일 신규, Plan/Design+Dev 2 Wave+QA 2 Wave+Fix 2 Wave) | 2026-04-20T03:18Z
 
 ## Refs
-- **Current Plan**: docs/plans/markwand-context-composer-mvp.md (Context Composer MVP)
-- **Current Design**: docs/designs/markwand-context-composer.md
+- **Current Plan**: docs/plans/image-viewer-mvp.md (v0.3 Viewable Asset — S1+S2 완료)
+- **Current Design**: docs/designs/remote-fs-transport.md (v1.0 SSH Transport — 설계만, M1~M8 로드맵)
+- Prior Plan: docs/plans/markwand-context-composer-mvp.md (v0.2 Context Composer, 일부 스코프 피벗)
+- Prior Design: docs/designs/markwand-context-composer.md (v0.2)
 - Prior Plan: docs/plans/md-viewer-mvp.md (v0.1 완료)
 - Prior Design: docs/designs/md-viewer-mvp.md (v0.1 완료)
-- Last Verification: v0.1 Wave 2 Fix 후 빌드/typecheck/main 프로세스 12초 정상 실행 (크래시 0건)
+- Last Verification: v0.3 S2 GUI 실측 PASS — `pnpm dev` + 이미지 3개 렌더 확인 (2026-04-21, Chromium host normalization 이슈 해소 후)
 - Orchestration ID: orch-mo6k958z-f1gh (v0.1)
 
 ## 다음 단계 (사용자 액션)
