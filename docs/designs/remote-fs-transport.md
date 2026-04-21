@@ -161,8 +161,10 @@ export interface Transport {
   kind: 'local' | 'ssh'
   fs: FsDriver
   scanner: ScannerDriver
-  watcher: WatcherDriver
-  exec: ExecDriver
+  // rev. M1 (2026-04-21) — M1 단계에서는 watcher(M4)/exec(M6)가 아직 없으므로 optional.
+  // M4/M6 완료 시 각 transport 가 제공 — 그 시점에도 optional 유지해 미구현 transport 수용.
+  watcher?: WatcherDriver
+  exec?: ExecDriver
   dispose(): Promise<void>   // 연결 종료
 }
 ```

@@ -2,7 +2,7 @@
 
 ## Current
 - **Goal**: v0.9 로컬 이득 선행 — M1 Transport Interface + M2 Hash 보조 도입. v1.0 SSH M3+는 v0.3 피드백 1~2 사이클 후 별도 Plan.
-- **Phase**: Plan 승인 완료(U-M2-1 2026-04-21 사용자 승인 — 옵션 B: hash는 보조 필드로만 도입, 진짜 mtime→hash 판정 전환은 별도 Plan). S1(M1 Transport, 2일) → S2(M2 Hash 보조, 0.5일) → S3(Bench, 0.5일). 다음 `/nova:auto` 또는 `/nova:run`으로 S1 착수.
+- **Phase**: **S1 M1 Transport 완료(CONDITIONAL PASS)**. 다음 S2(M2 Hash 보조) + S3(Bench). S1 잔여: RM-7 project:scan-docs 미위임 — M4 watcher 작업과 묶어 처리(Known Gap 이관).
 - **Blocker**: none
 - **Remote**: git@github-givepro91:givepro91/markwand.git (main) — v0.3.2 커밋(`c6f0422`) push 여부 미확인. 이 세션은 Plan 문서 1건 + NOVA-STATE 갱신.
 - **Active Plan**: **docs/plans/remote-fs-transport-m1-m2.md** (v0.9 M1·M2 선행, draft)
@@ -81,6 +81,7 @@
 | ~~**watcher change 이벤트 size 미갱신**~~ | ~~FsChangeEvent에 size 없음. 사용자가 이미지를 편집 저장하면 mtime은 갱신되나 Doc.size는 스캔 시점 값으로 고정 → ImageViewer 푸터가 stale bytes 표시~~ | ~~v0.3.1 Low~~ ✅ 해소 v0.3.2: FsChangeEvent.size 추가 + watcher fs.stat(st.isFile() 가드·ENOENT catch·undefined 허용) + useDocs updateDoc patch에 size 포함(0 byte도 반영) |
 | ~~**FileTree 파일 정렬 — md vs image interleave**~~ | ~~buildTree가 알파벳 기본 정렬이라 md와 이미지가 섞임. "문서 먼저, 이미지 나중" 정책 or 타입별 그룹핑 옵션 필요 (Plan R3 이연)~~ | ~~v0.3.1 Low~~ ✅ 해소 v0.3.2: compareTreeNodes(dir→md→image→기타, doc.path 기반 분류) + sortTreeRecursively. V8 stable sort |
 | **FsChangeEvent mtime 누락 (size 전파와 일관성)** | change 이벤트가 `mtime`을 실어 보내지 않아 useDocs가 `Date.now()`로 대체. awaitWriteFinish + debounce(300ms) 지연으로 실제 fs mtime과 차이. rescan 후 정렬 순서 미세 불일치 가능 (Evaluator M-3, v0.3.2 스코프 밖) | v0.4 Low |
+| **`project:scan-docs` IPC Transport 미위임** | v0.9 M1 Evaluator Major (2026-04-21): `services/scanner.ts`의 Doc chunk 스트리밍 로직(frontmatter 파싱+청크 분할)이 LocalScannerDriver에 이식되지 않아 handler가 `services/scanner.scanDocs`를 직접 호출. 내부 `fs.promises.stat`이 localTransport 우회 → M1 완결성 갭. Refactor 방향: `LocalScannerDriver.scanDocsAsDocs` 헬퍼 신설 또는 Doc composition을 IPC 핸들러로 끌어올림. M4 watcher 도입과 묶어 처리. | **v0.9 M1.x Medium (RM-7)** |
 
 ## 규칙 우회 이력 (감사 추적)
 | 날짜 | 커맨드 | 우회 이유 | 사후 조치 |
@@ -90,6 +91,7 @@
 > --emergency 플래그 사용 또는 Evaluator 건너뛸 때 반드시 기록. 미기록 = Hard-Block.
 
 ## Last Activity
+- /nova:auto → CONDITIONAL PASS — v0.9 M1 Transport Interface + LocalTransport 래핑 (S1 완료). 4 커밋(baseline 35bcd58 · C2 신규 파일 ac6a5dc · C3 IPC 위임 39310b9 · C4 테스트 81edc9e + fix) 원격 push 완료. typecheck PASS · drift-smoke 21/21 PASS · 신규 29 테스트 PASS · 전체 136 tests(126 PASS, 10 pre-existing fail). **Evaluator 판정**(nova:senior-dev, 실증 기반): CONDITIONAL PASS — Major 1(`project:scan-docs` 미위임 — Plan §M1.3 defer·Known Gap 이관, M4 watcher 작업과 묶어 처리) + Minor 2(설계서 Transport.watcher/exec optional 조정·scanDocs import 잔류). **Known Risk Hard 동시 해소**: `fs:read-doc 파일 크기 무제한` → FsDriver.readFile({maxBytes:2MB}) size-first 계약. **Scope Guard 준수**: ssh2/hash/sha256 0건. 순환 import 0건. assertInWorkspace `{posix?:boolean}` opt 추가(M3 사전 계약, 사용처 0). workspace.transport: {type:'local'} 필드 lazy 마이그레이션. Orchestration orch-mo86dcfj-bdu2. | 2026-04-21T
 - /nova:deepplan → PASS — docs/plans/remote-fs-transport-m1-m2.md (v0.9 M1·M2 선행, Mode: deep, Iterations: 1). Explorer×3 병렬(43 FS 호출 지점 전수조사 · 5 hot path 성능 영향 +1~3% 추정 · sha256/전체 content/인메모리 Map 캐시) → Synthesizer 20파일·3일 추정 → Critic(nova:architect) CONDITIONAL PASS · 5 수정 지시 반영 → Refiner. **주요 발견**: M2 순수 hash 치환은 mtime 기반과 등가 불가(doc 기준점 ref hash 저장 없이는 stale 판정 불가능) → S2 범위 축소(hash는 보조 필드만). 설계서 §2.2 rev. M1 선수정(detectWorkspaceMode + readFile maxBytes 계약). Known Risk `fs:read-doc 무제한` Hard는 M1에서 동시 해소. U-M2-1 사용자 승인 필요. | 2026-04-21T
 - /nova:ux-audit → Critical 1 / High 16 / Medium 0 / Low 0 — docs/designs/remote-fs-transport.md §9 Q2~Q4. **5 jury 만장일치 합의**: Q2 readonly 엄수(5/5), Q3 (c) hybrid(로컬 N개 + 원격 active 1 + warm 1, 5/5), Q4 (c) M1·M2 즉시 착수 + M3~ v0.3 피드백 1~2사이클 후 feature flag(4.5/5). Design Contract DC-1~DC-7 도출(write boundary · concurrency · status·a11y · trust · perf budget · phasing · verification). Q1 고정: 사용자 SSH config 분석 기반 (b)+(a) 시나리오, 제품은 3시나리오 모두 수용·하드코딩 금지. 다음 단계 /nova:deepplan로 M1·M2 Plan 작성. | 2026-04-21T
 - fix(v0.3.2): 남은 Known Gap 4건 해소 + 중복 `applyMetaFilter` 단일 소스화 (pending). (1) **updatedRange 이미지 제외** — docFilters.ts `classifyAsset==='md'` AND 가드(활성 범위에서만, 'all'일 땐 이미지 유지). ProjectView의 로컬 복제본 제거 → utils import. (2) **ImageViewer radiogroup arrow-key** — ←/→/↑/↓ 순환, Home/End, roving tabindex(active 0, 나머지 -1), radioRefs로 focus+select 동시 전이. (3) **watcher size 전파** — FsChangeEvent.size 추가, sendChange에서 `fs.stat` → isFile() 가드, ENOENT는 undefined로 fallback(silent). useDocs에서 patch에 size 포함(0 byte도 반영). (4) **FileTree 타입별 정렬** — compareTreeNodes(dir→md→image→기타, `doc.path` 기반) + sortTreeRecursively, V8 stable sort. 독립 Evaluator CONDITIONAL PASS(Critical 0, Major 3): M-1(name→doc.path) 반영, M-2(tags+updatedRange 복합 테스트) 반영, M-3(mtime 일관성)은 스코프 밖 → v0.4 Known Gap 이관. 8 파일 수정(docFilters.ts/docFilters.test.ts/ProjectView.tsx/ImageViewer.tsx/FileTree.tsx/useDocs.ts/types.ts/watcher.ts). typecheck PASS, docFilters 테스트 34건 PASS. | 2026-04-21T
