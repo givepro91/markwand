@@ -20,6 +20,10 @@ export interface VerifiedReference extends Reference {
   targetMtime?: number
   // target 이 디렉토리이면 true. 디렉토리는 내부 추가·삭제로 mtime 이 항상 갱신되므로 stale 판정 제외.
   isDirectory?: boolean
+  // M2 (2026-04-21, U-M2-1 사용자 승인 scope): target 파일 content 의 sha256 hex.
+  // verify 시점에 계산해 감사/디버깅용으로만 기록. 현재 ok/stale 판정에는 사용하지 않음 —
+  // 판정은 mtime 기반 유지 (Plan §S2 축소안). 디렉토리는 undefined, 파일 읽기 실패 시 undefined.
+  hashAtCheck?: string
 }
 
 export interface DriftReport {

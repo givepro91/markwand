@@ -2,6 +2,7 @@ import { ipcMain } from 'electron'
 import { z } from 'zod'
 import { extractReferences } from '../../lib/drift/extractor'
 import type { DriftReport, DriftStatus, Reference, VerifiedReference } from '../../lib/drift/types'
+import { contentHash } from '../../lib/drift/hash'
 import { getStore } from '../services/store'
 import { assertInWorkspace } from '../security/validators'
 import { classifyAsset } from '../../lib/viewable'
@@ -67,15 +68,15 @@ export function registerDriftHandlers(): void {
     // resolvedPath 를 실제 선택된 경로로 덮어써서 UI "Finder 열기" 가 정확한 파일을 가리키도록.
     async function statWithFallback(
       ref: Reference
-    ): Promise<{ path: string; mtimeMs: number; isDirectory: boolean } | null> {
+    ): Promise<{ path: string; mtimeMs: number; size: number; isDirectory: boolean } | null> {
       try {
         const s = await localTransport.fs.stat(ref.resolvedPath)
-        return { path: ref.resolvedPath, mtimeMs: s.mtimeMs, isDirectory: s.isDirectory }
+        return { path: ref.resolvedPath, mtimeMs: s.mtimeMs, size: s.size, isDirectory: s.isDirectory }
       } catch {}
       if (ref.fallbackPath) {
         try {
           const s = await localTransport.fs.stat(ref.fallbackPath)
-          return { path: ref.fallbackPath, mtimeMs: s.mtimeMs, isDirectory: s.isDirectory }
+          return { path: ref.fallbackPath, mtimeMs: s.mtimeMs, size: s.size, isDirectory: s.isDirectory }
         } catch {}
       }
       return null
@@ -90,12 +91,28 @@ export function registerDriftHandlers(): void {
           : hit.mtimeMs > docMtime
             ? 'stale'
             : 'ok'
+
+        // M2 hash 보조 계산 — 판정에는 사용하지 않음 (U-M2-1 사용자 승인 scope). 감사/디버깅용.
+        // 디렉토리·크기 초과·읽기 실패는 silent undefined fallback (DriftReport 안정성 우선).
+        let hashAtCheck: string | undefined
+        if (!hit.isDirectory && hit.size <= MAX_DRIFT_FILE_BYTES) {
+          try {
+            hashAtCheck = await contentHash(localTransport.fs, hit.path, {
+              mtimeMs: hit.mtimeMs,
+              size: hit.size,
+            })
+          } catch {
+            // IO 실패는 hashAtCheck undefined. 판정에 영향 없음.
+          }
+        }
+
         return {
           ...ref,
           resolvedPath: hit.path,
           status,
           targetMtime: hit.mtimeMs,
           isDirectory: hit.isDirectory,
+          ...(hashAtCheck !== undefined ? { hashAtCheck } : {}),
         }
       })
     )
