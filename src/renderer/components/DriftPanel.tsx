@@ -37,6 +37,15 @@ function relativePath(abs: string, root: string): string {
   return abs
 }
 
+// "위치로 이동" 시 뷰어에서 find 할 검색어 — 백틱을 제거해 실제 본문 텍스트와 매치되게.
+// - inline: `utils/helper.ts` → utils/helper.ts
+// - at:     @/path (그대로)
+// - hint:   // src/foo.ts (전체 라인 — 코드블록 내 주석 라인 전체와 매치)
+function getSearchText(raw: string, kind: string): string {
+  if (kind === 'inline') return raw.replace(/^`+|`+$/g, '')
+  return raw
+}
+
 export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProps) {
   const report = useAppStore((s) => s.driftReports[docPath])
   const ignoredList = useAppStore((s) => s.ignoredDriftRefs[docPath])
@@ -269,7 +278,7 @@ export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProp
                 projectRoot={projectRoot}
                 ignored={ignored.has(ref.resolvedPath)}
                 onToggleIgnore={() => toggleIgnoredRef(docPath, ref.resolvedPath)}
-                onJump={onJumpToRef ? () => onJumpToRef(ref.raw) : undefined}
+                onJump={onJumpToRef ? () => onJumpToRef(getSearchText(ref.raw, ref.kind)) : undefined}
               />
             ))}
           </ul>
