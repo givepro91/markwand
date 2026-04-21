@@ -17,6 +17,8 @@ export const ALLOWED_PREFS_KEYS = new Set([
   'activeWorkspaceId',
   'readDocs',
   'viewLayout',
+  'trackReadDocs',
+  'hints.cmdk.seen',
   // Composer (v0.2)
   'composerOnboardingSeen',
   'composerAutoClear',

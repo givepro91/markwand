@@ -181,17 +181,20 @@ export function DriftPanel({ docPath, projectRoot }: DriftPanelProps) {
           )}
         </div>
         <span style={{ flex: 1 }} />
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={(e) => {
-            e.stopPropagation()
-            handleRevalidate()
-          }}
-          disabled={revalidating}
+        {/* 헤더 div 의 토글 onClick 이 Button에 번지지 않도록 wrapping span 에서 stopPropagation */}
+        <span
+          onClick={(e) => e.stopPropagation()}
+          style={{ display: 'inline-flex' }}
         >
-          {revalidating ? '검증 중…' : '재검증'}
-        </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={handleRevalidate}
+            disabled={revalidating}
+          >
+            {revalidating ? '검증 중…' : '재검증'}
+          </Button>
+        </span>
       </div>
 
       {revalidateError && (

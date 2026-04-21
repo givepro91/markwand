@@ -55,14 +55,15 @@ export interface FsChangeEvent {
 }
 
 // Drift Verifier — 단일 진실 공급원은 src/lib/drift/types.ts.
-// preload는 순수 type 파일만 re-export 하므로 런타임 의존 없음 (순환 안전).
-export type {
+// preload는 순수 type 파일만 import 후 re-export 하므로 런타임 의존 없음 (순환 안전).
+import type {
   DriftStatus,
   VerifiedReference,
   DriftReport,
   Reference,
   ReferenceKind,
 } from '../lib/drift/types'
+export type { DriftStatus, VerifiedReference, DriftReport, Reference, ReferenceKind }
 
 export interface ClaudeCheckResult {
   available: boolean

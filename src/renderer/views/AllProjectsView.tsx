@@ -5,10 +5,9 @@ import { ProjectRow } from '../components/ProjectRow'
 import { FilterBar } from '../components/FilterBar'
 import { InboxItem } from '../components/InboxItem'
 import { EmptyState, StatusMessage, Button, IconButton } from '../components/ui'
-import { useAppStore, type MetaFilter } from '../state/store'
-import { applyMetaFilter, buildDocGroups, type GroupByField } from '../utils/docFilters'
-import type { Doc, Project } from '../../../src/preload/types'
-import type { SortOrder, ViewLayout } from '../../../src/preload/types'
+import { useAppStore } from '../state/store'
+import { applyMetaFilter, buildDocGroups, sortDocsByOrder, type GroupByField } from '../utils/docFilters'
+import type { Project, SortOrder, ViewLayout } from '../../../src/preload/types'
 
 interface AllProjectsViewProps {
   workspaceId: string | null
