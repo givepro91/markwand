@@ -74,20 +74,22 @@ export function DriftPanel({ docPath, projectRoot }: DriftPanelProps) {
     }
   }, [docPath, projectRoot, setDriftReport])
 
-  // 렌더 결정: 참조 없으면 숨김, ok만 있으면 조용한 초록 배지 한 줄
-  if (!report || report.references.length === 0) return null
-  const counts = effectiveCounts!
-  const hasIssues = counts.missing > 0 || counts.stale > 0
-  const totalRefs = report.references.length
-
-  // 정렬: missing → stale → ok, 각 내부는 line 오름차순
+  // 정렬은 early-return 전에 선언. React hook 규칙: 모든 hook 은 동일 순서로 호출되어야 함.
+  // (과거 sortedRefs useMemo 가 return null 뒤에 있어 "Rendered fewer hooks than expected" 크래시 발생했음)
   const sortedRefs = useMemo(() => {
+    if (!report) return []
     const order: Record<DriftStatus, number> = { missing: 0, stale: 1, ok: 2 }
     return [...report.references].sort((a, b) => {
       const d = order[a.status] - order[b.status]
       return d !== 0 ? d : a.line - b.line
     })
   }, [report])
+
+  // 렌더 결정: 참조 없으면 숨김, ok만 있으면 조용한 초록 배지 한 줄
+  if (!report || report.references.length === 0) return null
+  const counts = effectiveCounts!
+  const hasIssues = counts.missing > 0 || counts.stale > 0
+  const totalRefs = report.references.length
 
   return (
     <div

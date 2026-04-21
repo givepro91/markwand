@@ -18,6 +18,29 @@ function normalizeUpdated(value: unknown): number | undefined {
   return undefined
 }
 
+// tags 는 string[] 을 계약으로 하지만 사용자가 YAML에 단일 문자열/쉼표구분/null 로 쓸 수 있다.
+// FilterBar 가 Array iterate 를 전제하므로 반드시 배열로 정규화해야 한다.
+// (정규화 안 할 경우 `tags: "backend"` 가 `['b','a','c','k','e','n','d']` 로 문자 단위 분해되어 필터칩이 깨짐)
+function normalizeTags(value: unknown): string[] | undefined {
+  if (value == null) return undefined
+  if (Array.isArray(value)) {
+    const arr = value
+      .filter((v): v is string | number => typeof v === 'string' || typeof v === 'number')
+      .map((v) => String(v).trim())
+      .filter((s) => s.length > 0)
+    return arr.length > 0 ? arr : undefined
+  }
+  if (typeof value === 'string') {
+    const arr = value
+      .split(/[,\n]+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0)
+    return arr.length > 0 ? arr : undefined
+  }
+  // 다른 타입(object/number 등) 은 버림 — 계약 위반 입력은 삭제가 안전.
+  return undefined
+}
+
 export async function parseFrontmatter(absPath: string): Promise<DocFrontmatter | undefined> {
   try {
     const fd = await fs.promises.open(absPath, 'r')
@@ -33,6 +56,12 @@ export async function parseFrontmatter(absPath: string): Promise<DocFrontmatter 
         fm.updated = updatedNormalized
       } else {
         delete fm.updated
+      }
+      const tagsNormalized = normalizeTags(data.tags)
+      if (tagsNormalized !== undefined) {
+        fm.tags = tagsNormalized
+      } else {
+        delete fm.tags
       }
       return fm
     } finally {

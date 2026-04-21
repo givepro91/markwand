@@ -4,6 +4,7 @@ import { EmptyState, StatusMessage, ToastHost, toast } from './components/ui'
 import { ComposerTray } from './components/ComposerTray'
 import { ComposerOnboarding } from './components/ComposerOnboarding'
 import { CommandPalette } from './components/CommandPalette'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { useWorkspace } from './hooks/useWorkspace'
 import { useViewMode } from './hooks/useViewMode'
 import { useDrift } from './hooks/useDrift'
@@ -346,28 +347,30 @@ export default function App() {
       <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         {showOnboarding && <ComposerOnboarding onDismiss={handleDismissOnboarding} />}
         <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
-          <Suspense fallback={<ViewFallback />}>
-            {viewMode === 'all' && (
-              <AllProjectsView
-                workspaceId={activeWorkspaceId}
-                onOpenProject={handleOpenProject}
-              />
-            )}
-            {viewMode === 'inbox' && (
-              <InboxView
-                workspaceId={activeWorkspaceId}
-                onOpenDoc={handleOpenDocFromInbox}
-              />
-            )}
-            {viewMode === 'project' && activeProject && (
-              <ProjectView
-                key={activeProject.id}
-                projectId={activeProject.id}
-                projectRoot={activeProject.root}
-                projectName={activeProject.name}
-              />
-            )}
-          </Suspense>
+          <ErrorBoundary resetKey={`${viewMode}:${activeProject?.id ?? ''}`}>
+            <Suspense fallback={<ViewFallback />}>
+              {viewMode === 'all' && (
+                <AllProjectsView
+                  workspaceId={activeWorkspaceId}
+                  onOpenProject={handleOpenProject}
+                />
+              )}
+              {viewMode === 'inbox' && (
+                <InboxView
+                  workspaceId={activeWorkspaceId}
+                  onOpenDoc={handleOpenDocFromInbox}
+                />
+              )}
+              {viewMode === 'project' && activeProject && (
+                <ProjectView
+                  key={activeProject.id}
+                  projectId={activeProject.id}
+                  projectRoot={activeProject.root}
+                  projectName={activeProject.name}
+                />
+              )}
+            </Suspense>
+          </ErrorBoundary>
           {viewMode === 'project' && !activeProject && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
               <EmptyState
