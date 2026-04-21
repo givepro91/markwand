@@ -4,6 +4,7 @@ import type { NodeApi, TreeApi } from 'react-arborist'
 import type { Doc } from '../../../src/preload/types'
 import { useAppStore } from '../state/store'
 import { Checkbox } from './ui'
+import { classifyAsset } from '../../lib/viewable'
 
 interface TreeNode {
   id: string
@@ -99,6 +100,19 @@ const FileIcon = () => (
   </svg>
 )
 
+// 이미지 파일을 md와 시각 구분하기 위한 16px 아이콘. 사각 프레임 + 산/해 실루엣.
+const ImageIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+    <rect x="1.5" y="2.5" width="13" height="11" rx="1" />
+    <circle cx="5.5" cy="6" r="1" fill="currentColor" stroke="none" />
+    <path d="M2 12l3.5-3.5 3 3 2.5-2.5L14 12" />
+  </svg>
+)
+
+function getAssetIcon(name: string) {
+  return classifyAsset(name) === 'image' ? <ImageIcon /> : <FileIcon />
+}
+
 function FileTreeNode({ node, style }: { node: NodeApi<TreeNode>; style: React.CSSProperties }) {
   const isDir = !!node.data.children || node.isInternal
   const isSelected = node.isSelected
@@ -164,7 +178,7 @@ function FileTreeNode({ node, style }: { node: NodeApi<TreeNode>; style: React.C
           alignItems: 'center',
         }}
       >
-        {isDir ? <FolderIcon open={node.isOpen} /> : <FileIcon />}
+        {isDir ? <FolderIcon open={node.isOpen} /> : getAssetIcon(node.data.name)}
       </span>
       <span
         title={node.data.name}

@@ -39,6 +39,8 @@ export interface Doc {
   projectId: string
   name: string
   mtime: number
+  // 바이트 크기. scanner가 stat 시 채움. ImageViewer 푸터에서 사용.
+  size?: number
   frontmatter?: DocFrontmatter
 }
 

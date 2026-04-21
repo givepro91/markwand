@@ -4,6 +4,7 @@ import { createHash } from 'crypto'
 import fg from 'fast-glob'
 import matter from 'gray-matter'
 import type { Project, Doc, DocFrontmatter, WorkspaceMode } from '../../preload/types'
+import { VIEWABLE_GLOB, classifyAsset } from '../../lib/viewable'
 
 const HEADER_READ_BYTES = 4096
 
@@ -238,17 +239,18 @@ export async function scanProjects(
 }
 
 /**
- * 단일 프로젝트의 .md 개수만 빠르게 센다 (ProjectCard 표시용).
+ * 단일 프로젝트의 viewable asset(md + 이미지) 개수를 빠르게 센다 (ProjectCard 표시용).
  * scanDocs와 동일한 ignore 패턴이지만 stat 호출 없이 카운트만 한다.
  */
 export async function countDocs(projectRoot: string): Promise<number> {
-  const stream = fg.stream('**/*.md', {
+  const stream = fg.stream(VIEWABLE_GLOB, {
     cwd: projectRoot,
     ignore: SCAN_IGNORE_PATTERNS,
     onlyFiles: true,
     followSymbolicLinks: false,
     suppressErrors: true,
-    dot: true, // .secret/ 등 hidden 폴더 안의 .md도 포함
+    dot: true, // .secret/ 등 hidden 폴더 안의 파일도 포함
+    caseSensitiveMatch: false, // .PNG/.JPG 등 대문자 확장자 허용
   })
   let count = 0
   for await (const _ of stream) count++
@@ -256,21 +258,24 @@ export async function countDocs(projectRoot: string): Promise<number> {
 }
 
 /**
- * 프로젝트 루트 하위의 모든 .md 파일을 fast-glob으로 스캔한다.
+ * 프로젝트 루트 하위의 모든 viewable asset(md + 이미지)을 fast-glob으로 스캔한다.
  * 50개씩 청크로 반환하는 async generator.
+ * - md: frontmatter 파싱
+ * - 이미지: frontmatter 없음 (스킵하여 네트워크/IO 절약)
  */
 export async function* scanDocs(
   projectId: string,
   projectRoot: string,
   chunkSize = 50
 ): AsyncGenerator<Doc[]> {
-  const stream = fg.stream('**/*.md', {
+  const stream = fg.stream(VIEWABLE_GLOB, {
     cwd: projectRoot,
     ignore: SCAN_IGNORE_PATTERNS,
     absolute: true,
     onlyFiles: true,
     followSymbolicLinks: false,
-    dot: true, // .secret/ 등 hidden 폴더 안의 .md도 포함
+    dot: true, // .secret/ 등 hidden 폴더 안의 파일도 포함
+    caseSensitiveMatch: false,
   })
 
   let chunk: Doc[] = []
@@ -278,21 +283,27 @@ export async function* scanDocs(
   for await (const entry of stream) {
     const absPath = entry as string
     let mtime = 0
+    let size: number | undefined
     try {
       const stat = await fs.promises.stat(absPath)
       mtime = stat.mtimeMs
+      size = stat.size
     } catch {
       mtime = Date.now()
     }
 
-    const frontmatter = await parseFrontmatter(absPath)
     const doc: Doc = {
       path: absPath,
       projectId,
       name: path.basename(absPath),
       mtime,
     }
-    if (frontmatter !== undefined) doc.frontmatter = frontmatter
+    if (size !== undefined) doc.size = size
+    // md 만 헤더 4KB 읽어 frontmatter 파싱 — 이미지는 스킵.
+    if (classifyAsset(absPath) === 'md') {
+      const frontmatter = await parseFrontmatter(absPath)
+      if (frontmatter !== undefined) doc.frontmatter = frontmatter
+    }
     chunk.push(doc)
 
     if (chunk.length >= chunkSize) {

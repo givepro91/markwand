@@ -3,6 +3,7 @@ import path from 'path'
 import type { WebContents } from 'electron'
 import type { FsChangeEvent } from '../../preload/types'
 import { parseFrontmatter } from './scanner'
+import { isViewable, classifyAsset } from '../../lib/viewable'
 
 type ChangeType = FsChangeEvent['type']
 
@@ -59,6 +60,12 @@ function sendChange(type: ChangeType, filePath: string): void {
       return
     }
 
+    // 이미지 등 non-md 자산은 frontmatter 파싱 스킵 (4KB 헤더 read 회피)
+    if (classifyAsset(filePath) !== 'md') {
+      activeWebContents.send('fs:change', { type, path: filePath } satisfies FsChangeEvent)
+      return
+    }
+
     void parseFrontmatter(filePath).then((frontmatter) => {
       if (!activeWebContents || activeWebContents.isDestroyed()) return
       const payload: FsChangeEvent = { type, path: filePath }
@@ -84,11 +91,11 @@ export function startWatcher(roots: string[], webContents: WebContents): void {
     // 디렉토리/파일 모두 검사. 디렉토리가 ignored면 그 하위 watch를 통째로 회피.
     ignored: (filePath: string) => {
       if (hasIgnoredSegment(filePath)) return true
-      // 파일로 추정되는 경로(확장자 있음)는 .md만 통과
+      // 파일로 추정되는 경로(확장자 있음)는 VIEWABLE_EXTS(md + 이미지)만 통과
       const base = path.basename(filePath)
       const dot = base.lastIndexOf('.')
       if (dot > 0) {
-        return !filePath.endsWith('.md')
+        return !isViewable(filePath)
       }
       // 확장자 없는 경로는 디렉토리로 가정 → watch 통과
       return false

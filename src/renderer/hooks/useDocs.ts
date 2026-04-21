@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useMemo } from 'react'
 import { useAppStore } from '../state/store'
 import type { Doc, FsChangeEvent } from '../../preload/types'
+import { isViewable } from '../../lib/viewable'
 
 export function useDocs(projectId: string | null) {
   const docs = useAppStore((s) => s.docs)
@@ -47,7 +48,9 @@ export function useDocs(projectId: string | null) {
 
   useEffect(() => {
     const unsubscribe = window.api.fs.onChange((data: FsChangeEvent) => {
-      if (!data.path.endsWith('.md')) return
+      // Viewable asset(md + 이미지)만 처리. 그 외 확장자는 watcher에서도 걸러지지만
+      // 방어적으로 렌더러에서도 한 번 더 체크한다.
+      if (!isViewable(data.path)) return
       if (data.type === 'unlink') {
         removeDoc(data.path)
       } else if (data.type === 'change') {
