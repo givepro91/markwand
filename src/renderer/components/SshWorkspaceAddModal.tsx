@@ -11,7 +11,7 @@
 
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties, FormEvent, KeyboardEvent } from 'react'
-import type { SshAuthConfig } from '../../../src/preload/types'
+import type { SshAuthConfig, LoadSshConfigResult, SshConfigHost } from '../../../src/preload/types'
 import { Button } from './ui'
 
 interface Props {
@@ -42,11 +42,43 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Follow-up FS5 — ~/.ssh/config import 상태. modal 최초 open 시 1회 로드.
+  const [sshConfig, setSshConfig] = useState<LoadSshConfigResult | null>(null)
+  const [selectedAlias, setSelectedAlias] = useState<string>('')
+  const [configLoadFailed, setConfigLoadFailed] = useState(false)
+
   const nameRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     if (open && nameRef.current) nameRef.current.focus()
   }, [open])
+
+  // Follow-up FS5 — modal open 시 ~/.ssh/config 로드. flag off 시 silent 실패.
+  useEffect(() => {
+    if (!open || sshConfig || configLoadFailed) return
+    window.api.ssh
+      .loadConfig()
+      .then(setSshConfig)
+      .catch(() => setConfigLoadFailed(true))
+  }, [open, sshConfig, configLoadFailed])
+
+  // 호스트 선택 시 폼 자동 채움. proxyJump 가 있으면 경고 (backend 지원하지만 UI 는 pass-through 안 함).
+  const handleSelectConfigHost = useCallback((alias: string) => {
+    setSelectedAlias(alias)
+    if (!alias || !sshConfig) return
+    const h: SshConfigHost | undefined = sshConfig.hosts.find((x) => x.alias === alias)
+    if (!h) return
+    // name 은 alias 기본값. 사용자가 이미 입력했으면 유지.
+    if (!name) setName(alias)
+    setHost(h.hostname ?? alias)
+    if (h.port !== undefined) setPort(String(h.port))
+    if (h.user) setUser(h.user)
+    if (h.identityFile && h.identityFile.length > 0) {
+      setAuthKind('key-file')
+      setKeyFilePath(h.identityFile[0])
+    }
+    // root 는 ssh_config 에 개념이 없음 — 사용자 수동 입력 유지.
+  }, [name, sshConfig])
 
   const reset = useCallback(() => {
     setName('')
@@ -58,6 +90,7 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
     setRoot('')
     setError(null)
     setLoading(false)
+    setSelectedAlias('')
   }, [])
 
   const handleClose = useCallback(() => {
@@ -201,6 +234,74 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
           <div role="alert" style={errorStyle}>
             {error}
           </div>
+        )}
+
+        {/* Follow-up FS5 — ~/.ssh/config import 섹션 */}
+        {sshConfig && sshConfig.exists && sshConfig.hosts.length > 0 && (
+          <div
+            style={{
+              padding: 'var(--sp-3)',
+              background: 'var(--bg-elev)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--r-sm)',
+              marginBottom: 'var(--sp-4)',
+            }}
+          >
+            <label
+              htmlFor="ssh-config-select"
+              style={{ ...labelStyle, display: 'block', marginBottom: 'var(--sp-2)' }}
+            >
+              ~/.ssh/config 에서 불러오기
+            </label>
+            <select
+              id="ssh-config-select"
+              value={selectedAlias}
+              onChange={(e) => handleSelectConfigHost(e.target.value)}
+              disabled={loading}
+              style={{
+                ...inputStyle,
+                width: '100%',
+                cursor: loading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              <option value="">— 직접 입력 —</option>
+              {sshConfig.hosts.map((h) => (
+                <option key={h.alias} value={h.alias}>
+                  {h.alias}
+                  {h.user && h.hostname ? ` (${h.user}@${h.hostname}${h.port && h.port !== 22 ? ':' + h.port : ''})` : ''}
+                </option>
+              ))}
+            </select>
+            {selectedAlias && sshConfig.hosts.find((h) => h.alias === selectedAlias)?.proxyJump && (
+              <p style={{ ...hintStyle, marginTop: 'var(--sp-1)', color: 'var(--accent)' }}>
+                ℹ ProxyJump 설정이 있습니다: <code>{sshConfig.hosts.find((h) => h.alias === selectedAlias)?.proxyJump}</code> — 현재 UI 는 기본 필드만 자동 채움합니다.
+              </p>
+            )}
+            {sshConfig.permissionWarning && (
+              <p style={{ ...hintStyle, marginTop: 'var(--sp-1)', color: 'var(--text-muted)' }}>
+                ⚠ {sshConfig.permissionWarning}
+              </p>
+            )}
+            {sshConfig.rejected.length > 0 && (
+              <details style={{ marginTop: 'var(--sp-2)' }}>
+                <summary style={{ ...hintStyle, cursor: 'pointer' }}>
+                  제외된 호스트 {sshConfig.rejected.length}개 (지원 불가 directive)
+                </summary>
+                <ul style={{ margin: 'var(--sp-1) 0 0', paddingLeft: 'var(--sp-4)', fontSize: 'var(--fs-xs)' }}>
+                  {sshConfig.rejected.map((r) => (
+                    <li key={r.alias} style={{ color: 'var(--text-muted)' }}>
+                      <code>{r.alias}</code> — {r.reason}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+        )}
+        {sshConfig && sshConfig.exists && sshConfig.hosts.length === 0 && !sshConfig.permissionWarning && (
+          <p style={{ ...hintStyle, marginBottom: 'var(--sp-3)' }}>
+            ~/.ssh/config 는 있으나 사용 가능한 Host 항목이 없습니다.
+          </p>
         )}
 
         <form onSubmit={handleSubmit}>

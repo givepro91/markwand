@@ -91,5 +91,7 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.on('transport:status', wrapper)
       return () => ipcRenderer.off('transport:status', wrapper)
     },
+    // Follow-up FS5 — ~/.ssh/config 호스트 import (feature flag on 필수)
+    loadConfig: () => ipcRenderer.invoke('ssh:load-config'),
   },
 })

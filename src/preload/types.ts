@@ -144,6 +144,31 @@ export interface HostKeyPromptPayload {
   workspaceId: string
 }
 
+/**
+ * Follow-up FS5 — ~/.ssh/config 파싱 결과 payload. main loadSshConfig() 그대로 전달.
+ * renderer 의 SshWorkspaceAddModal 이 dropdown 옵션으로 소비.
+ */
+export interface SshConfigHost {
+  alias: string
+  hostname?: string
+  port?: number
+  user?: string
+  identityFile?: string[]
+  identitiesOnly?: boolean
+  proxyJump?: string
+  serverAliveInterval?: number
+  serverAliveCountMax?: number
+  rejectedReason?: string
+}
+
+export interface LoadSshConfigResult {
+  configPath: string
+  exists: boolean
+  permissionWarning?: string
+  hosts: SshConfigHost[]
+  rejected: Array<{ alias: string; reason: string }>
+}
+
 /** M3 S2 — transport:status 이벤트 payload */
 export interface TransportStatusEvent {
   workspaceId: string
@@ -213,6 +238,8 @@ export interface WindowApi {
     respondHostKey: (nonce: string, trust: boolean) => Promise<void>
     /** main → renderer: transport 상태 전이 */
     onStatus: (cb: (data: TransportStatusEvent) => void) => () => void
+    /** Follow-up FS5 — ~/.ssh/config 호스트 import. feature flag on 필수. */
+    loadConfig: () => Promise<LoadSshConfigResult>
   }
 }
 
