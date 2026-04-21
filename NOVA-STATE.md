@@ -1,8 +1,8 @@
 # Nova State
 
 ## Current
-- **Goal**: v0.9 로컬 이득 선행 — M1 Transport Interface + M2 Hash 보조 도입. v1.0 SSH M3+는 v0.3 피드백 1~2 사이클 후 별도 Plan.
-- **Phase**: **S1 M1 Transport 완료(CONDITIONAL PASS)**. 다음 S2(M2 Hash 보조) + S3(Bench). S1 잔여: RM-7 project:scan-docs 미위임 — M4 watcher 작업과 묶어 처리(Known Gap 이관).
+- **Goal**: v0.9 로컬 이득 선행 완료 (M1·M2 보조·Bench). v1.0 SSH M3+는 v0.3 피드백 1~2 사이클 후 별도 Plan.
+- **Phase**: **S1·S2·S3 전부 완료**. v0.9 보조 릴리스 후보. 다음은 GUI 수동 검증(pnpm dev) → M3+ SSH Plan 작성 또는 v0.3 피드백 수집 사이클.
 - **Blocker**: none
 - **Remote**: git@github-givepro91:givepro91/markwand.git (main) — v0.3.2 커밋(`c6f0422`) push 여부 미확인. 이 세션은 Plan 문서 1건 + NOVA-STATE 갱신.
 - **Active Plan**: **docs/plans/remote-fs-transport-m1-m2.md** (v0.9 M1·M2 선행, draft)
@@ -91,6 +91,7 @@
 > --emergency 플래그 사용 또는 Evaluator 건너뛸 때 반드시 기록. 미기록 = Hard-Block.
 
 ## Last Activity
+- /nova:auto 연속 — v0.9 M1·M2 보조·Bench 3개 스프린트 완료. **S2 M2 Hash 보조 (bce47fc)**: `src/lib/drift/hash.ts` sha256 contentHash + (path, mtimeMs, size) 키 인메모리 Map 캐시 + invalidateHash/clearHashCache API. `VerifiedReference.hashAtCheck?` 필드 추가. `drift:verify`가 판정 직후 병행 계산(디렉토리/크기초과/IO 실패 silent undefined fallback). 판정은 mtime 유지 (U-M2-1 승인 scope). hash.test.ts 5/5 PASS. **S3 Bench Harness (9c5a076)**: `scripts/bench-transport.ts` 5 hot path 측정(scanDocs/countDocs/fs.stat/readFile/detectWorkspaceMode), fixture 자동 생성(5 projects × 50 md × 3단 계층, tmpdir), 3회 반복 p50/p95/p99 + stdDev, baseline.json 비교, **noise floor 로직**(절대 <0.5ms 또는 baseline <1ms 스킵 — sub-ms fixture 과민 방지). `pnpm run bench:transport` script. baseline은 머신별이라 gitignore. 2차 실행 PASS 확인. typecheck PASS · 전체 suite 131/141 PASS · drift-smoke 21/21 PASS · 회귀 0. | 2026-04-21T
 - /nova:auto → CONDITIONAL PASS — v0.9 M1 Transport Interface + LocalTransport 래핑 (S1 완료). 4 커밋(baseline 35bcd58 · C2 신규 파일 ac6a5dc · C3 IPC 위임 39310b9 · C4 테스트 81edc9e + fix) 원격 push 완료. typecheck PASS · drift-smoke 21/21 PASS · 신규 29 테스트 PASS · 전체 136 tests(126 PASS, 10 pre-existing fail). **Evaluator 판정**(nova:senior-dev, 실증 기반): CONDITIONAL PASS — Major 1(`project:scan-docs` 미위임 — Plan §M1.3 defer·Known Gap 이관, M4 watcher 작업과 묶어 처리) + Minor 2(설계서 Transport.watcher/exec optional 조정·scanDocs import 잔류). **Known Risk Hard 동시 해소**: `fs:read-doc 파일 크기 무제한` → FsDriver.readFile({maxBytes:2MB}) size-first 계약. **Scope Guard 준수**: ssh2/hash/sha256 0건. 순환 import 0건. assertInWorkspace `{posix?:boolean}` opt 추가(M3 사전 계약, 사용처 0). workspace.transport: {type:'local'} 필드 lazy 마이그레이션. Orchestration orch-mo86dcfj-bdu2. | 2026-04-21T
 - /nova:deepplan → PASS — docs/plans/remote-fs-transport-m1-m2.md (v0.9 M1·M2 선행, Mode: deep, Iterations: 1). Explorer×3 병렬(43 FS 호출 지점 전수조사 · 5 hot path 성능 영향 +1~3% 추정 · sha256/전체 content/인메모리 Map 캐시) → Synthesizer 20파일·3일 추정 → Critic(nova:architect) CONDITIONAL PASS · 5 수정 지시 반영 → Refiner. **주요 발견**: M2 순수 hash 치환은 mtime 기반과 등가 불가(doc 기준점 ref hash 저장 없이는 stale 판정 불가능) → S2 범위 축소(hash는 보조 필드만). 설계서 §2.2 rev. M1 선수정(detectWorkspaceMode + readFile maxBytes 계약). Known Risk `fs:read-doc 무제한` Hard는 M1에서 동시 해소. U-M2-1 사용자 승인 필요. | 2026-04-21T
 - /nova:ux-audit → Critical 1 / High 16 / Medium 0 / Low 0 — docs/designs/remote-fs-transport.md §9 Q2~Q4. **5 jury 만장일치 합의**: Q2 readonly 엄수(5/5), Q3 (c) hybrid(로컬 N개 + 원격 active 1 + warm 1, 5/5), Q4 (c) M1·M2 즉시 착수 + M3~ v0.3 피드백 1~2사이클 후 feature flag(4.5/5). Design Contract DC-1~DC-7 도출(write boundary · concurrency · status·a11y · trust · perf budget · phasing · verification). Q1 고정: 사용자 SSH config 분석 기반 (b)+(a) 시나리오, 제품은 3시나리오 모두 수용·하드코딩 금지. 다음 단계 /nova:deepplan로 M1·M2 Plan 작성. | 2026-04-21T
