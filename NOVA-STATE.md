@@ -1,8 +1,8 @@
 # Nova State
 
 ## Current
-- **Goal**: v1.0 SSH M3·M4 스프린트 진입 준비. v0.9(M1·M2·Bench) 완료, U2 실 워크스페이스 절대값 기록 완료.
-- **Phase**: **M3·M4 Plan refined**. 사용자 승인 대기 → `/nova:auto` 또는 수동 스프린트 착수.
+- **Goal**: v1.0 SSH M3 Transport PoC 진행 중. S0 + S1 완료(2 스프린트). 남은 스프린트: S2(TOFU+ssh_config+상태머신, 2.5d) → S3(Feature Flag+Workspace UX, 1d) → S4(원격 watcher+통합테스트, 1.5d) = **5d**.
+- **Phase**: **S1 완료** (SshTransport 기본 PoC + DC-4 bypass 검증). Evaluator CONDITIONAL PASS — Critical 1 + Major 2 반영 완료. 다음: S2 착수 or S1.1 Electron 33 ABI 실측(사용자 pnpm dev).
 - **Blocker**: none
 - **Remote**: git@github-givepro91:givepro91/markwand.git (main) — origin = `08c4138` (U2 실 워크스페이스 벤치 커밋). M3·M4 Plan 커밋 예정.
 - **Active Plan**: **docs/plans/remote-fs-transport-m3-m4.md** (v1.0 M3·M4, refined — Critic CONDITIONAL PASS 전 항목 반영)

@@ -586,8 +586,9 @@ export class SshPoller implements WatcherDriver {
 - [ ] `ssh-config` 파싱 + 허용 11키/거부 3키(파싱 스킵 시 **해당 Host 블록 전체를 드롭다운에서 제외** + 경고 토스트 "Unsupported config directive", Critic m-2) + 권한 검증
 - [ ] ProxyJump 1-hop 수동 체인 (client.ts 내부, dispose 역순 `final.end() → hop.end()`)
 - [ ] hostVerifier race/timeout 방어: nonce IPC + 20s 타임아웃 → callback(false), 다중 동시 호출 라우팅 (Critic M-3)
+- [ ] **HostKeyInfo.algorithm 확보** (S1 Evaluator m-3): ssh2 'handshake' 이벤트에서 hostKeyAlgorithm 추출 → TOFU 모달 4필드 중 Algorithm 실제 값 표시. `buildHostKeyInfo` 의 'unknown' 고정 제거.
 - [ ] axe-core test + CSS 대비 test + **aria-live debounce 타이머 mock 테스트** (Critic m-3): `vi.useFakeTimers()` + 1000ms debounce + backoff 6 tick 시 SR 노이즈 0건 검증
-- **DoD**: TOFU 모달 스냅샷(4필드 + destructive default) + hostkey 변경 감지 integration + keepalive/reconnect unit + hostVerifier race/timeout 2건 + axe 0 위반 + CSS ≥3:1 + aria-live debounce 타이머 테스트 1건
+- **DoD**: TOFU 모달 스냅샷(4필드 + destructive default) + hostkey 변경 감지 integration + keepalive/reconnect unit + hostVerifier race/timeout 2건 + algorithm 'unknown' 이 아닌 실제 값 노출 + axe 0 위반 + CSS ≥3:1 + aria-live debounce 타이머 테스트 1건
 
 ### S3 — Feature Flag + Workspace UX (1d)
 - [ ] electron-store `experimentalFeatures.sshTransport` + ALLOWED_PREFS_KEYS

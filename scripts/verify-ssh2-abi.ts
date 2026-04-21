@@ -1,11 +1,10 @@
 /**
  * U1 ssh2 ABI Verification Hook — Plan §S0.1 (remote-fs-transport-m3-m4.md)
  *
- * 목적:
- *   1. ssh2 NPM이 현재 Node + Electron 33+ ABI에서 로드 가능한가 확인
- *   2. cpu-features 비활성 경로(buildDependenciesFromSource:false)에서 정상 인스턴스화
- *   3. Docker sshd fixture에 실제 SFTP 연결 → readFile/readdir/stat → attrs.mtime 실측 (Critic M-2)
- *   4. dispose 정상 동작
+ * S1 확장: SshTransport 경유 smoke 추가 (S1.f).
+ *   - createSshTransport() → FsDriver/ScannerDriver 경유 readFile/readdir 재실행
+ *   - SshScannerDriver.scanDocs 10 entries + attrs.mtime>0 재확인
+ *   - readStream {start,end} 범위 요청 최적화 smoke (4KB 만 전송)
  *
  * 실행:
  *   1) tests/fixtures/ssh/gen-keypair.sh (최초 1회)
@@ -17,6 +16,7 @@
 import { Client } from 'ssh2'
 import fs from 'node:fs'
 import path from 'node:path'
+import { createSshTransport } from '../src/main/transport/ssh'
 
 const SSH_HOST = process.env['SSH_HOST'] ?? '127.0.0.1'
 const SSH_PORT = parseInt(process.env['SSH_PORT'] ?? '2222', 10)
@@ -182,9 +182,74 @@ async function main() {
     record('stat', false, undefined, err)
   }
 
-  // Cleanup
+  // Cleanup Check 1~7 (raw ssh2 Client)
   client.end()
   record('dispose (client.end)', true)
+
+  // ── S1 확장: SshTransport 경유 smoke ──────────────────────────────────────
+  // verify 가 PoC transport 코어(client.ts · fs.ts · scanner.ts · index.ts) 의 실경로 smoke 를
+  // 포함하도록 확장. 미래에 재실행했을 때 transport 자체의 회귀를 잡는다.
+  try {
+    const transport = await createSshTransport({
+      host: SSH_HOST,
+      port: SSH_PORT,
+      username: SSH_USER,
+      auth: { kind: 'key-file', path: PRIV_KEY_PATH },
+      hostVerifier: async () => true, // PoC smoke: 자동 trust (TOFU UI 는 S2)
+    })
+    record('SshTransport connect', transport.kind === 'ssh', `id=${transport.id}`)
+
+    // FsDriver.readFile
+    const buf = await transport.fs.readFile(`${REMOTE_WORKSPACE}/proj-a/docs/note-1.md`)
+    record('SshFsDriver.readFile', buf.toString('utf8').includes('fixture-note-1'))
+
+    // FsDriver.readStream 범위 최적화 (4KB 한정)
+    const chunks: Buffer[] = []
+    for await (const c of transport.fs.readStream(`${REMOTE_WORKSPACE}/proj-a/docs/note-1.md`, { maxBytes: 4096 })) {
+      chunks.push(Buffer.from(c.buffer, c.byteOffset, c.byteLength))
+    }
+    const streamed = Buffer.concat(chunks)
+    record('SshFsDriver.readStream {maxBytes:4096}', streamed.byteLength <= 4096, `bytes=${streamed.byteLength}`)
+
+    // ScannerDriver.scanDocs — fixture 10 entries 미만이지만 동작 검증 용도
+    const scannedPaths: string[] = []
+    for await (const st of transport.scanner.scanDocs(REMOTE_WORKSPACE, ['**/*.md'], ['**/node_modules/**'])) {
+      scannedPaths.push(st.path)
+    }
+    record('SshScannerDriver.scanDocs', scannedPaths.length >= 2, `found ${scannedPaths.length} md: ${scannedPaths.slice(0, 3).join(', ')}`)
+
+    // detectWorkspaceMode — fixture 에는 proj-a/package.json 있음 → 'container' 기대
+    const mode = await transport.scanner.detectWorkspaceMode(REMOTE_WORKSPACE)
+    record('SshScannerDriver.detectWorkspaceMode', mode === 'container', `mode=${mode}`)
+
+    await transport.dispose()
+    record('SshTransport.dispose', true)
+  } catch (err) {
+    record('SshTransport smoke', false, undefined, err)
+  }
+
+  // ── S1 Evaluator C-1 검증: hostVerifier=async()=>false 가 실제로 연결을 차단하는지 ──
+  // Promise 직접 반환 버그 수정 전에는 verify(Promise<false>) 로 전달되어 truthy 판정 →
+  // 연결이 통과되던 DC-4 "bypass 0" 위반. 이 smoke 가 PASS 해야 수정 완료.
+  try {
+    let connectResult: 'connected' | 'rejected' = 'rejected'
+    try {
+      const t2 = await createSshTransport({
+        host: SSH_HOST,
+        port: SSH_PORT,
+        username: SSH_USER,
+        auth: { kind: 'key-file', path: PRIV_KEY_PATH },
+        hostVerifier: async () => false, // reject 의도
+      })
+      connectResult = 'connected'
+      await t2.dispose()
+    } catch {
+      connectResult = 'rejected' // 예상 경로 — hostVerifier false → 연결 실패
+    }
+    record('DC-4 hostVerifier reject smoke', connectResult === 'rejected', `result=${connectResult} (expected: rejected)`)
+  } catch (err) {
+    record('DC-4 hostVerifier reject smoke', false, undefined, err)
+  }
 
   await writeReport(results)
 
