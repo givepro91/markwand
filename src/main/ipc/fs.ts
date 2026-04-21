@@ -3,6 +3,7 @@ import { ipcMain } from 'electron'
 import matter from 'gray-matter'
 import { getStore } from '../services/store'
 import { parseReadDocInput, assertInWorkspace } from '../security/validators'
+import { classifyAsset } from '../../lib/viewable'
 import type { ReadDocResult } from '../../preload/types'
 
 const MAX_READ_BYTES = 2 * 1024 * 1024
@@ -18,6 +19,12 @@ export function registerFsHandlers(): void {
     const roots = workspaces.map((w) => w.root)
 
     assertInWorkspace(docPath, roots)
+
+    // md만 텍스트로 파싱. 이미지 등 바이너리를 utf-8로 읽으면 matter()에 쓰레기가 들어가
+    // MarkdownViewer에 깨진 텍스트로 렌더된다. 이미지는 app:// 프로토콜로 직접 로드해야 한다.
+    if (classifyAsset(docPath) !== 'md') {
+      throw new Error('NOT_A_TEXT_DOC')
+    }
 
     const stat = await fs.promises.stat(docPath)
     if (stat.size > MAX_READ_BYTES) throw new Error('FILE_TOO_LARGE')

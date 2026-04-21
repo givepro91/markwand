@@ -5,6 +5,7 @@ import { extractReferences } from '../../lib/drift/extractor'
 import type { DriftReport, DriftStatus, Reference, VerifiedReference } from '../../lib/drift/types'
 import { getStore } from '../services/store'
 import { assertInWorkspace } from '../security/validators'
+import { classifyAsset } from '../../lib/viewable'
 
 // extract + stat 을 메인 스레드에서 수행하므로 상한 필수.
 // 2MB 초과 시 다수의 AI 산출물(보통 수십 KB)이 아닌 비정상 파일로 간주.
@@ -42,6 +43,12 @@ export function registerDriftHandlers(): void {
     const docStat = await fs.promises.stat(docPath)
     if (docStat.size > MAX_DRIFT_FILE_BYTES) {
       // 거대 파일은 drift 검증 스킵 — 빈 리포트로 응답해 UI는 ok 취급.
+      return emptyReport(docPath, docStat.mtimeMs, projectRoot)
+    }
+
+    // md만 참조 추출. 이미지 등 바이너리를 utf-8로 읽으면 regex가 쓰레기 content에서
+    // false-positive 참조를 대량 생성한다. viewable 자산 범위에서 md가 아니면 빈 리포트.
+    if (classifyAsset(docPath) !== 'md') {
       return emptyReport(docPath, docStat.mtimeMs, projectRoot)
     }
 
