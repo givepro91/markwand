@@ -102,38 +102,48 @@ async function* scanDocsImpl(
   const sftp = client.getSftp()
   const rootPosix = toPosix(root)
 
-  async function* walk(dir: string): AsyncGenerator<FileStat> {
-    let entries
-    try {
-      entries = await sftp.readdir(dir)
-    } catch {
-      // 권한 거부·경로 부재 silent skip (LocalScannerDriver 와 동일 정책)
-      return
-    }
-    for (const entry of entries) {
-      const full = posix.join(dir, entry.filename)
-      // ignore 매칭은 절대 경로 기준으로 판정 — `**/node_modules/**` 패턴이 작동하도록.
-      if (ignoreMatch(full)) continue
-      // 엔트리 basename 이 디렉토리 블랙리스트에 있으면 재귀 진입 금지.
-      if (isDirFromMode(entry.attrs.mode)) {
-        if (PROJECT_SCAN_IGNORE.has(entry.filename)) continue
-        yield* walk(full)
-        continue
+  // Follow-up FS7 — 병렬 readdir 으로 RTT × N 비용을 RTT × depth 수준으로 단축.
+  // 전략: BFS 로 "현재 레벨 디렉토리 전부 동시에 readdir" → 파일 수집 + 다음 레벨 디렉토리 수집 → 반복.
+  // 기존 순차 DFS 대비 대략 N 디렉토리 / concurrency 만큼 RTT 절감. Docker RTT 1ms 에선 효과 미미하나
+  // 실 원격(RTT 50~150ms) 에서는 10~50 배 체감 향상.
+  const results: FileStat[] = []
+  let frontier: string[] = [rootPosix]
+
+  while (frontier.length > 0) {
+    const readdirs = await Promise.all(
+      frontier.map((dir) =>
+        sftp.readdir(dir).then(
+          (entries) => ({ dir, entries }),
+          () => ({ dir, entries: null as never[] | null }),
+        ),
+      ),
+    )
+    const nextFrontier: string[] = []
+    for (const { dir, entries } of readdirs) {
+      if (!entries) continue
+      for (const entry of entries) {
+        const full = posix.join(dir, entry.filename)
+        if (ignoreMatch(full)) continue
+        if (isDirFromMode(entry.attrs.mode)) {
+          if (PROJECT_SCAN_IGNORE.has(entry.filename)) continue
+          nextFrontier.push(full)
+          continue
+        }
+        if (isSymlinkFromMode(entry.attrs.mode)) continue
+        if (!patternMatch(full)) continue
+        results.push({
+          path: full,
+          size: entry.attrs.size,
+          mtimeMs: entry.attrs.mtime > 0 ? entry.attrs.mtime * 1000 : -1,
+          isDirectory: false,
+          isSymlink: false,
+        })
       }
-      if (isSymlinkFromMode(entry.attrs.mode)) continue // v1.0 symlink 미지원 (Design §3.6)
-      if (!patternMatch(full)) continue
-      yield {
-        path: full,
-        size: entry.attrs.size,
-        // SFTP v3 attrs.mtime 은 epoch seconds. 0 이면 -1 (무효 마커 — Critic M-2 폴백)
-        mtimeMs: entry.attrs.mtime > 0 ? entry.attrs.mtime * 1000 : -1,
-        isDirectory: false,
-        isSymlink: false,
-      }
     }
+    frontier = nextFrontier
   }
 
-  yield* walk(rootPosix)
+  for (const stat of results) yield stat
 }
 
 function toPosix(p: string): string {

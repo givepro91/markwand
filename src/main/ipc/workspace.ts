@@ -5,7 +5,7 @@ import posix from 'node:path/posix'
 import { getStore } from '../services/store'
 import { scanProjects, parseFrontmatter, HEADER_READ_BYTES } from '../services/scanner'
 import { localTransport } from '../transport/local'
-import type { Transport } from '../transport/types'
+import type { Transport, FileStat } from '../transport/types'
 import { VIEWABLE_GLOB, classifyAsset } from '../../lib/viewable'
 import { setProtocolWorkspaceRoots } from '../security/protocol'
 import {
@@ -44,16 +44,23 @@ const WORKSPACE_SCAN_IGNORE_PATTERNS = [
 ]
 
 function getWorkspaceRoots(workspaces: Workspace[]): string[] {
-  return workspaces.map((w) => w.root)
+  // Follow-up FS7 — app:// 프로토콜 allowlist 는 로컬 워크스페이스 root 만.
+  // SSH workspace root (POSIX remote path) 가 포함되면 Chromium 이 app:// 요청을 로컬
+  // file:// 로 fallthrough 시도해 500 HANDLER_EXCEPTION 발생. 로컬만 allowlist 하면
+  // SSH 이미지는 403 + SafeImage alt placeholder 로 정상 fallback.
+  return workspaces
+    .filter((w) => !w.transport || w.transport.type === 'local')
+    .map((w) => w.root)
 }
 
 /**
- * Transport-agnostic Doc composition — M3 §S0.2 RM-7 해소.
+ * Transport-agnostic Doc composition — M3 §S0.2 RM-7 해소 + Follow-up FS7 병렬화.
  *
  * `ScannerDriver.scanDocs` 가 반환하는 FileStat 스트림을 기반으로 Doc 객체를 구성한다.
- * md 파일은 frontmatter 파싱(parseFrontmatter + FsDriver 경유), 이미지는 skip. 50개씩 chunk.
- * 기존 `services/scanner.scanDocs` 의 내부 `fs.promises.stat`·`fs.promises.open` 직접 호출
- * 을 전부 transport 레이어로 이전했으므로 SSH Transport 도입 시 동일 헬퍼 재사용 가능.
+ * 이미지는 frontmatter 불필요 — stat 만으로 Doc 조립. md 파일은 `parseFrontmatter` 경유
+ * (FsDriver 를 통해 transport 추상화). FS7: 원격(SSH) 환경에서 각 md 파일의 frontmatter 읽기가
+ * SFTP readStream 왕복을 유발하므로, chunkSize 단위로 **Promise.all 병렬 처리** 해 RTT 곱 효과
+ * 제거. 로컬도 병렬 I/O 로 손해 없음(fs.createReadStream 는 비동기).
  */
 export async function* composeDocsFromFileStats(
   transport: Transport,
@@ -61,7 +68,29 @@ export async function* composeDocsFromFileStats(
   projectRoot: string,
   chunkSize = 50
 ): AsyncGenerator<Doc[]> {
-  let chunk: Doc[] = []
+  let pending: { stat: FileStat; doc: Doc }[] = []
+
+  async function flushPending(): Promise<Doc[]> {
+    const batch = pending
+    pending = []
+    // 병렬 parseFrontmatter — RTT × N 을 RTT × ceil(N/concurrency) 로 축소.
+    // SSH RTT 50ms · 50개 기준: 2500ms → ~250ms 추정.
+    await Promise.all(
+      batch.map(async ({ stat, doc }) => {
+        if (classifyAsset(stat.path) !== 'md') return
+        try {
+          const fm = await parseFrontmatter(transport.fs, stat.path, {
+            maxBytes: HEADER_READ_BYTES,
+          })
+          if (fm !== undefined) doc.frontmatter = fm
+        } catch {
+          // 개별 파일 실패는 silent skip — 다른 파일 진행 유지.
+        }
+      }),
+    )
+    return batch.map((b) => b.doc)
+  }
+
   for await (const stat of transport.scanner.scanDocs(
     projectRoot,
     [VIEWABLE_GLOB],
@@ -74,17 +103,12 @@ export async function* composeDocsFromFileStats(
       mtime: stat.mtimeMs > 0 ? stat.mtimeMs : Date.now(),
     }
     if (stat.size !== undefined) doc.size = stat.size
-    if (classifyAsset(stat.path) === 'md') {
-      const fm = await parseFrontmatter(transport.fs, stat.path, { maxBytes: HEADER_READ_BYTES })
-      if (fm !== undefined) doc.frontmatter = fm
-    }
-    chunk.push(doc)
-    if (chunk.length >= chunkSize) {
-      yield chunk
-      chunk = []
+    pending.push({ stat, doc })
+    if (pending.length >= chunkSize) {
+      yield await flushPending()
     }
   }
-  if (chunk.length > 0) yield chunk
+  if (pending.length > 0) yield await flushPending()
 }
 
 // scanProjects 결과 캐시 + in-flight 중복 방지.
@@ -93,14 +117,39 @@ export async function* composeDocsFromFileStats(
 const projectsCache = new Map<string, Project[]>()
 const inflightScans = new Map<string, Promise<Project[]>>()
 
+// Follow-up FS7 — project:scan-docs 결과 캐시.
+// renderer 가 같은 프로젝트를 재열람 시 SSH SFTP 왕복 재실행 방지.
+// invalidation: workspace 제거 / refresh / watcher fs:change 이벤트.
+const docsCache = new Map<string, Doc[]>()
+const inflightDocScans = new Map<string, Promise<Doc[]>>()
+// projectId → workspaceId 역매핑. watcher fs:change 로 프로젝트 캐시 무효화 시 필요.
+const projectToWorkspace = new Map<string, string>()
+
 function invalidateProjectsCache(workspaceId?: string): void {
   if (workspaceId) {
     projectsCache.delete(workspaceId)
     inflightScans.delete(workspaceId)
+    // 해당 workspace 의 docs 캐시도 전부 무효화
+    for (const [pid, wsId] of projectToWorkspace) {
+      if (wsId === workspaceId) {
+        docsCache.delete(pid)
+        inflightDocScans.delete(pid)
+        projectToWorkspace.delete(pid)
+      }
+    }
   } else {
     projectsCache.clear()
     inflightScans.clear()
+    docsCache.clear()
+    inflightDocScans.clear()
+    projectToWorkspace.clear()
   }
+}
+
+// Follow-up FS7 — 단일 파일 변경 시 프로젝트 docs 캐시만 무효화 (watcher 배선 시 호출).
+export function invalidateDocsCacheForProject(projectId: string): void {
+  docsCache.delete(projectId)
+  inflightDocScans.delete(projectId)
 }
 
 async function getOrScanProjects(
@@ -432,6 +481,11 @@ export function registerWorkspaceHandlers(): void {
 
   ipcMain.handle('project:get-doc-count', async (_event, raw: unknown) => {
     const { projectId } = parseScanDocsInput(raw)
+
+    // Follow-up FS7 — docsCache 에 이미 있으면 SSH 왕복 없이 length 만 반환.
+    const cachedDocs = docsCache.get(projectId)
+    if (cachedDocs) return cachedDocs.length
+
     const store = await getStore()
     const workspaces = store.get('workspaces')
     let projectRoot: string | null = null
@@ -446,18 +500,33 @@ export function registerWorkspaceHandlers(): void {
       }
     }
     if (!projectRoot || !hostWsId) return 0
-    // Follow-up FS1 — localTransport 하드코딩 제거. SSH workspace 는 getActiveTransport 경유.
     const transport = await getActiveTransport(hostWsId)
     return transport.scanner.countDocs(projectRoot, [VIEWABLE_GLOB], WORKSPACE_SCAN_IGNORE_PATTERNS)
   })
 
   ipcMain.handle('project:scan-docs', async (event, raw: unknown) => {
     const { projectId } = parseScanDocsInput(raw)
+
+    // Follow-up FS7 — 캐시 hit: 기존 chunk 를 한 번에 전송 + 캐시 그대로 반환.
+    // SSH 에서는 이 경로가 핵심 속도 향상 (수 초 → 즉시).
+    const cached = docsCache.get(projectId)
+    if (cached) {
+      event.sender.send('project:docs-chunk', cached)
+      console.log(`[ipc] project:scan-docs(${projectId.slice(0, 8)}) CACHED ${cached.length} docs`)
+      return cached
+    }
+    const inflight = inflightDocScans.get(projectId)
+    if (inflight) {
+      // 동시 호출: 기존 promise 결과를 공유 — 다만 chunk 이벤트는 중복 전송 안 됨 (최적화 가치 낮음).
+      const docs = await inflight
+      event.sender.send('project:docs-chunk', docs)
+      return docs
+    }
+
     const store = await getStore()
     const workspaces = store.get('workspaces')
 
     // 캐시된 scanProjects 결과를 활용해 projectRoot를 찾는다.
-    // renderer 뷰가 여러 곳에서 호출해도 워크스페이스당 scanProjects는 한 번만 실제 실행됨.
     let projectRoot: string | null = null
     let hostWsId: string | null = null
     for (const ws of workspaces) {
@@ -471,18 +540,26 @@ export function registerWorkspaceHandlers(): void {
     }
 
     if (!projectRoot || !hostWsId) throw new Error('PROJECT_NOT_FOUND')
+    projectToWorkspace.set(projectId, hostWsId)
 
-    // Follow-up FS1 — SSH workspace 는 getActiveTransport 경유로 SshFsDriver/SshScannerDriver 사용.
     const transport = await getActiveTransport(hostWsId)
 
     const t0 = Date.now()
-    const allDocs: Doc[] = []
-    for await (const chunk of composeDocsFromFileStats(transport, projectId, projectRoot)) {
-      event.sender.send('project:docs-chunk', chunk)
-      allDocs.push(...chunk)
-    }
-    console.log(`[ipc] project:scan-docs(${projectId.slice(0, 8)}, ${transport.kind}) ${allDocs.length} docs in ${Date.now() - t0}ms`)
-
-    return allDocs
+    const runScan = (async () => {
+      const allDocs: Doc[] = []
+      for await (const chunk of composeDocsFromFileStats(transport, projectId, projectRoot)) {
+        event.sender.send('project:docs-chunk', chunk)
+        allDocs.push(...chunk)
+      }
+      docsCache.set(projectId, allDocs)
+      inflightDocScans.delete(projectId)
+      console.log(`[ipc] project:scan-docs(${projectId.slice(0, 8)}, ${transport.kind}) ${allDocs.length} docs in ${Date.now() - t0}ms`)
+      return allDocs
+    })().catch((err) => {
+      inflightDocScans.delete(projectId)
+      throw err
+    })
+    inflightDocScans.set(projectId, runScan)
+    return runScan
   })
 }

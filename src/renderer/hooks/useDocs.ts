@@ -5,7 +5,6 @@ import { isViewable } from '../../lib/viewable'
 
 export function useDocs(projectId: string | null) {
   const docs = useAppStore((s) => s.docs)
-  const setDocs = useAppStore((s) => s.setDocs)
   const appendDocs = useAppStore((s) => s.appendDocs)
   const updateDoc = useAppStore((s) => s.updateDoc)
   const removeDoc = useAppStore((s) => s.removeDoc)
@@ -16,9 +15,16 @@ export function useDocs(projectId: string | null) {
   )
 
   // Returns an unsubscribe fn so callers (and the effect cleanup) can cancel early.
+  // Follow-up FS7 — setDocs([]) 로 전체 리셋하던 과거 동작 제거. 프로젝트 전환마다 전체 docs 목록을
+  // 초기화하면 이미 스캔 완료된 다른 프로젝트들의 docs 도 함께 날아가 재스캔 유발. 대신 현 프로젝트의
+  // stale docs 만 제거하고 append 방식으로 누적. main 쪽 캐시(docsCache)가 hit 이면 chunk 하나로
+  // 즉시 보내주므로 flicker 도 거의 없음.
   const scanDocs = useCallback(
     (pid: string): (() => void) => {
-      setDocs([])
+      // 현 프로젝트의 기존 docs 제거(중복 방지). 다른 프로젝트 docs 는 유지.
+      useAppStore.setState((state) => ({
+        docs: state.docs.filter((d) => d.projectId !== pid),
+      }))
 
       const unsub = window.api.project.onDocsChunk((chunk: Doc[]) => {
         const relevant = chunk.filter((d) => d.projectId === pid)
@@ -37,7 +43,7 @@ export function useDocs(projectId: string | null) {
 
       return unsub
     },
-    [setDocs, appendDocs]
+    [appendDocs]
   )
 
   useEffect(() => {
