@@ -36,23 +36,19 @@ async function verifyDoc(docPath: string, projectRoot: string): Promise<{
     return { references: [], counts: { ok: 0, missing: 0, stale: 0 }, empty: true }
   }
   const content = await fs.promises.readFile(docPath, 'utf-8')
-  const refs = extractReferences(content, projectRoot)
+  const refs = extractReferences(content, projectRoot, docPath)
   const docMtime = docStat.mtimeMs
 
   const verified = await Promise.all(
     refs.map(async (ref): Promise<VerifiedReference> => {
-      try {
-        const s = await fs.promises.stat(ref.resolvedPath)
-        const isDirectory = s.isDirectory()
-        const status: DriftStatus = isDirectory
-          ? 'ok'
-          : s.mtimeMs > docMtime
-            ? 'stale'
-            : 'ok'
-        return { ...ref, status, targetMtime: s.mtimeMs, isDirectory }
-      } catch {
-        return { ...ref, status: 'missing' }
+      async function tryStat(p: string) {
+        try { return { path: p, stat: await fs.promises.stat(p) } } catch { return null }
       }
+      const hit = (await tryStat(ref.resolvedPath)) ?? (ref.fallbackPath ? await tryStat(ref.fallbackPath) : null)
+      if (!hit) return { ...ref, status: 'missing' }
+      const isDirectory = hit.stat.isDirectory()
+      const status: DriftStatus = isDirectory ? 'ok' : (hit.stat.mtimeMs > docMtime ? 'stale' : 'ok')
+      return { ...ref, resolvedPath: hit.path, status, targetMtime: hit.stat.mtimeMs, isDirectory }
     })
   )
 
@@ -160,7 +156,7 @@ async function main() {
   {
     const root = path.join(tmp, 's4')
     fs.mkdirSync(root, { recursive: true })
-    const tgt = path.join(root, 'a', 'b.ts')
+    const tgt = path.join(root, 'src', 'utils.ts')
     fs.mkdirSync(path.dirname(tgt), { recursive: true })
     fs.writeFileSync(tgt, 'export const z = 3\n')
     const pastMtime = new Date(Date.now() - 60_000)
@@ -173,7 +169,7 @@ async function main() {
         '# Hint block',
         '',
         '```ts',
-        '// a/b.ts',
+        '// src/utils.ts',
         'export const z: number',
         '```',
         '',
@@ -303,6 +299,50 @@ async function main() {
     })
   }
 
+  // ── 시나리오 11: 사용자가 제보한 실제 false-positive 6건은 전부 추출 제외 ─────
+  // (절대 경로·쉘 커맨드·수식 in backtick — 사용자 swk 프로젝트 문서에서 수집한 실제 샘플)
+  {
+    const root = path.join(tmp, 's11')
+    fs.mkdirSync(root, { recursive: true })
+    const docPath = path.join(root, 'noise.md')
+    fs.writeFileSync(
+      docPath,
+      [
+        '# Noise that must NOT be extracted',
+        '',
+        '- Absolute path on another machine: `/Users/sue/dev/swk-GH-QA`',
+        '- Shell command in backtick: `@/cd apps/lbd && pnpm vitest run`',
+        '- Formula 1: `2,096,000원/m² × 0.8 × 면적 + landAppraisalTotal / rentUnits`',
+        '- Formula 2: `1,894,000원/m² × 면적`',
+        '- Formula 3: `2,096,000원/m² × 80% × 면적 + 세대당 토지감정평가액`',
+        '- Inline command (no backtick): @/cd apps/lbd && pnpm vitest run',
+        '',
+      ].join('\n')
+    )
+    const { references } = await verifyDoc(docPath, root)
+    const pass = references.length === 0
+    results.push({
+      name: '실제 false-positive 6종 (절대경로·쉘·수식·커맨드) 전부 추출 제외',
+      verdict: pass ? 'PASS' : 'FAIL',
+      detail: `refs=${references.length} raws=${JSON.stringify(references.map((r) => r.raw))}`,
+    })
+  }
+
+  // ── 시나리오 12: 단일 2자 이하 세그먼트는 path 아님 ─────
+  {
+    const root = path.join(tmp, 's12')
+    fs.mkdirSync(root, { recursive: true })
+    const docPath = path.join(root, 'short.md')
+    fs.writeFileSync(docPath, '- `cd` 는 커맨드\n- See @/cd\n- See @/a\n')
+    const { references } = await verifyDoc(docPath, root)
+    const pass = references.length === 0
+    results.push({
+      name: '단일 짧은 세그먼트 (@/cd, @/a, `cd`) 는 path 아님',
+      verdict: pass ? 'PASS' : 'FAIL',
+      detail: `refs=${references.length}`,
+    })
+  }
+
   // ── 시나리오 9: 정상 @/ ref 는 여전히 추출 ─────
   {
     const root = path.join(tmp, 's9')
@@ -319,6 +359,182 @@ async function main() {
       name: '정상 @/src/... 경로는 가드 통과해 추출됨 (회귀 방지)',
       verdict: pass ? 'PASS' : 'FAIL',
       detail: `refs=${references.length} kind=${references[0]?.kind} counts=${JSON.stringify(counts)}`,
+    })
+  }
+
+  // ── 시나리오 13: 단위 표현 (km/h, m/s, req/s 등) 은 path 아님 ─────
+  {
+    const root = path.join(tmp, 's13')
+    fs.mkdirSync(root, { recursive: true })
+    const docPath = path.join(root, 'units.md')
+    fs.writeFileSync(docPath, '속도 `km/h`, `m/s`, 처리량 `req/s`, 비율 `N/A`\n')
+    const { references } = await verifyDoc(docPath, root)
+    const pass = references.length === 0
+    results.push({
+      name: '단위 표현 (km/h, m/s, req/s, N/A) 추출 제외',
+      verdict: pass ? 'PASS' : 'FAIL',
+      detail: `refs=${references.length} raws=${JSON.stringify(references.map((r) => r.raw))}`,
+    })
+  }
+
+  // ── 시나리오 14: 홈 디렉토리 (~/.bashrc, ~/.config/nvim) 은 path 아님 ─────
+  {
+    const root = path.join(tmp, 's14')
+    fs.mkdirSync(root, { recursive: true })
+    const docPath = path.join(root, 'home.md')
+    fs.writeFileSync(docPath, '편집: `~/.bashrc`\n설정: `~/.config/nvim/init.lua`\n')
+    const { references } = await verifyDoc(docPath, root)
+    const pass = references.length === 0
+    results.push({
+      name: '홈 디렉토리 ~/... 추출 제외',
+      verdict: pass ? 'PASS' : 'FAIL',
+      detail: `refs=${references.length}`,
+    })
+  }
+
+  // ── 시나리오 15: 날짜/분수/비율 (숫자만 세그먼트) 은 path 아님 ─────
+  {
+    const root = path.join(tmp, 's15')
+    fs.mkdirSync(root, { recursive: true })
+    const docPath = path.join(root, 'nums.md')
+    fs.writeFileSync(docPath, '날짜 `2024/11/05`, 분수 `1/2`, 점수 `10/10`\n')
+    const { references } = await verifyDoc(docPath, root)
+    const pass = references.length === 0
+    results.push({
+      name: '날짜/분수/비율 (숫자만) 추출 제외',
+      verdict: pass ? 'PASS' : 'FAIL',
+      detail: `refs=${references.length}`,
+    })
+  }
+
+  // ── 시나리오 16: URL (http/mailto) 은 path 아님 ─────
+  {
+    const root = path.join(tmp, 's16')
+    fs.mkdirSync(root, { recursive: true })
+    const docPath = path.join(root, 'urls.md')
+    fs.writeFileSync(
+      docPath,
+      [
+        'URL 1: `https://example.com/path/to/page`',
+        'URL 2: `http://localhost:3000/api/users`',
+        'Email: `mailto:user@example.com`',
+        '',
+      ].join('\n')
+    )
+    const { references } = await verifyDoc(docPath, root)
+    const pass = references.length === 0
+    results.push({
+      name: 'URL (http/mailto scheme) 추출 제외',
+      verdict: pass ? 'PASS' : 'FAIL',
+      detail: `refs=${references.length}`,
+    })
+  }
+
+  // ── 시나리오 17: 한글 경로·텍스트 추출 제외 ─────
+  // 이론적으로 한글 파일명은 macOS에서 가능하지만, 실제 개발 repo 에선 드묾.
+  // 실무 false positive 우선 제거 — 한글 포함 경로 거부.
+  {
+    const root = path.join(tmp, 's17')
+    fs.mkdirSync(root, { recursive: true })
+    const docPath = path.join(root, 'ko.md')
+    fs.writeFileSync(docPath, '설정/값 을 변경하세요. `사용자/홈` 참고.\n')
+    const { references } = await verifyDoc(docPath, root)
+    const pass = references.length === 0
+    results.push({
+      name: '한글 포함 경로 표기 추출 제외',
+      verdict: pass ? 'PASS' : 'FAIL',
+      detail: `refs=${references.length}`,
+    })
+  }
+
+  // ── 시나리오 18: 정규식 /foo/gi · sed s/a/b/g 는 path 아님 ─────
+  {
+    const root = path.join(tmp, 's18')
+    fs.mkdirSync(root, { recursive: true })
+    const docPath = path.join(root, 'regex.md')
+    fs.writeFileSync(docPath, '정규식: `/foo/gi`\nsed: `s/old/new/g`\n')
+    const { references } = await verifyDoc(docPath, root)
+    const pass = references.length === 0
+    results.push({
+      name: '정규식·sed 스니펫 추출 제외',
+      verdict: pass ? 'PASS' : 'FAIL',
+      detail: `refs=${references.length} raws=${JSON.stringify(references.map((r) => r.raw))}`,
+    })
+  }
+
+  // ── 시나리오 19: 코드블록 hint — 이상 라인(주석 없음·수식) 추출 제외 ─────
+  {
+    const root = path.join(tmp, 's19')
+    fs.mkdirSync(root, { recursive: true })
+    const docPath = path.join(root, 'fence.md')
+    fs.writeFileSync(
+      docPath,
+      [
+        '```ts',
+        'export const PI = 3.14',  // 주석 아님 → hint 아님
+        '```',
+        '',
+        '```sh',
+        '# chmod +x ./run.sh',      // 주석이지만 쉘 커맨드 전체 pathStr → 공백으로 PATH_CHAR_RE 거부
+        '```',
+        '',
+        '```yaml',
+        '# generated from /scripts/build.sh',  // 공백 포함 → 거부
+        '```',
+        '',
+      ].join('\n')
+    )
+    const { references } = await verifyDoc(docPath, root)
+    const pass = references.length === 0
+    results.push({
+      name: 'code-fence 첫 줄 가이드 부적합 hint 추출 제외',
+      verdict: pass ? 'PASS' : 'FAIL',
+      detail: `refs=${references.length} raws=${JSON.stringify(references.map((r) => r.raw))}`,
+    })
+  }
+
+  // ── 시나리오 20: 단일 단어(슬래시 없음) 는 추출 안 함 — 의도된 보수 동작 ─────
+  // slash 한 개도 없으면 path 표기로 보지 않음 (isPathLike false). `a.ts`, `tags.yml` 등 단일 단어는
+  // drift 추출 대상 아님 — 문서 내 노이즈가 많아 false positive 가 더 큼.
+  {
+    const root = path.join(tmp, 's20')
+    fs.mkdirSync(root, { recursive: true })
+    const docPath = path.join(root, 'doc.md')
+    fs.writeFileSync(docPath, 'See `a.ts` or `config.yml` single words.\n')
+    const { references } = await verifyDoc(docPath, root)
+    const pass = references.length === 0
+    results.push({
+      name: '단일 단어 (a.ts, config.yml) 는 추출 안 함 (보수적)',
+      verdict: pass ? 'PASS' : 'FAIL',
+      detail: `refs=${references.length}`,
+    })
+  }
+
+  // ── 시나리오 21: 정상 경로 + sed/regex 혼합 문서에서 정상만 통과 ─────
+  {
+    const root = path.join(tmp, 's21')
+    fs.mkdirSync(path.join(root, 'src'), { recursive: true })
+    const tgt = path.join(root, 'src', 'index.ts')
+    fs.writeFileSync(tgt, '//\n')
+    const pastMtime = new Date(Date.now() - 60_000)
+    fs.utimesSync(tgt, pastMtime, pastMtime)
+    const docPath = path.join(root, 'mix.md')
+    fs.writeFileSync(
+      docPath,
+      [
+        'Real ref: @/src/index.ts',
+        'Regex: `s/old/new/g`',
+        'Unit: `req/s`',
+        'Date: `2024/01/02`',
+        '',
+      ].join('\n')
+    )
+    const { references } = await verifyDoc(docPath, root)
+    const pass = references.length === 1 && references[0].raw === '@/src/index.ts' && references[0].status === 'ok'
+    results.push({
+      name: '혼합 문서: 정상 @/src/index.ts 만 통과, 노이즈 전부 거부',
+      verdict: pass ? 'PASS' : 'FAIL',
+      detail: `refs=${references.length} raws=${JSON.stringify(references.map((r) => r.raw))}`,
     })
   }
 

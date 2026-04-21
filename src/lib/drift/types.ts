@@ -3,6 +3,8 @@ export type ReferenceKind = 'at' | 'hint' | 'inline'
 export interface Reference {
   raw: string
   resolvedPath: string
+  // inline/hint 상대 경로는 docDir / projectRoot 둘 다 후보. resolvedPath 가 없으면 fallbackPath 도 시도.
+  fallbackPath?: string
   kind: ReferenceKind
   line: number
   col: number

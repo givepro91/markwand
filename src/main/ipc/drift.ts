@@ -2,7 +2,7 @@ import fs from 'fs'
 import { ipcMain } from 'electron'
 import { z } from 'zod'
 import { extractReferences } from '../../lib/drift/extractor'
-import type { DriftReport, DriftStatus, VerifiedReference } from '../../lib/drift/types'
+import type { DriftReport, DriftStatus, Reference, VerifiedReference } from '../../lib/drift/types'
 import { getStore } from '../services/store'
 import { assertInWorkspace } from '../security/validators'
 
@@ -46,26 +46,47 @@ export function registerDriftHandlers(): void {
     }
 
     const content = await fs.promises.readFile(docPath, 'utf-8')
-    const refs = extractReferences(content, projectRoot)
+    // docPath 전달: inline/hint 는 문서 디렉토리 기준으로 상대 경로를 resolve 한다.
+    const refs = extractReferences(content, projectRoot, docPath)
     const docMtime = docStat.mtimeMs
 
     // Known Limitations (v1):
     //  - FAT32/일부 macOS HFS+ 는 mtime 정밀도가 1초 — 동일 초 내 저장 시 ok 오판 가능.
     //  - `git checkout` 은 파일 mtime을 체크아웃 시각으로 갱신 → stale 오판. content hash 기반 판정은 v2.
     //  - 디렉토리는 내부 파일 추가·삭제마다 mtime 이 갱신되므로 stale 판정 제외 (존재=ok, 없음=missing 만).
+    // primary resolvedPath 를 먼저 시도, 실패 시 fallbackPath 시도. 둘 다 실패하면 missing.
+    // resolvedPath 를 실제 선택된 경로로 덮어써서 UI "Finder 열기" 가 정확한 파일을 가리키도록.
+    async function statWithFallback(
+      ref: Reference
+    ): Promise<{ path: string; mtimeMs: number; isDirectory: boolean } | null> {
+      try {
+        const s = await fs.promises.stat(ref.resolvedPath)
+        return { path: ref.resolvedPath, mtimeMs: s.mtimeMs, isDirectory: s.isDirectory() }
+      } catch {}
+      if (ref.fallbackPath) {
+        try {
+          const s = await fs.promises.stat(ref.fallbackPath)
+          return { path: ref.fallbackPath, mtimeMs: s.mtimeMs, isDirectory: s.isDirectory() }
+        } catch {}
+      }
+      return null
+    }
+
     const verified: VerifiedReference[] = await Promise.all(
       refs.map(async (ref): Promise<VerifiedReference> => {
-        try {
-          const targetStat = await fs.promises.stat(ref.resolvedPath)
-          const isDirectory = targetStat.isDirectory()
-          const status: DriftStatus = isDirectory
-            ? 'ok'
-            : targetStat.mtimeMs > docMtime
-              ? 'stale'
-              : 'ok'
-          return { ...ref, status, targetMtime: targetStat.mtimeMs, isDirectory }
-        } catch {
-          return { ...ref, status: 'missing' }
+        const hit = await statWithFallback(ref)
+        if (!hit) return { ...ref, status: 'missing' }
+        const status: DriftStatus = hit.isDirectory
+          ? 'ok'
+          : hit.mtimeMs > docMtime
+            ? 'stale'
+            : 'ok'
+        return {
+          ...ref,
+          resolvedPath: hit.path,
+          status,
+          targetMtime: hit.mtimeMs,
+          isDirectory: hit.isDirectory,
         }
       })
     )
