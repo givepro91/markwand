@@ -18,6 +18,12 @@ build/icon-work/
 *.pkg
 *.app
 
+# 런치 미디어 (GIF / MP4 는 GitHub release asset 으로 관리, 원본 녹화 mov 는 민감)
+*.mov
+docs/launch/*.mp4
+docs/launch/*.gif
+docs/launch/*.png
+
 # 환경변수
 .env
 .env.*
