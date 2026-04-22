@@ -1,6 +1,6 @@
 {
   "name": "markwand",
-  "version": "0.2.0",
+  "version": "0.3.0-beta.1",
   "description": "AI 산출물 큐레이터 — 여러 프로젝트에 산재한 마크다운 문서를 발견·소비·재진입",
   "main": "./out/main/index.js",
   "author": "jay@spacewalk.tech",
@@ -67,6 +67,7 @@
       "**/node_modules/cpu-features/**/*.node"
     ],
     "buildDependenciesFromSource": false,
+    "npmRebuild": false,
     "mac": {
       "category": "public.app-category.productivity",
       "target": [
