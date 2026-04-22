@@ -1,10 +1,12 @@
 import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAppStore } from '../state/store'
 import { Button, Gauge, toast } from './ui'
 import { ComposerChip } from './ComposerChip'
 import { estimateTokens, TOKEN_WARN, TOKEN_CRIT } from '../lib/tokenEstimate'
 
 export function ComposerTray() {
+  const { t } = useTranslation()
   const selected = useAppStore((s) => s.selectedDocPaths)
   const composerCollapsed = useAppStore((s) => s.composerCollapsed)
   const setComposerCollapsed = useAppStore((s) => s.setComposerCollapsed)
@@ -53,13 +55,13 @@ export function ComposerTray() {
         .map((p) => (p.includes(' ') ? `"@${p}"` : `@${p}`))
         .join(' ')
       await navigator.clipboard.writeText(atRefs)
-      toast.success(`@참조 ${paths.length}개 복사됨 — Claude/Codex에 붙여넣기`, {
+      toast.success(t('composer.copied', { count: paths.length }), {
         durationMs: 4000,
       })
       if (composerAutoClear) clearDocSelection()
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      toast.error(`복사 실패: ${msg}`)
+      toast.error(t('composer.copyFailed', { msg }))
     } finally {
       setCopying(false)
     }
@@ -77,7 +79,7 @@ export function ComposerTray() {
         }}
       >
         <Button variant="primary" size="sm" onClick={() => setComposerCollapsed(false)}>
-          {count} docs 선택됨 ▲
+          {t('composer.trayToggle', { count })}
         </Button>
       </div>
     )
@@ -118,7 +120,7 @@ export function ComposerTray() {
         variant="ghost"
         size="sm"
         onClick={() => setComposerCollapsed(true)}
-        aria-label="접기"
+        aria-label={t('composer.collapseAria')}
       >
         ×
       </Button>
@@ -127,9 +129,9 @@ export function ComposerTray() {
         size="sm"
         onClick={handleCopyRef}
         disabled={copying}
-        aria-label="@참조를 클립보드에 복사"
+        aria-label={t('composer.copyAria')}
       >
-        {copying ? '복사 중…' : '📋 Copy @ref'}
+        {copying ? t('composer.copying') : t('composer.copy')}
       </Button>
     </div>
   )

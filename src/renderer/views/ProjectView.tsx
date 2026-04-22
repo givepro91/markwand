@@ -215,7 +215,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
       setDocContent(result.content)
     } catch (err) {
       console.error('문서 읽기 실패:', err)
-      setDocContent('문서를 읽을 수 없습니다.')
+      setDocContent(t('projectView.docReadFailed'))
     }
   }, [projectId, setLastViewedDoc])
 
@@ -478,8 +478,8 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
               }
               if (e.key === 'Escape') handleCloseFind()
             }}
-            placeholder="문서에서 검색..."
-            aria-label="문서 내 검색"
+            placeholder={t('projectView.searchPlaceholder')}
+            aria-label={t('projectView.findInDoc')}
             style={{
               flex: 1,
               maxWidth: '280px',
@@ -495,16 +495,16 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
           />
           {findResult && (
             <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-              {findResult.total > 0 ? `${findResult.active} / ${findResult.total}` : '결과 없음'}
+              {findResult.total > 0 ? `${findResult.active} / ${findResult.total}` : t('projectView.findNoResults')}
             </span>
           )}
-          <IconButton aria-label="이전 결과" size="sm" onClick={handleFindPrev} disabled={!findQuery.trim()}>
+          <IconButton aria-label={t('projectView.findPrev')} size="sm" onClick={handleFindPrev} disabled={!findQuery.trim()}>
             <ChevronLeftIcon />
           </IconButton>
-          <IconButton aria-label="다음 결과" size="sm" onClick={handleFindNext} disabled={!findQuery.trim()}>
+          <IconButton aria-label={t('projectView.findNext')} size="sm" onClick={handleFindNext} disabled={!findQuery.trim()}>
             <ChevronRightIcon />
           </IconButton>
-          <IconButton aria-label="검색 닫기" size="sm" onClick={handleCloseFind}>
+          <IconButton aria-label={t('projectView.findClose')} size="sm" onClick={handleCloseFind}>
             ✕
           </IconButton>
         </div>
@@ -594,7 +594,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
           className="sidebar-resize-handle"
           role="separator"
           aria-orientation="vertical"
-          aria-label="사이드바 폭 조절"
+          aria-label={t('projectView.sidebarResize')}
           onPointerDown={handleSidebarResizeStart}
           style={{
             width: '6px',
@@ -640,7 +640,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
               }}
             >
               <IconButton
-                aria-label="문서 내 검색"
+                aria-label={t('projectView.findInDoc')}
                 aria-pressed={showFind}
                 size="sm"
                 variant={showFind ? 'primary' : 'ghost'}
@@ -649,7 +649,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
                 <SearchIcon />
               </IconButton>
               <IconButton
-                aria-label="목차 토글"
+                aria-label={t('projectView.tocToggle')}
                 aria-pressed={showToc}
                 size="sm"
                 variant={showToc ? 'primary' : 'ghost'}
@@ -691,7 +691,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
               <EmptyState
                 icon="📄"
-                title="왼쪽에서 파일을 선택하세요"
+                title={t('projectView.selectFile')}
                 description="트리에서 .md 또는 이미지 파일을 클릭하면 여기 표시됩니다."
               />
             </div>

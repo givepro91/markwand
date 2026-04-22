@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useAppStore } from '../state/store'
 import { Checkbox } from './ui'
 import { DriftBadge } from './DriftBadge'
@@ -17,6 +18,7 @@ function formatTime(ts: number): string {
 }
 
 export function InboxItem({ path, projectName, title, mtime, isRead, onClick }: InboxItemProps) {
+  const { t } = useTranslation()
   const composerChecked = useAppStore((s) => s.selectedDocPaths.has(path))
   const toggleDocSelection = useAppStore((s) => s.toggleDocSelection)
   const driftReport = useAppStore((s) => s.driftReports[path])
@@ -51,7 +53,7 @@ export function InboxItem({ path, projectName, title, mtime, isRead, onClick }: 
         checked={composerChecked}
         size="sm"
         stopPropagation
-        aria-label={`${title} Composer 선택`}
+        aria-label={t('fileTree.composerSelectAria', { name: title })}
         onChange={() => toggleDocSelection(path)}
       />
       {/* unread indicator */}

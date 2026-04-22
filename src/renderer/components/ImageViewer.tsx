@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { getExt } from '../../lib/viewable'
 
 type FitMode = 'fit' | '100%' | 'fill'
@@ -26,6 +27,7 @@ const FIT_MODES: { id: FitMode; label: string }[] = [
 ]
 
 function ImageViewerInner({ path, name, size, workspaceId }: ImageViewerProps) {
+  const { t } = useTranslation()
   const [mode, setMode] = useState<FitMode>('fit')
   const [dims, setDims] = useState<{ w: number; h: number } | null>(null)
   const [errored, setErrored] = useState(false)
@@ -138,7 +140,7 @@ function ImageViewerInner({ path, name, size, workspaceId }: ImageViewerProps) {
       {/* 상단 툴바: Fit/100%/Fill 토글 + 파일명 */}
       <div
         role="toolbar"
-        aria-label="이미지 보기 옵션"
+        aria-label={t('imageViewer.toolbarAria')}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -153,7 +155,7 @@ function ImageViewerInner({ path, name, size, workspaceId }: ImageViewerProps) {
       >
         <div
           role="radiogroup"
-          aria-label="맞춤 모드"
+          aria-label={t('imageViewer.fitAria')}
           style={{ display: 'flex', gap: 'var(--sp-1)' }}
         >
           {FIT_MODES.map((m, idx) => {
@@ -239,9 +241,9 @@ function ImageViewerInner({ path, name, size, workspaceId }: ImageViewerProps) {
             <div style={{ fontSize: '32px', marginBottom: 'var(--sp-2)' }} aria-hidden="true">
               🖼️
             </div>
-            이미지를 불러올 수 없습니다
+            {t('imageViewer.loadFailed')}
             <div style={{ fontSize: 'var(--fs-xs)', marginTop: 'var(--sp-1)' }}>
-              파일이 이동되었거나 접근 권한이 없습니다.
+              {t('imageViewer.loadFailedDetail')}
             </div>
           </div>
         ) : isSsh && !sshBlobUrl ? (
@@ -256,7 +258,7 @@ function ImageViewerInner({ path, name, size, workspaceId }: ImageViewerProps) {
             }}
           >
             <span className="ui-spinner" aria-hidden="true" />
-            <div style={{ marginTop: 'var(--sp-2)' }}>원격 이미지 불러오는 중…</div>
+            <div style={{ marginTop: 'var(--sp-2)' }}>{t('imageViewer.remoteLoading')}</div>
           </div>
         ) : (
           <img

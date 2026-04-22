@@ -4,7 +4,10 @@
     "close": "닫기",
     "confirm": "확인",
     "open": "열기",
-    "loading": "읽는 중…"
+    "loading": "읽는 중…",
+    "copy": "복사",
+    "copied": "복사됨",
+    "remove": "제거"
   },
 
   "language": {
@@ -28,6 +31,84 @@
     "progressAria": "{{pct}}% 완료",
     "filesLoading": "파일 목록 불러오는 중…",
     "filesLoadingRemote": "원격 서버는 잠시 시간이 걸릴 수 있습니다."
+  },
+
+  "theme": {
+    "light": "라이트 모드",
+    "dark": "다크 모드",
+    "system": "시스템 설정"
+  },
+
+  "inbox": {
+    "sectionToday": "오늘",
+    "sectionYesterday": "어제",
+    "sectionThisWeek": "이번 주",
+    "sectionEarlier": "이전",
+    "filterAll": "전체",
+    "filterRead": "읽음만",
+    "filterUnread": "안읽음만",
+    "emptyAll": "워크스페이스 프로젝트에 마크다운 문서가 없거나 아직 로딩 중입니다.",
+    "emptyRead": "읽은 문서가 없습니다.",
+    "emptyUnread": "읽지 않은 문서가 없습니다.",
+    "selectWorkspace": "워크스페이스를 선택하세요",
+    "collecting": "전체 문서 수집 중…",
+    "collectFailed": "수집 실패: {{error}}",
+    "noDocsTitle": "문서가 없습니다"
+  },
+
+  "allProjects": {
+    "groupNone": "그룹 없음",
+    "groupTag": "태그별",
+    "groupStatus": "상태별",
+    "groupSource": "출처별",
+    "sortRecent": "최신",
+    "sortName": "이름",
+    "sortCount": "개수",
+    "viewGrid": "그리드 보기",
+    "viewList": "목록 보기",
+    "refresh": "새로고침",
+    "selectWorkspace": "워크스페이스를 선택하세요",
+    "scanning": "프로젝트 스캔 중…",
+    "scanFailed": "스캔 실패: {{error}}",
+    "filterEmpty": "필터 결과 없음",
+    "notFound": "프로젝트를 찾을 수 없습니다",
+    "headerName": "이름",
+    "headerDocs": "문서",
+    "headerDate": "날짜",
+    "titleFiltered": "필터 결과 ({{count}})",
+    "titleAll": "전체 프로젝트 ({{count}})",
+    "countingDocs": "문서 분석 중 {{done}}/{{total}} ({{pct}}%)",
+    "groupLabel": "그룹",
+    "filterEmptyDesc": "다른 필터 조건을 시도해 보세요.",
+    "selectWorkspaceDesc": "상단에서 워크스페이스를 선택하면 프로젝트 목록이 표시됩니다.",
+    "notFoundDesc": "필터를 해제하거나 다른 워크스페이스를 선택해 보세요."
+  },
+
+  "projectView": {
+    "searchPlaceholder": "문서에서 검색...",
+    "docReadFailed": "문서를 읽을 수 없습니다.",
+    "findInDoc": "문서 내 검색",
+    "findPrev": "이전 결과",
+    "findNext": "다음 결과",
+    "findClose": "검색 닫기",
+    "findNoResults": "결과 없음",
+    "tocToggle": "목차 토글",
+    "sidebarResize": "사이드바 폭 조절",
+    "selectFile": "왼쪽에서 파일을 선택하세요",
+    "selectProject": "프로젝트를 선택하세요",
+    "allProjectsCta": "전체 프로젝트 보기"
+  },
+
+  "sidebar": {
+    "viewMode": "뷰 모드",
+    "tabs": {
+      "all": "프로젝트 목록",
+      "allTitle": "워크스페이스 내 모든 프로젝트 보기",
+      "inbox": "최근 문서",
+      "inboxTitle": "최근 수정된 문서를 날짜별로 보기",
+      "project": "현재 프로젝트",
+      "projectTitle": "선택한 프로젝트의 파일 트리와 문서 보기"
+    }
   },
 
   "picker": {
@@ -54,6 +135,171 @@
     "sshTransport": "원격 SSH 서버 연결",
     "sshTransportHint": "원격 서버의 마크다운 문서를 읽기 전용으로 볼 수 있습니다. 변경 후 <1>앱을 재시작</1>해주세요.",
     "sshTransportTitle": "원격 SSH 서버의 마크다운을 읽기 전용으로 불러옵니다. 변경 후 앱 재시작 필요."
+  },
+
+  "manage": {
+    "title": "워크스페이스 관리",
+    "empty": "등록된 워크스페이스가 없습니다.",
+    "removeAria": "{{name}} 제거",
+    "remove": "제거",
+    "removing": "제거 중…",
+    "confirm": "정말 제거하시겠습니까?"
+  },
+
+  "project": {
+    "revealAria": "Finder에서 열기",
+    "revealTitle": "Finder에서 열기",
+    "analyzing": "분석 중",
+    "docCount": "문서 {{count}}개",
+    "docCountShort": "{{count}}개",
+    "driftTitle": "{{missing}}개 missing · {{stale}}개 stale — 문서 내 참조가 실제 코드와 불일치"
+  },
+
+  "fileTree": {
+    "searchPlaceholder": "파일 검색...",
+    "searchAria": "파일 검색",
+    "noResults": "검색 결과 없음",
+    "noDocs": "문서가 없습니다",
+    "folderOpen": "열린 폴더",
+    "folder": "폴더",
+    "docFile": "문서 파일",
+    "imageFile": "이미지 파일",
+    "composerSelectAria": "{{name}} Composer 선택"
+  },
+
+  "filter": {
+    "toolbarAria": "문서 필터",
+    "rangeSection": "기간",
+    "rangeAria": "업데이트 기간 필터",
+    "rangeToday": "오늘",
+    "range7d": "7일",
+    "range30d": "30일",
+    "rangeAll": "전체",
+    "statusSection": "상태",
+    "statusAria": "상태: {{name}}",
+    "sourceSection": "출처",
+    "sourceAria": "출처: {{name}}",
+    "sourceAIHint": " (AI 산출물)",
+    "reset": "✕ 초기화",
+    "resetAria": "필터 초기화"
+  },
+
+  "imageViewer": {
+    "toolbarAria": "이미지 보기 옵션",
+    "fitAria": "맞춤 모드",
+    "loadFailed": "이미지를 불러올 수 없습니다",
+    "loadFailedDetail": "파일이 이동되었거나 접근 권한이 없습니다.",
+    "remoteLoading": "원격 이미지 불러오는 중…"
+  },
+
+  "cmdk": {
+    "aria": "문서 검색",
+    "placeholder": "문서 검색...",
+    "clearAria": "검색어 지우기",
+    "searchingAria": "검색 중",
+    "searching": "검색 중...",
+    "resultsAria": "검색 결과",
+    "resultsCount": "{{count}}개 결과",
+    "indexingShort": "인덱싱 중…",
+    "indexingProgress": "인덱싱 중 {{done}}/{{total}}",
+    "noWorkspace": "워크스페이스가 없습니다",
+    "noWorkspaceHint": "사이드바에서 워크스페이스를 추가하면 ⌘K로 문서를 검색할 수 있습니다",
+    "recentTitle": "최근 문서가 여기에 표시됩니다",
+    "recentHint": "⌘K로 언제든 열 수 있어요",
+    "noResults": "\"{{query}}\"에 대한 결과가 없습니다",
+    "noResultsHint": "다른 단어나 파일 경로를 시도해보세요",
+    "hintMove": "이동",
+    "hintOpen": "열기",
+    "hintClose": "닫기"
+  },
+
+  "claudeCli": {
+    "open": "Claude로 열기",
+    "opening": " …",
+    "openAria": "Claude로 열기",
+    "notFoundTitle": "claude를 찾을 수 없습니다",
+    "notFoundDetail": "Claude CLI가 설치되어 있지 않거나 PATH에 등록되지 않았습니다.",
+    "installGuide": "설치 가이드",
+    "recheck": "다시 확인",
+    "rechecking": "확인 중…",
+    "revealFinder": "Finder에서 열기",
+    "close": "닫기"
+  },
+
+  "composer": {
+    "copied": "@참조 {{count}}개 복사됨 — Claude/Codex에 붙여넣기",
+    "copyFailed": "복사 실패: {{msg}}",
+    "trayToggle": "{{count}} docs 선택됨 ▲",
+    "collapseAria": "접기",
+    "copyAria": "@참조를 클립보드에 복사",
+    "copy": "📋 Copy @ref",
+    "copying": "복사 중…",
+    "chipRemoveAria": "{{label}} 제거",
+    "onboardingAria": "Composer 안내",
+    "onboardingBadge": "Context Composer (신규)",
+    "onboardingBody": "체크박스로 여러 파일을 선택한 뒤 하단의 Composer로 Claude Code · Codex에 한 번에 전달하세요.",
+    "onboardingAck": "확인했어요"
+  },
+
+  "toc": {
+    "title": "목차",
+    "aria": "목차"
+  },
+
+  "toast": {
+    "closeAria": "토스트 닫기"
+  },
+
+  "markdown": {
+    "imageLoadFailed": "이미지 로드 실패: {{src}}",
+    "remoteImageLoadFailed": "원격 이미지 로드 실패: {{path}}",
+    "remoteImageLoading": "이미지 불러오는 중…"
+  },
+
+  "drift": {
+    "ariaToggle": "drift 리포트 토글",
+    "totalRefs": "문서↔코드 참조 {{count}}개",
+    "missingTitle": "{{count}}개 missing — 파일 없음",
+    "staleTitle": "{{count}}개 stale — 문서 이후 수정됨",
+    "ok": "전부 OK",
+    "ignoredTitle": "{{count}}개 참조가 무시 목록에 있음",
+    "ignoredLabel": "무시 {{count}}",
+    "copyIssuesTitle": "missing/stale 이슈를 AI 프롬프트 형식으로 클립보드에 복사 (문서 경로·줄번호·지시문 포함)",
+    "copyIssuesAria": "이슈 복사",
+    "copyIssuesLabel": "📋 이슈 복사",
+    "copyIssuesDone": "복사됨",
+    "revalidate": "재검증",
+    "revalidating": "검증 중…",
+    "revalidateFailed": "재검증 실패: {{err}}",
+    "missingDetail": " — 문서가 언급한 파일이 실제로 없습니다. 경로 오타·이름 변경·삭제일 수 있어요. <1>위치로 이동</1>으로 문서에서 해당 참조를 찾아 고치거나, 해결이 어려우면 <3>무시</3>로 제외하세요.",
+    "staleDetail": " — 참조 <1>파일</1>이 문서 이후 수정됐습니다. 파일을 열어 바뀐 내용을 확인한 뒤 문서를 갱신하세요. 문제없으면 <3>무시</3>. (폴더 경로는 내부 변경이 잦아 stale 판정 대상이 아닙니다.)",
+    "ignoredReset": "무시 전체 해제 ({{count}})",
+    "folderLabel": "폴더",
+    "folderTitle": "이 경로는 디렉토리입니다 — 폴더는 내부 변경으로 mtime 이 계속 바뀌기 때문에 stale 판정에서 제외됩니다.",
+    "jumpTitle": "문서에서 이 참조가 나오는 위치로 이동",
+    "jumpLabel": "위치로 이동",
+    "revealFolder": "Finder 에서 폴더 열기",
+    "revealFile": "Finder 에서 파일 위치 보기",
+    "copyPathTitle": "절대 경로 복사",
+    "copyPathLabel": "경로 복사",
+    "copyPathDone": "복사됨",
+    "ignore": "무시",
+    "unignore": "무시 해제",
+    "badgeAria": "drift 상태",
+    "badgeMissingTitle": "{{count}}개 참조 파일이 존재하지 않음",
+    "badgeStaleTitle": "{{count}}개 참조 파일이 문서 이후 수정됨 — 내용 재확인 필요",
+    "prompt": {
+      "thisDoc": "이 문서: {{path}}",
+      "intro": "아래 참조들에 문제가 있습니다. 문서를 열어 수정안을 제안해주세요.",
+      "missingHeading": "## ✕ missing ({{count}}) — 파일이 없습니다 (경로 오타·이름 변경·삭제 가능)",
+      "staleHeading": "## ◐ stale ({{count}}) — 문서 이후 파일이 수정됐습니다 (내용 갱신 필요 여부 확인)",
+      "unknownTime": "시각 불명",
+      "staleItem": "- {{path}} (L{{line}}, 파일 수정: {{time}})",
+      "closing": "missing은 경로 정정/삭제 반영, stale은 문서 내용 최신화 여부를 판단해주세요.",
+      "closingMissing": "missing은 경로 정정/삭제 반영 여부를 판단해주세요.",
+      "closingStale": "stale은 문서 내용 최신화 여부를 판단해주세요.",
+      "syncedLabel": "동기화됨"
+    }
   },
 
   "ssh": {

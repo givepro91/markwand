@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from './ui'
 import type { Workspace } from '../../../src/preload/types'
 
@@ -9,6 +10,7 @@ interface WorkspaceManageModalProps {
 }
 
 export function WorkspaceManageModal({ workspaces, onRemove, onClose }: WorkspaceManageModalProps) {
+  const { t } = useTranslation()
   const modalRef = useRef<HTMLDivElement | null>(null)
   // 인라인 confirm 상태: null이면 미활성, string이면 해당 id 확인 중
   const [confirmId, setConfirmId] = useState<string | null>(null)
@@ -107,16 +109,16 @@ export function WorkspaceManageModal({ workspaces, onRemove, onClose }: Workspac
               margin: 0,
             }}
           >
-            워크스페이스 관리
+            {t('manage.title')}
           </h3>
-          <Button variant="ghost" size="sm" onClick={onClose} aria-label="닫기">
+          <Button variant="ghost" size="sm" onClick={onClose} aria-label={t('common.close')}>
             ✕
           </Button>
         </div>
 
         {workspaces.length === 0 ? (
           <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0 }}>
-            등록된 워크스페이스가 없습니다.
+            {t('manage.empty')}
           </p>
         ) : (
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
@@ -162,9 +164,9 @@ export function WorkspaceManageModal({ workspaces, onRemove, onClose }: Workspac
                         variant="danger"
                         size="sm"
                         onClick={() => setConfirmId(w.id)}
-                        aria-label={`${w.name} 제거`}
+                        aria-label={t('manage.removeAria', { name: w.name })}
                       >
-                        제거
+                        {t('manage.remove')}
                       </Button>
                     )}
                   </div>
@@ -183,7 +185,7 @@ export function WorkspaceManageModal({ workspaces, onRemove, onClose }: Workspac
                       }}
                     >
                       <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-                        정말 제거하시겠습니까?
+                        {t('manage.confirm')}
                       </span>
                       <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
                         <Button
@@ -192,7 +194,7 @@ export function WorkspaceManageModal({ workspaces, onRemove, onClose }: Workspac
                           onClick={() => setConfirmId(null)}
                           disabled={removing}
                         >
-                          취소
+                          {t('common.cancel')}
                         </Button>
                         <Button
                           variant="danger"
@@ -200,7 +202,7 @@ export function WorkspaceManageModal({ workspaces, onRemove, onClose }: Workspac
                           onClick={() => handleConfirmRemove(w.id)}
                           disabled={removing}
                         >
-                          {removing ? '제거 중…' : '제거'}
+                          {removing ? t('manage.removing') : t('manage.remove')}
                         </Button>
                       </div>
                     </div>

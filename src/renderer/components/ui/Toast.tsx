@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { CSSProperties, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export type ToastVariant = 'success' | 'error' | 'info'
 
@@ -59,6 +60,7 @@ const variantColors: Record<ToastVariant, { bg: string; color: string; border: s
 }
 
 function ToastItem({ toast: t, onDismiss }: { toast: Toast; onDismiss: () => void }) {
+  const { t: tr } = useTranslation()
   const duration = t.durationMs ?? 3500
 
   useEffect(() => {
@@ -109,7 +111,7 @@ function ToastItem({ toast: t, onDismiss }: { toast: Toast; onDismiss: () => voi
       )}
       <button
         onClick={onDismiss}
-        aria-label="토스트 닫기"
+        aria-label={tr('toast.closeAria')}
         style={{
           background: 'transparent',
           border: 'none',

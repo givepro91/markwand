@@ -4,7 +4,10 @@
     "close": "Close",
     "confirm": "Confirm",
     "open": "Open",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "copy": "Copy",
+    "copied": "Copied",
+    "remove": "Remove"
   },
 
   "language": {
@@ -28,6 +31,84 @@
     "progressAria": "{{pct}}% complete",
     "filesLoading": "Loading file list…",
     "filesLoadingRemote": "Remote servers may take a moment."
+  },
+
+  "theme": {
+    "light": "Light mode",
+    "dark": "Dark mode",
+    "system": "System"
+  },
+
+  "inbox": {
+    "sectionToday": "Today",
+    "sectionYesterday": "Yesterday",
+    "sectionThisWeek": "This week",
+    "sectionEarlier": "Earlier",
+    "filterAll": "All",
+    "filterRead": "Read",
+    "filterUnread": "Unread",
+    "emptyAll": "No markdown documents in this workspace yet, or still loading.",
+    "emptyRead": "No read documents.",
+    "emptyUnread": "No unread documents.",
+    "selectWorkspace": "Select a workspace",
+    "collecting": "Collecting all documents…",
+    "collectFailed": "Collection failed: {{error}}",
+    "noDocsTitle": "No documents"
+  },
+
+  "allProjects": {
+    "groupNone": "No grouping",
+    "groupTag": "By tag",
+    "groupStatus": "By status",
+    "groupSource": "By source",
+    "sortRecent": "Recent",
+    "sortName": "Name",
+    "sortCount": "Count",
+    "viewGrid": "Grid view",
+    "viewList": "List view",
+    "refresh": "Refresh",
+    "selectWorkspace": "Select a workspace",
+    "scanning": "Scanning projects…",
+    "scanFailed": "Scan failed: {{error}}",
+    "filterEmpty": "No filter results",
+    "notFound": "No projects found",
+    "headerName": "Name",
+    "headerDocs": "Docs",
+    "headerDate": "Date",
+    "titleFiltered": "Filter results ({{count}})",
+    "titleAll": "All projects ({{count}})",
+    "countingDocs": "Counting {{done}}/{{total}} ({{pct}}%)",
+    "groupLabel": "Group",
+    "filterEmptyDesc": "Try different filter criteria.",
+    "selectWorkspaceDesc": "Pick a workspace at the top to see its projects.",
+    "notFoundDesc": "Clear filters or try a different workspace."
+  },
+
+  "projectView": {
+    "searchPlaceholder": "Search in documents...",
+    "docReadFailed": "Could not read document.",
+    "findInDoc": "Find in document",
+    "findPrev": "Previous match",
+    "findNext": "Next match",
+    "findClose": "Close search",
+    "findNoResults": "No matches",
+    "tocToggle": "Toggle table of contents",
+    "sidebarResize": "Resize sidebar",
+    "selectFile": "Select a file from the left",
+    "selectProject": "Select a project",
+    "allProjectsCta": "See all projects"
+  },
+
+  "sidebar": {
+    "viewMode": "View mode",
+    "tabs": {
+      "all": "Projects",
+      "allTitle": "All projects in the workspace",
+      "inbox": "Recent docs",
+      "inboxTitle": "Recently modified documents by date",
+      "project": "Current project",
+      "projectTitle": "File tree and documents for the selected project"
+    }
   },
 
   "picker": {
@@ -54,6 +135,171 @@
     "sshTransport": "Remote SSH server",
     "sshTransportHint": "Browse markdown on remote servers (read-only). <1>Restart the app</1> after changing.",
     "sshTransportTitle": "Enables read-only remote SSH workspaces. Restart the app after changing."
+  },
+
+  "manage": {
+    "title": "Manage workspaces",
+    "empty": "No workspaces registered.",
+    "removeAria": "Remove {{name}}",
+    "remove": "Remove",
+    "removing": "Removing…",
+    "confirm": "Remove this workspace?"
+  },
+
+  "project": {
+    "revealAria": "Show in Finder",
+    "revealTitle": "Show in Finder",
+    "analyzing": "Analyzing",
+    "docCount": "{{count}} documents",
+    "docCountShort": "{{count}}",
+    "driftTitle": "{{missing}} missing · {{stale}} stale — document references don't match code"
+  },
+
+  "fileTree": {
+    "searchPlaceholder": "Search files...",
+    "searchAria": "Search files",
+    "noResults": "No results",
+    "noDocs": "No documents",
+    "folderOpen": "Open folder",
+    "folder": "Folder",
+    "docFile": "Document file",
+    "imageFile": "Image file",
+    "composerSelectAria": "Select {{name}} for Composer"
+  },
+
+  "filter": {
+    "toolbarAria": "Document filters",
+    "rangeSection": "Period",
+    "rangeAria": "Updated period filter",
+    "rangeToday": "Today",
+    "range7d": "7 days",
+    "range30d": "30 days",
+    "rangeAll": "All",
+    "statusSection": "Status",
+    "statusAria": "Status: {{name}}",
+    "sourceSection": "Source",
+    "sourceAria": "Source: {{name}}",
+    "sourceAIHint": " (AI)",
+    "reset": "✕ Reset",
+    "resetAria": "Reset filters"
+  },
+
+  "imageViewer": {
+    "toolbarAria": "Image view options",
+    "fitAria": "Fit mode",
+    "loadFailed": "Could not load image",
+    "loadFailedDetail": "The file may have been moved or you don't have permission.",
+    "remoteLoading": "Loading remote image…"
+  },
+
+  "cmdk": {
+    "aria": "Search documents",
+    "placeholder": "Search documents...",
+    "clearAria": "Clear search",
+    "searchingAria": "Searching",
+    "searching": "Searching...",
+    "resultsAria": "Search results",
+    "resultsCount": "{{count}} results",
+    "indexingShort": "Indexing…",
+    "indexingProgress": "Indexing {{done}}/{{total}}",
+    "noWorkspace": "No workspace",
+    "noWorkspaceHint": "Add a workspace from the sidebar to search documents with ⌘K",
+    "recentTitle": "Recent documents will appear here",
+    "recentHint": "Open anytime with ⌘K",
+    "noResults": "No results for \"{{query}}\"",
+    "noResultsHint": "Try different keywords or a file path",
+    "hintMove": "navigate",
+    "hintOpen": "open",
+    "hintClose": "close"
+  },
+
+  "claudeCli": {
+    "open": "Open with Claude",
+    "opening": " …",
+    "openAria": "Open with Claude",
+    "notFoundTitle": "claude not found",
+    "notFoundDetail": "Claude CLI is not installed or not in your PATH.",
+    "installGuide": "Install guide",
+    "recheck": "Retry",
+    "rechecking": "Checking…",
+    "revealFinder": "Show in Finder",
+    "close": "Close"
+  },
+
+  "composer": {
+    "copied": "Copied {{count}} @refs — paste into Claude/Codex",
+    "copyFailed": "Copy failed: {{msg}}",
+    "trayToggle": "{{count}} docs selected ▲",
+    "collapseAria": "Collapse",
+    "copyAria": "Copy @refs to clipboard",
+    "copy": "📋 Copy @ref",
+    "copying": "Copying…",
+    "chipRemoveAria": "Remove {{label}}",
+    "onboardingAria": "Composer help",
+    "onboardingBadge": "Context Composer (new)",
+    "onboardingBody": "Check multiple files, then send them to Claude Code / Codex in one step via the Composer at the bottom.",
+    "onboardingAck": "Got it"
+  },
+
+  "toc": {
+    "title": "Contents",
+    "aria": "Table of contents"
+  },
+
+  "toast": {
+    "closeAria": "Close toast"
+  },
+
+  "markdown": {
+    "imageLoadFailed": "Image load failed: {{src}}",
+    "remoteImageLoadFailed": "Remote image load failed: {{path}}",
+    "remoteImageLoading": "Loading image…"
+  },
+
+  "drift": {
+    "ariaToggle": "Toggle drift report",
+    "totalRefs": "{{count}} doc↔code references",
+    "missingTitle": "{{count}} missing — file not found",
+    "staleTitle": "{{count}} stale — modified after document",
+    "ok": "All OK",
+    "ignoredTitle": "{{count}} references are ignored",
+    "ignoredLabel": "Ignored {{count}}",
+    "copyIssuesTitle": "Copy missing/stale issues as an AI prompt (includes doc path, line number, and instructions)",
+    "copyIssuesAria": "Copy issues",
+    "copyIssuesLabel": "📋 Copy issues",
+    "copyIssuesDone": "Copied",
+    "revalidate": "Revalidate",
+    "revalidating": "Validating…",
+    "revalidateFailed": "Revalidation failed: {{err}}",
+    "missingDetail": " — the file referenced in the document is missing. It may be a typo, rename, or deletion. Use <1>Jump to location</1> to find and fix the reference in the document, or choose <3>Ignore</3> if unsolvable.",
+    "staleDetail": " — the referenced <1>file</1> was modified after the document. Open the file to review changes and update the document. If it's fine, choose <3>Ignore</3>. (Folder paths are excluded from stale checks because their mtime changes frequently.)",
+    "ignoredReset": "Unignore all ({{count}})",
+    "folderLabel": "folder",
+    "folderTitle": "This path is a directory — folders are excluded from stale checks because mtime changes with internal edits.",
+    "jumpTitle": "Jump to this reference in the document",
+    "jumpLabel": "Jump to location",
+    "revealFolder": "Open folder in Finder",
+    "revealFile": "Show file in Finder",
+    "copyPathTitle": "Copy absolute path",
+    "copyPathLabel": "Copy path",
+    "copyPathDone": "Copied",
+    "ignore": "Ignore",
+    "unignore": "Unignore",
+    "badgeAria": "drift status",
+    "badgeMissingTitle": "{{count}} referenced files are missing",
+    "badgeStaleTitle": "{{count}} referenced files were modified after the document — review",
+    "prompt": {
+      "thisDoc": "This document: {{path}}",
+      "intro": "The references below have issues. Open the document and propose fixes.",
+      "missingHeading": "## ✕ missing ({{count}}) — file not found (typo, rename, or deletion possible)",
+      "staleHeading": "## ◐ stale ({{count}}) — file modified after the document (check if content needs update)",
+      "unknownTime": "unknown time",
+      "staleItem": "- {{path}} (L{{line}}, file modified: {{time}})",
+      "closing": "For missing: fix paths or reflect deletions. For stale: decide whether to update document content.",
+      "closingMissing": "For missing: decide whether to fix paths or reflect deletions.",
+      "closingStale": "For stale: decide whether to update document content.",
+      "syncedLabel": "Synced"
+    }
   },
 
   "ssh": {

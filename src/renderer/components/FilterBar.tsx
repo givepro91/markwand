@@ -1,4 +1,5 @@
 import { useMemo, CSSProperties } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAppStore, type MetaFilter, type UpdatedRange } from '../state/store'
 import type { Doc } from '../../../src/preload/types'
 
@@ -8,11 +9,11 @@ interface FilterBarProps {
 
 const AI_SOURCES = new Set(['claude', 'codex', 'design', 'review'])
 
-const UPDATED_RANGE_LABELS: Record<UpdatedRange, string> = {
-  today: '오늘',
-  '7d': '7일',
-  '30d': '30일',
-  all: '전체',
+const UPDATED_RANGE_KEYS: Record<UpdatedRange, string> = {
+  today: 'filter.rangeToday',
+  '7d': 'filter.range7d',
+  '30d': 'filter.range30d',
+  all: 'filter.rangeAll',
 }
 
 const UPDATED_RANGES: UpdatedRange[] = ['today', '7d', '30d', 'all']
@@ -130,6 +131,7 @@ function toggle<T>(arr: T[], item: T): T[] {
 const DEFAULT_FILTER: MetaFilter = { tags: [], statuses: [], sources: [], updatedRange: 'all' }
 
 export function FilterBar({ docs }: FilterBarProps) {
+  const { t } = useTranslation()
   const metaFilter = useAppStore((s) => s.metaFilter)
   const setMetaFilter = useAppStore((s) => s.setMetaFilter)
 
@@ -187,9 +189,9 @@ export function FilterBar({ docs }: FilterBarProps) {
   }
 
   return (
-    <div style={containerStyle} role="toolbar" aria-label="문서 필터">
+    <div style={containerStyle} role="toolbar" aria-label={t('filter.toolbarAria')}>
       {/* Updated range */}
-      <span style={sectionLabel}>기간</span>
+      <span style={sectionLabel}>{t('filter.rangeSection')}</span>
       <div
         style={{
           display: 'inline-flex',
@@ -199,7 +201,7 @@ export function FilterBar({ docs }: FilterBarProps) {
           flexShrink: 0,
         }}
         role="group"
-        aria-label="업데이트 기간 필터"
+        aria-label={t('filter.rangeAria')}
       >
         {UPDATED_RANGES.map((r) => (
           <button
@@ -208,7 +210,7 @@ export function FilterBar({ docs }: FilterBarProps) {
             style={segmentButton(metaFilter.updatedRange === r)}
             aria-pressed={metaFilter.updatedRange === r}
           >
-            {UPDATED_RANGE_LABELS[r]}
+            {t(UPDATED_RANGE_KEYS[r])}
           </button>
         ))}
       </div>
@@ -217,22 +219,23 @@ export function FilterBar({ docs }: FilterBarProps) {
       {allStatuses.length > 0 && (
         <>
           <div style={divider} />
-          <span style={sectionLabel}>상태</span>
+          <span style={sectionLabel}>{t('filter.statusSection')}</span>
           {allStatuses.map((s) => {
             const active = metaFilter.statuses.includes(s)
             const colors = active ? statusStyle(s) : {}
+            const name = STATUS_LABELS[s] ?? s
             return (
               <button
                 key={s}
                 onClick={() => setStatuses(toggle(metaFilter.statuses, s))}
                 style={{ ...chipBase(active), ...colors }}
                 aria-pressed={active}
-                aria-label={`상태: ${STATUS_LABELS[s] ?? s}`}
+                aria-label={t('filter.statusAria', { name })}
               >
                 {s === 'draft' && <span aria-hidden="true">●</span>}
                 {s === 'published' && <span aria-hidden="true">✓</span>}
                 {s === 'archived' && <span aria-hidden="true">◻</span>}
-                {STATUS_LABELS[s] ?? s}
+                {name}
               </button>
             )
           })}
@@ -243,21 +246,22 @@ export function FilterBar({ docs }: FilterBarProps) {
       {allSources.length > 0 && (
         <>
           <div style={divider} />
-          <span style={sectionLabel}>출처</span>
+          <span style={sectionLabel}>{t('filter.sourceSection')}</span>
           {allSources.map((src) => {
             const active = metaFilter.sources.includes(src)
             const isAI = AI_SOURCES.has(src)
             const colors = active ? sourceStyle(src) : {}
+            const name = SOURCE_LABELS[src] ?? src
             return (
               <button
                 key={src}
                 onClick={() => setSources(toggle(metaFilter.sources, src))}
                 style={{ ...chipBase(active), ...colors }}
                 aria-pressed={active}
-                aria-label={`출처: ${SOURCE_LABELS[src] ?? src}${isAI ? ' (AI 산출물)' : ''}`}
+                aria-label={t('filter.sourceAria', { name }) + (isAI ? t('filter.sourceAIHint') : '')}
               >
                 {isAI && <SourceIcon source={src} />}
-                {SOURCE_LABELS[src] ?? src}
+                {name}
                 {isAI && active && (
                   <span
                     style={{
@@ -292,9 +296,9 @@ export function FilterBar({ docs }: FilterBarProps) {
               borderColor: 'var(--color-danger)',
               flexShrink: 0,
             }}
-            aria-label="필터 초기화"
+            aria-label={t('filter.resetAria')}
           >
-            ✕ 초기화
+            {t('filter.reset')}
           </button>
         </>
       )}

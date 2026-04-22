@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Tree } from 'react-arborist'
 import type { NodeApi, TreeApi } from 'react-arborist'
+import { useTranslation } from 'react-i18next'
 import type { Doc } from '../../../src/preload/types'
 import { useAppStore } from '../state/store'
 import { Checkbox } from './ui'
@@ -115,14 +116,16 @@ function collectDepth2Ids(nodes: TreeNode[], depth = 0): string[] {
 
 // 아이콘들은 시각 의미(폴더/문서/이미지)를 스크린리더에도 전달해야 파일 종류 구분 가능.
 // role="img" + aria-label 조합으로 SVG를 accessible graphic으로 선언.
-const FolderIcon = ({ open }: { open: boolean }) => (
+const FolderIcon = ({ open }: { open: boolean }) => {
+  const { t } = useTranslation()
+  return (
   <svg
     width="14"
     height="14"
     viewBox="0 0 16 16"
     fill="currentColor"
     role="img"
-    aria-label={open ? '열린 폴더' : '폴더'}
+    aria-label={open ? t('fileTree.folderOpen') : t('fileTree.folder')}
   >
     {open ? (
       <path d="M.5 3a1 1 0 0 1 1-1h4l1.5 1.5h7.5a1 1 0 0 1 1 1V13a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1V3z" />
@@ -130,9 +133,12 @@ const FolderIcon = ({ open }: { open: boolean }) => (
       <path d="M0 4a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4z" />
     )}
   </svg>
-)
+  )
+}
 
-const FileIcon = () => (
+const FileIcon = () => {
+  const { t } = useTranslation()
+  return (
   <svg
     width="14"
     height="14"
@@ -141,15 +147,18 @@ const FileIcon = () => (
     stroke="currentColor"
     strokeWidth="1.5"
     role="img"
-    aria-label="문서 파일"
+    aria-label={t('fileTree.docFile')}
   >
     <path d="M4 1.5h6.5L13 4v10.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-12a1 1 0 0 1 1-1z" />
     <path d="M10 1.5V4h2.5" />
   </svg>
-)
+  )
+}
 
 // 이미지 파일을 md와 시각 구분하기 위한 16px 아이콘. 사각 프레임 + 산/해 실루엣.
-const ImageIcon = () => (
+const ImageIcon = () => {
+  const { t } = useTranslation()
+  return (
   <svg
     width="14"
     height="14"
@@ -158,19 +167,21 @@ const ImageIcon = () => (
     stroke="currentColor"
     strokeWidth="1.5"
     role="img"
-    aria-label="이미지 파일"
+    aria-label={t('fileTree.imageFile')}
   >
     <rect x="1.5" y="2.5" width="13" height="11" rx="1" />
     <circle cx="5.5" cy="6" r="1" fill="currentColor" stroke="none" />
     <path d="M2 12l3.5-3.5 3 3 2.5-2.5L14 12" />
   </svg>
-)
+  )
+}
 
 function getAssetIcon(name: string) {
   return classifyAsset(name) === 'image' ? <ImageIcon /> : <FileIcon />
 }
 
 function FileTreeNode({ node, style }: { node: NodeApi<TreeNode>; style: React.CSSProperties }) {
+  const { t } = useTranslation()
   const isDir = !!node.data.children || node.isInternal
   const isSelected = node.isSelected
   const docPath = node.data.doc?.path
@@ -221,7 +232,7 @@ function FileTreeNode({ node, style }: { node: NodeApi<TreeNode>; style: React.C
           checked={composerChecked}
           size="sm"
           stopPropagation
-          aria-label={`${node.data.name} Composer 선택`}
+          aria-label={t('fileTree.composerSelectAria', { name: node.data.name })}
           onChange={() => toggleDocSelection(docPath)}
         />
       ) : (
@@ -257,6 +268,7 @@ export function FileTree({
   initialExpanded,
   onExpandChange,
 }: FileTreeProps) {
+  const { t } = useTranslation()
   const treeRef = useRef<TreeApi<TreeNode> | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -407,7 +419,7 @@ export function FileTree({
   if (docs.length === 0) {
     return (
       <div style={{ padding: 'var(--sp-4)', color: 'var(--text-muted)', fontSize: 'var(--fs-sm)' }}>
-        문서가 없습니다
+        {t('fileTree.noDocs')}
       </div>
     )
   }
@@ -427,8 +439,8 @@ export function FileTree({
           value={searchRaw}
           onChange={(e) => handleSearchChange(e.target.value)}
           onKeyDown={handleSearchKeyDown}
-          placeholder="파일 검색..."
-          aria-label="파일 검색"
+          placeholder={t('fileTree.searchPlaceholder')}
+          aria-label={t('fileTree.searchAria')}
           style={{
             width: '100%',
             boxSizing: 'border-box',
@@ -447,7 +459,7 @@ export function FileTree({
       {/* 검색 결과 없음 */}
       {searchQuery.trim() && filteredDocs.length === 0 && (
         <div style={{ padding: 'var(--sp-3) var(--sp-3)', color: 'var(--text-muted)', fontSize: 'var(--fs-xs)' }}>
-          검색 결과 없음
+          {t('fileTree.noResults')}
         </div>
       )}
 

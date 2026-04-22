@@ -1,4 +1,5 @@
 import { memo, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAppStore } from '../state/store'
 import type { DriftReport } from '../../preload/types'
 
@@ -13,6 +14,7 @@ interface DriftBadgeProps {
  * - missing > 0 → 빨간 칩, stale > 0 → 앰버 칩 (독립 표기)
  */
 export const DriftBadge = memo(function DriftBadge({ report, compact = false }: DriftBadgeProps) {
+  const { t } = useTranslation()
   const ignoredArr = useAppStore((s) => (report ? s.ignoredDriftRefs[report.docPath] : undefined))
 
   const counts = useMemo(() => {
@@ -39,7 +41,7 @@ export const DriftBadge = memo(function DriftBadge({ report, compact = false }: 
       label: compact ? `${missing}` : `${missing} missing`,
       color: 'var(--color-danger)',
       bg: 'var(--color-danger-bg)',
-      title: `${missing}개 참조 파일이 존재하지 않음`,
+      title: t('drift.badgeMissingTitle', { count: missing }),
     })
   }
   if (stale > 0) {
@@ -47,12 +49,12 @@ export const DriftBadge = memo(function DriftBadge({ report, compact = false }: 
       label: compact ? `${stale}` : `${stale} stale`,
       color: 'var(--color-warning)',
       bg: 'var(--color-warning-bg)',
-      title: `${stale}개 참조 파일이 문서 이후 수정됨 — 내용 재확인 필요`,
+      title: t('drift.badgeStaleTitle', { count: stale }),
     })
   }
 
   return (
-    <span aria-label="drift 상태" style={{ display: 'inline-flex', gap: '4px', flexShrink: 0 }}>
+    <span aria-label={t('drift.badgeAria')} style={{ display: 'inline-flex', gap: '4px', flexShrink: 0 }}>
       {parts.map((p, i) => (
         <span
           key={i}

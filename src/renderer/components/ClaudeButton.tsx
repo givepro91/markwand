@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from './ui'
 import type { TerminalType } from '../../../src/preload/types'
 
@@ -8,6 +9,7 @@ interface ClaudeButtonProps {
 }
 
 export function ClaudeButton({ projectDir, terminal = 'Terminal' }: ClaudeButtonProps) {
+  const { t } = useTranslation()
   const [available, setAvailable] = useState<boolean | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [isLaunching, setIsLaunching] = useState(false)
@@ -118,9 +120,9 @@ export function ClaudeButton({ projectDir, terminal = 'Terminal' }: ClaudeButton
           size="sm"
           onClick={handleClick}
           disabled={isLaunching || available === null}
-          aria-label="Claude로 열기"
+          aria-label={t('claudeCli.openAria')}
         >
-          Claude로 열기{isLaunching ? ' …' : ''}
+          {t('claudeCli.open')}{isLaunching ? t('claudeCli.opening') : ''}
         </Button>
       </span>
 
@@ -163,7 +165,7 @@ export function ClaudeButton({ projectDir, terminal = 'Terminal' }: ClaudeButton
                 color: 'var(--text)',
               }}
             >
-              claude를 찾을 수 없습니다
+              {t('claudeCli.notFoundTitle')}
             </h3>
             <p
               style={{
@@ -173,7 +175,7 @@ export function ClaudeButton({ projectDir, terminal = 'Terminal' }: ClaudeButton
                 lineHeight: 'var(--lh-normal)',
               }}
             >
-              Claude CLI가 설치되어 있지 않거나 PATH에 등록되지 않았습니다.
+              {t('claudeCli.notFoundDetail')}
             </p>
             <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
               <Button
@@ -183,7 +185,7 @@ export function ClaudeButton({ projectDir, terminal = 'Terminal' }: ClaudeButton
                   window.api.shell.openExternal('https://docs.anthropic.com/en/docs/claude-code/getting-started')
                 }}
               >
-                설치 가이드
+                {t('claudeCli.installGuide')}
               </Button>
               <Button
                 variant="ghost"
@@ -191,21 +193,21 @@ export function ClaudeButton({ projectDir, terminal = 'Terminal' }: ClaudeButton
                 onClick={handleRecheck}
                 disabled={rechecking}
               >
-                {rechecking ? '확인 중…' : '다시 확인'}
+                {rechecking ? t('claudeCli.rechecking') : t('claudeCli.recheck')}
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleRevealInFinder}
               >
-                Finder에서 열기
+                {t('claudeCli.revealFinder')}
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={closeModal}
               >
-                닫기
+                {t('claudeCli.close')}
               </Button>
             </div>
           </div>

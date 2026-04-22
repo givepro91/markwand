@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { StatusMessage } from './ui'
 import type { Project } from '../../../src/preload/types'
 
@@ -19,6 +20,7 @@ const FinderIcon = () => (
 )
 
 export const ProjectRow = memo(function ProjectRow({ project, onOpen }: ProjectRowProps) {
+  const { t } = useTranslation()
   const docCount = project.docCount
 
   return (
@@ -80,7 +82,7 @@ export const ProjectRow = memo(function ProjectRow({ project, onOpen }: ProjectR
         }}
       >
         {docCount > 0 ? (
-          `${docCount}개`
+          t('project.docCountShort', { count: docCount })
         ) : (
           <StatusMessage variant="loading" inline>…</StatusMessage>
         )}
@@ -103,8 +105,8 @@ export const ProjectRow = memo(function ProjectRow({ project, onOpen }: ProjectR
       <div className="card-actions" style={{ flexShrink: 0 }}>
         <button
           type="button"
-          aria-label="Finder에서 열기"
-          title="Finder에서 열기"
+          aria-label={t('project.revealAria')}
+          title={t('project.revealTitle')}
           onClick={(e) => {
             e.stopPropagation()
             window.api.shell.revealInFinder(project.root)

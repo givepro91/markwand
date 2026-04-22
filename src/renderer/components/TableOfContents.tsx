@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export interface Heading {
   level: number
@@ -64,6 +65,7 @@ interface TableOfContentsProps {
 }
 
 export function TableOfContents({ headings, onHeadingClick }: TableOfContentsProps) {
+  const { t } = useTranslation()
   // id 중복 처리: 같은 slug가 여러 번 등장하면 -1, -2 suffix 추가
   const items = useMemo(() => {
     const counts = new Map<string, number>()
@@ -90,7 +92,7 @@ export function TableOfContents({ headings, onHeadingClick }: TableOfContentsPro
   }
 
   return (
-    <nav aria-label="목차" style={{ width: '100%' }}>
+    <nav aria-label={t('toc.aria')} style={{ width: '100%' }}>
       <div
         style={{
           fontSize: 'var(--fs-xs)',
@@ -103,7 +105,7 @@ export function TableOfContents({ headings, onHeadingClick }: TableOfContentsPro
           borderBottom: '1px solid var(--border)',
         }}
       >
-        목차
+        {t('toc.title')}
       </div>
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
         {items.map((h, idx) => (

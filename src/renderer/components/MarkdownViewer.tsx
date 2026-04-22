@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import { rehypeSanitize, rehypeHighlight, remarkGfm, remarkBreaks, sanitizeSchema } from '../lib/markdown'
@@ -104,6 +105,7 @@ const SafeImage = memo(function SafeImage({
   alt?: string
   extraProps: React.ImgHTMLAttributes<HTMLImageElement>
 }) {
+  const { t } = useTranslation()
   const [failed, setFailed] = useState(false)
   if (failed) {
     return (
@@ -117,7 +119,7 @@ const SafeImage = memo(function SafeImage({
           borderRadius: 'var(--r-sm)',
           border: '1px solid var(--border)',
         }}
-        title={`이미지 로드 실패: ${src}`}
+        title={t('markdown.imageLoadFailed', { src })}
       >
         {alt || 'image'}
       </span>
@@ -147,6 +149,7 @@ const SshImage = memo(function SshImage({
   alt?: string
   extraProps: React.ImgHTMLAttributes<HTMLImageElement>
 }) {
+  const { t } = useTranslation()
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -191,7 +194,7 @@ const SshImage = memo(function SshImage({
           borderRadius: 'var(--r-sm)',
           border: '1px solid var(--border)',
         }}
-        title={failed ? `원격 이미지 로드 실패: ${path}` : '이미지 불러오는 중…'}
+        title={failed ? t('markdown.remoteImageLoadFailed', { path }) : t('markdown.remoteImageLoading')}
       >
         {alt || (failed ? 'image' : '…')}
       </span>

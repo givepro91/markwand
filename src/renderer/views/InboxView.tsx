@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { InboxItem } from '../components/InboxItem'
 import { EmptyState, StatusMessage, Button } from '../components/ui'
 import { useAppStore } from '../state/store'
@@ -28,28 +29,29 @@ function groupByDate(mtime: number): DateGroup {
   return 'earlier'
 }
 
-const GROUP_LABELS: Record<DateGroup, string> = {
-  today: '오늘',
-  yesterday: '어제',
-  thisWeek: '이번 주',
-  earlier: '이전',
+const GROUP_LABEL_KEYS: Record<DateGroup, string> = {
+  today: 'inbox.sectionToday',
+  yesterday: 'inbox.sectionYesterday',
+  thisWeek: 'inbox.sectionThisWeek',
+  earlier: 'inbox.sectionEarlier',
 }
 
 const GROUP_ORDER: DateGroup[] = ['today', 'yesterday', 'thisWeek', 'earlier']
 
-const FILTER_LABELS: Record<ReadFilter, string> = {
-  all: '전체',
-  read: '읽음만',
-  unread: '안 읽음만',
+const FILTER_LABEL_KEYS: Record<ReadFilter, string> = {
+  all: 'inbox.filterAll',
+  read: 'inbox.filterRead',
+  unread: 'inbox.filterUnread',
 }
 
-const EMPTY_MESSAGES: Record<ReadFilter, string> = {
-  all: '워크스페이스 프로젝트에 마크다운 문서가 없거나 아직 로딩 중입니다.',
-  read: '읽은 문서가 없습니다.',
-  unread: '읽지 않은 문서가 없습니다.',
+const EMPTY_MESSAGE_KEYS: Record<ReadFilter, string> = {
+  all: 'inbox.emptyAll',
+  read: 'inbox.emptyRead',
+  unread: 'inbox.emptyUnread',
 }
 
 export function InboxView({ workspaceId, onOpenDoc }: InboxViewProps) {
+  const { t } = useTranslation()
   const projects = useAppStore((s) => s.projects)
   const readDocs = useAppStore((s) => s.readDocs)
   const markDocRead = useAppStore((s) => s.markDocRead)
@@ -177,8 +179,8 @@ export function InboxView({ workspaceId, onOpenDoc }: InboxViewProps) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
         <EmptyState
           icon="🗂️"
-          title="워크스페이스를 선택하세요"
-          description="상단에서 워크스페이스를 선택하면 최근 문서가 표시됩니다."
+          title={t('inbox.selectWorkspace')}
+          description={t('empty.description')}
         />
       </div>
     )
@@ -188,7 +190,7 @@ export function InboxView({ workspaceId, onOpenDoc }: InboxViewProps) {
     <div style={{ padding: 'var(--sp-6)', height: '100%', overflow: 'auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--sp-5)' }}>
         <h2 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'var(--fw-semibold)', color: 'var(--text)', margin: 0 }}>
-          최근 변경된 문서
+          {t('sidebar.tabs.inbox')}
         </h2>
         <div style={{ display: 'flex', gap: 'var(--sp-1)' }}>
           {(['all', 'read', 'unread'] as ReadFilter[]).map((f) => (
@@ -198,7 +200,7 @@ export function InboxView({ workspaceId, onOpenDoc }: InboxViewProps) {
               variant={readFilter === f ? 'primary' : 'ghost'}
               onClick={() => setReadFilter(f)}
             >
-              {FILTER_LABELS[f]}
+              {t(FILTER_LABEL_KEYS[f])}
             </Button>
           ))}
         </div>
@@ -206,19 +208,19 @@ export function InboxView({ workspaceId, onOpenDoc }: InboxViewProps) {
 
       {loading && (
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--sp-12)' }}>
-          <StatusMessage variant="loading">전체 문서 수집 중…</StatusMessage>
+          <StatusMessage variant="loading">{t('inbox.collecting')}</StatusMessage>
         </div>
       )}
       {!loading && error && (
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--sp-12)' }}>
-          <StatusMessage variant="error">수집 실패: {error}</StatusMessage>
+          <StatusMessage variant="error">{t('inbox.collectFailed', { error })}</StatusMessage>
         </div>
       )}
       {!loading && !error && filteredDocs.length === 0 && (
         <EmptyState
           icon="📭"
-          title="문서가 없습니다"
-          description={EMPTY_MESSAGES[readFilter]}
+          title={t('inbox.noDocsTitle')}
+          description={t(EMPTY_MESSAGE_KEYS[readFilter])}
         />
       )}
 
@@ -239,7 +241,7 @@ export function InboxView({ workspaceId, onOpenDoc }: InboxViewProps) {
                 marginBottom: 'var(--sp-1)',
               }}
             >
-              {GROUP_LABELS[group]}
+              {t(GROUP_LABEL_KEYS[group])}
             </div>
             {items.map((doc) => (
               <InboxItem

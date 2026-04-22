@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { IconButton } from './ui'
 import type { ThemeType } from '../../../src/preload/types'
 
@@ -6,13 +7,14 @@ interface ThemeToggleProps {
   onChange: (theme: ThemeType) => void
 }
 
-const options: { value: ThemeType; label: string; ariaLabel: string }[] = [
-  { value: 'light', label: '☀', ariaLabel: '라이트 모드' },
-  { value: 'dark', label: '☾', ariaLabel: '다크 모드' },
-  { value: 'system', label: '⊙', ariaLabel: '시스템 설정' },
+const OPTIONS: { value: ThemeType; label: string; ariaKey: string }[] = [
+  { value: 'light', label: '☀', ariaKey: 'theme.light' },
+  { value: 'dark', label: '☾', ariaKey: 'theme.dark' },
+  { value: 'system', label: '⊙', ariaKey: 'theme.system' },
 ]
 
 export function ThemeToggle({ value, onChange }: ThemeToggleProps) {
+  const { t } = useTranslation()
   return (
     <div
       style={{
@@ -23,12 +25,12 @@ export function ThemeToggle({ value, onChange }: ThemeToggleProps) {
         padding: '2px',
       }}
     >
-      {options.map((opt) => {
+      {OPTIONS.map((opt) => {
         const isActive = value === opt.value
         return (
           <IconButton
             key={opt.value}
-            aria-label={opt.ariaLabel}
+            aria-label={t(opt.ariaKey)}
             aria-pressed={isActive}
             size="sm"
             variant={isActive ? 'primary' : 'ghost'}

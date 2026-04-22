@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { WorkspacePicker } from './WorkspacePicker'
 import { ThemeToggle } from './ThemeToggle'
 import { Settings } from './Settings'
@@ -17,10 +18,10 @@ interface SidebarProps {
   onViewModeChange: (mode: ViewMode) => void
 }
 
-const VIEW_TABS: { value: ViewMode; label: string; title: string }[] = [
-  { value: 'all', label: '프로젝트 목록', title: '워크스페이스 내 모든 프로젝트 보기' },
-  { value: 'inbox', label: '최근 문서', title: '최근 수정된 문서를 날짜별로 보기' },
-  { value: 'project', label: '현재 프로젝트', title: '선택한 프로젝트의 파일 트리와 문서 보기' },
+const VIEW_TAB_KEYS: { value: ViewMode; labelKey: string; titleKey: string }[] = [
+  { value: 'all', labelKey: 'sidebar.tabs.all', titleKey: 'sidebar.tabs.allTitle' },
+  { value: 'inbox', labelKey: 'sidebar.tabs.inbox', titleKey: 'sidebar.tabs.inboxTitle' },
+  { value: 'project', labelKey: 'sidebar.tabs.project', titleKey: 'sidebar.tabs.projectTitle' },
 ]
 
 export function Sidebar({
@@ -34,6 +35,7 @@ export function Sidebar({
   onWorkspaceRemove,
   onViewModeChange,
 }: SidebarProps) {
+  const { t } = useTranslation()
   const { theme, setTheme } = useTheme()
 
   return (
@@ -63,7 +65,7 @@ export function Sidebar({
 
       <div
         role="tablist"
-        aria-label="뷰 모드"
+        aria-label={t('sidebar.viewMode')}
         style={{
           display: 'flex',
           gap: '2px',
@@ -73,14 +75,14 @@ export function Sidebar({
           WebkitAppRegion: 'no-drag',
         } as React.CSSProperties}
       >
-        {VIEW_TABS.map((tab) => {
+        {VIEW_TAB_KEYS.map((tab) => {
           const isActive = viewMode === tab.value
           return (
             <button
               key={tab.value}
               role="tab"
               aria-selected={isActive}
-              title={tab.title}
+              title={t(tab.titleKey)}
               onClick={() => onViewModeChange(tab.value)}
               style={{
                 padding: 'var(--sp-1) var(--sp-3)',
@@ -96,7 +98,7 @@ export function Sidebar({
                 whiteSpace: 'nowrap',
               }}
             >
-              {tab.label}
+              {t(tab.labelKey)}
             </button>
           )
         })}

@@ -28,11 +28,14 @@ const ProjectView = lazy(() =>
   import('./views/ProjectView').then((m) => ({ default: m.ProjectView }))
 )
 
-const ViewFallback = () => (
-  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-    <StatusMessage variant="loading">로딩 중…</StatusMessage>
-  </div>
-)
+function ViewFallback() {
+  const { t } = useTranslation()
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+      <StatusMessage variant="loading">{t('common.loading')}</StatusMessage>
+    </div>
+  )
+}
 
 export default function App() {
   const { t } = useTranslation()
@@ -432,10 +435,10 @@ export default function App() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
               <EmptyState
                 icon="📂"
-                title="프로젝트를 선택하세요"
-                description="프로젝트 목록에서 원하는 프로젝트를 클릭하면 여기서 문서를 탐색할 수 있습니다."
+                title={t('projectView.selectProject')}
+                description={t('allProjects.selectWorkspaceDesc')}
                 cta={{
-                  label: '전체 프로젝트 보기',
+                  label: t('projectView.allProjectsCta'),
                   onClick: () => setViewMode('all'),
                   variant: 'primary',
                 }}

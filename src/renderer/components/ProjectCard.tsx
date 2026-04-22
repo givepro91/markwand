@@ -1,4 +1,5 @@
 import { memo, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Card, StatusMessage } from './ui'
 import { useAppStore } from '../state/store'
 import type { Project } from '../../../src/preload/types'
@@ -20,6 +21,7 @@ const FinderIcon = () => (
 )
 
 export const ProjectCard = memo(function ProjectCard({ project, onOpen }: ProjectCardProps) {
+  const { t } = useTranslation()
   const docCount = project.docCount
   const driftReports = useAppStore((s) => s.driftReports)
   const ignoredDriftRefs = useAppStore((s) => s.ignoredDriftRefs)
@@ -73,8 +75,8 @@ export const ProjectCard = memo(function ProjectCard({ project, onOpen }: Projec
           <div className="card-actions" style={{ display: 'flex', gap: 'var(--sp-1)', flexShrink: 0 }}>
             <button
               type="button"
-              aria-label="Finder에서 열기"
-              title="Finder에서 열기"
+              aria-label={t('project.revealAria')}
+              title={t('project.revealTitle')}
               onClick={(e) => {
                 e.stopPropagation()
                 window.api.shell.revealInFinder(project.root)
@@ -111,13 +113,13 @@ export const ProjectCard = memo(function ProjectCard({ project, onOpen }: Projec
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--sp-2)' }}>
           <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
             {docCount < 0 ? (
-              <StatusMessage variant="loading" inline>분석 중</StatusMessage>
+              <StatusMessage variant="loading" inline>{t('project.analyzing')}</StatusMessage>
             ) : (
-              <span>문서 {docCount}개</span>
+              <span>{t('project.docCount', { count: docCount })}</span>
             )}
             {hasDrift && (
               <span
-                title={`${driftCounts.missing}개 missing · ${driftCounts.stale}개 stale — 문서 내 참조가 실제 코드와 불일치`}
+                title={t('project.driftTitle', { missing: driftCounts.missing, stale: driftCounts.stale })}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',

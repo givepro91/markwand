@@ -1,4 +1,5 @@
 import { CSSProperties } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface ComposerChipProps {
   absPath: string
@@ -15,6 +16,7 @@ function displayName(absPath: string): string {
 }
 
 export function ComposerChip({ absPath, onRemove }: ComposerChipProps) {
+  const { t } = useTranslation()
   const label = displayName(absPath)
   const style: CSSProperties = {
     display: 'inline-flex',
@@ -41,7 +43,7 @@ export function ComposerChip({ absPath, onRemove }: ComposerChipProps) {
           e.stopPropagation()
           onRemove()
         }}
-        aria-label={`${label} 제거`}
+        aria-label={t('composer.chipRemoveAria', { label })}
         style={{
           background: 'transparent',
           border: 'none',

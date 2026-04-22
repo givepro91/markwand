@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useId } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAppStore } from '../state/store'
 import { useGlobalHotkey } from '../hooks/useGlobalHotkey'
 
@@ -81,6 +82,7 @@ function SearchIcon({ style }: { style?: React.CSSProperties }) {
 }
 
 export function CommandPalette() {
+  const { t } = useTranslation()
   const isOpen = useAppStore((s) => s.commandPaletteOpen)
   const openCommandPalette = useAppStore((s) => s.openCommandPalette)
   const closeCommandPalette = useAppStore((s) => s.closeCommandPalette)
@@ -258,7 +260,7 @@ export function CommandPalette() {
       }}
       role="dialog"
       aria-modal="true"
-      aria-label="문서 검색"
+      aria-label={t('cmdk.aria')}
       onClick={(e) => {
         if (e.target === e.currentTarget) closeCommandPalette()
       }}
@@ -308,8 +310,8 @@ export function CommandPalette() {
               }}
             />
             {projectsLoading
-              ? '인덱싱 중…'
-              : `인덱싱 중 ${docCountProgress.done}/${docCountProgress.total}`}
+              ? t('cmdk.indexingShort')
+              : t('cmdk.indexingProgress', { done: docCountProgress.done, total: docCountProgress.total })}
           </div>
         )}
 
@@ -334,7 +336,7 @@ export function CommandPalette() {
             aria-expanded={results.length > 0}
             aria-controls={listboxId}
             aria-activedescendant={activeItemId}
-            placeholder="문서 검색..."
+            placeholder={t('cmdk.placeholder')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             style={{
@@ -352,7 +354,7 @@ export function CommandPalette() {
             <button
               className="cmd-clear-btn"
               onClick={() => { setQuery(''); inputRef.current?.focus() }}
-              aria-label="검색어 지우기"
+              aria-label={t('cmdk.clearAria')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -394,10 +396,10 @@ export function CommandPalette() {
             >
               <SearchIcon style={{ width: '32px', height: '32px', opacity: 0.4 } as React.CSSProperties} />
               <span style={{ fontWeight: 'var(--fw-medium)', color: 'var(--text)' }}>
-                워크스페이스가 없습니다
+                {t('cmdk.noWorkspace')}
               </span>
               <span style={{ fontSize: 'var(--fs-xs)', opacity: 0.7 }}>
-                사이드바에서 워크스페이스를 추가하면 ⌘K로 문서를 검색할 수 있습니다
+                {t('cmdk.noWorkspaceHint')}
               </span>
             </div>
           )}
@@ -416,15 +418,15 @@ export function CommandPalette() {
               }}
             >
               <SearchIcon style={{ width: '32px', height: '32px', opacity: 0.4 } as React.CSSProperties} />
-              <span style={{ fontWeight: 'var(--fw-medium)' }}>최근 문서가 여기에 표시됩니다</span>
-              <span style={{ fontSize: 'var(--fs-xs)', opacity: 0.7 }}>⌘K로 언제든 열 수 있어요</span>
+              <span style={{ fontWeight: 'var(--fw-medium)' }}>{t('cmdk.recentTitle')}</span>
+              <span style={{ fontSize: 'var(--fs-xs)', opacity: 0.7 }}>{t('cmdk.recentHint')}</span>
             </div>
           )}
 
           {paletteState === 'loading' && (
             <div
               role="status"
-              aria-label="검색 중"
+              aria-label={t('cmdk.searchingAria')}
               style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -447,7 +449,7 @@ export function CommandPalette() {
                   borderRadius: '50%',
                 }}
               />
-              <span>검색 중...</span>
+              <span>{t('cmdk.searching')}</span>
             </div>
           )}
 
@@ -467,10 +469,10 @@ export function CommandPalette() {
             >
               <SearchIcon style={{ width: '32px', height: '32px', opacity: 0.4 } as React.CSSProperties} />
               <span style={{ fontWeight: 'var(--fw-medium)', color: 'var(--text)' }}>
-                &ldquo;{query}&rdquo;에 대한 결과가 없습니다
+                {t('cmdk.noResults', { query })}
               </span>
               <span style={{ fontSize: 'var(--fs-xs)', opacity: 0.7 }}>
-                다른 단어나 파일 경로를 시도해보세요
+                {t('cmdk.noResultsHint')}
               </span>
             </div>
           )}
@@ -490,13 +492,13 @@ export function CommandPalette() {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {results.length}개 결과
+                {t('cmdk.resultsCount', { count: results.length })}
               </div>
               <ul
                 id={listboxId}
                 ref={listRef}
                 role="listbox"
-                aria-label="검색 결과"
+                aria-label={t('cmdk.resultsAria')}
                 style={{ listStyle: 'none', padding: 0, margin: 0 }}
               >
                 {results.map((item, i) => (
@@ -610,9 +612,9 @@ export function CommandPalette() {
           }}
         >
           {[
-            { keys: ['↑', '↓'], label: '이동' },
-            { keys: ['↵'], label: '열기' },
-            { keys: ['Esc'], label: '닫기' },
+            { keys: ['↑', '↓'], label: t('cmdk.hintMove') },
+            { keys: ['↵'], label: t('cmdk.hintOpen') },
+            { keys: ['Esc'], label: t('cmdk.hintClose') },
           ].map(({ keys, label }) => (
             <span
               key={label}

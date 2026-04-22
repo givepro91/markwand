@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { ProjectCard } from '../components/ProjectCard'
 import { ProjectRow } from '../components/ProjectRow'
@@ -14,10 +15,10 @@ interface AllProjectsViewProps {
   onOpenProject: (project: Project) => void
 }
 
-const GROUP_BY_LABELS: Record<GroupByField, string> = {
-  tag: '태그별',
-  status: '상태별',
-  source: '출처별',
+const GROUP_BY_LABEL_KEYS: Record<GroupByField, string> = {
+  tag: 'allProjects.groupTag',
+  status: 'allProjects.groupStatus',
+  source: 'allProjects.groupSource',
 }
 
 function sortProjects(projects: Project[], order: SortOrder): Project[] {
@@ -29,10 +30,10 @@ function sortProjects(projects: Project[], order: SortOrder): Project[] {
 }
 
 
-const SORT_LABELS: Record<SortOrder, string> = {
-  recent: '최신',
-  name: '이름',
-  count: '개수',
+const SORT_LABEL_KEYS: Record<SortOrder, string> = {
+  recent: 'allProjects.sortRecent',
+  name: 'allProjects.sortName',
+  count: 'allProjects.sortCount',
 }
 
 const GridIcon = () => (
@@ -55,6 +56,7 @@ const RefreshIcon = () => (
 )
 
 export function AllProjectsView({ workspaceId, onOpenProject }: AllProjectsViewProps) {
+  const { t } = useTranslation()
   const {
     projects,
     sortOrder,
@@ -145,8 +147,8 @@ export function AllProjectsView({ workspaceId, onOpenProject }: AllProjectsViewP
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
         <EmptyState
           icon="🗂️"
-          title="워크스페이스를 선택하세요"
-          description="상단에서 워크스페이스를 선택하면 프로젝트 목록이 표시됩니다."
+          title={t('allProjects.selectWorkspace')}
+          description={t('allProjects.selectWorkspaceDesc')}
         />
       </div>
     )
@@ -168,12 +170,17 @@ export function AllProjectsView({ workspaceId, onOpenProject }: AllProjectsViewP
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)' }}>
           <h2 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'var(--fw-semibold)', color: 'var(--text)', margin: 0 }}>
-            {isFilterActive ? `필터 결과 (${docCount})` : `전체 프로젝트 (${sorted.length})`}
+            {isFilterActive
+              ? t('allProjects.titleFiltered', { count: docCount })
+              : t('allProjects.titleAll', { count: sorted.length })}
           </h2>
           {isCounting && (
             <StatusMessage variant="info" inline>
-              문서 분석 중 {docCountProgress.done}/{docCountProgress.total}
-              {' '}({Math.round((docCountProgress.done / docCountProgress.total) * 100)}%)
+              {t('allProjects.countingDocs', {
+                done: docCountProgress.done,
+                total: docCountProgress.total,
+                pct: Math.round((docCountProgress.done / docCountProgress.total) * 100),
+              })}
             </StatusMessage>
           )}
         </div>
@@ -187,7 +194,7 @@ export function AllProjectsView({ workspaceId, onOpenProject }: AllProjectsViewP
                 variant={sortOrder === o ? 'primary' : 'ghost'}
                 onClick={() => handleSortChange(o)}
               >
-                {SORT_LABELS[o]}
+                {t(SORT_LABEL_KEYS[o])}
               </Button>
             ))}
           </div>
@@ -209,7 +216,7 @@ export function AllProjectsView({ workspaceId, onOpenProject }: AllProjectsViewP
                   whiteSpace: 'nowrap',
                 }}
               >
-                그룹
+                {t('allProjects.groupLabel')}
               </span>
               {(['tag', 'status', 'source'] as GroupByField[]).map((by) => (
                 <Button
@@ -218,7 +225,7 @@ export function AllProjectsView({ workspaceId, onOpenProject }: AllProjectsViewP
                   variant={groupBy === by ? 'primary' : 'ghost'}
                   onClick={() => setGroupBy(groupBy === by ? null : by)}
                 >
-                  {GROUP_BY_LABELS[by]}
+                  {t(GROUP_BY_LABEL_KEYS[by])}
                 </Button>
               ))}
             </div>
@@ -227,7 +234,7 @@ export function AllProjectsView({ workspaceId, onOpenProject }: AllProjectsViewP
           {!isFilterActive && (
             <div style={{ display: 'flex', gap: 'var(--sp-1)', borderLeft: '1px solid var(--border)', paddingLeft: 'var(--sp-2)' }}>
               <IconButton
-                aria-label="그리드 보기"
+                aria-label={t('allProjects.viewGrid')}
                 aria-pressed={viewLayout === 'grid'}
                 size="sm"
                 variant={viewLayout === 'grid' ? 'primary' : 'ghost'}
@@ -236,7 +243,7 @@ export function AllProjectsView({ workspaceId, onOpenProject }: AllProjectsViewP
                 <GridIcon />
               </IconButton>
               <IconButton
-                aria-label="목록 보기"
+                aria-label={t('allProjects.viewList')}
                 aria-pressed={viewLayout === 'list'}
                 size="sm"
                 variant={viewLayout === 'list' ? 'primary' : 'ghost'}
@@ -249,7 +256,7 @@ export function AllProjectsView({ workspaceId, onOpenProject }: AllProjectsViewP
           {/* 새로고침 */}
           <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: 'var(--sp-2)' }}>
             <IconButton
-              aria-label="새로고침"
+              aria-label={t('allProjects.refresh')}
               size="sm"
               variant="ghost"
               onClick={() => bumpRefreshKey()}
@@ -292,11 +299,11 @@ export function AllProjectsView({ workspaceId, onOpenProject }: AllProjectsViewP
       <div style={{ flex: 1, overflow: 'auto', padding: '0 var(--sp-6) var(--sp-6)' }}>
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--sp-12)' }}>
-            <StatusMessage variant="loading">프로젝트 스캔 중…</StatusMessage>
+            <StatusMessage variant="loading">{t('allProjects.scanning')}</StatusMessage>
           </div>
         ) : error ? (
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--sp-12)' }}>
-            <StatusMessage variant="error">스캔 실패: {error}</StatusMessage>
+            <StatusMessage variant="error">{t('allProjects.scanFailed', { error })}</StatusMessage>
           </div>
         ) : isFilterActive ? (
           /* 필터 활성: 문서 뷰 */
@@ -304,8 +311,8 @@ export function AllProjectsView({ workspaceId, onOpenProject }: AllProjectsViewP
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--sp-12)' }}>
               <EmptyState
                 icon="🔍"
-                title="필터 결과 없음"
-                description="다른 필터 조건을 시도해 보세요."
+                title={t('allProjects.filterEmpty')}
+                description={t('allProjects.filterEmptyDesc')}
               />
             </div>
           ) : docGroups ? (
@@ -384,8 +391,8 @@ export function AllProjectsView({ workspaceId, onOpenProject }: AllProjectsViewP
         ) : sorted.length === 0 ? (
           <EmptyState
             icon="📂"
-            title="프로젝트를 찾을 수 없습니다"
-            description="워크스페이스에 마커 파일(.git, package.json 등)이 있는 폴더가 없습니다."
+            title={t('allProjects.notFound')}
+            description={t('allProjects.notFoundDesc')}
           />
         ) : viewLayout === 'grid' ? (
           <div
@@ -417,9 +424,9 @@ export function AllProjectsView({ workspaceId, onOpenProject }: AllProjectsViewP
                 marginBottom: 'var(--sp-1)',
               }}
             >
-              <span style={{ flex: '1 1 160px', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 'var(--fw-semibold)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>이름</span>
-              <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 'var(--fw-semibold)', textTransform: 'uppercase', letterSpacing: '0.06em', width: '60px', textAlign: 'right' }}>문서</span>
-              <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 'var(--fw-semibold)', textTransform: 'uppercase', letterSpacing: '0.06em', width: '56px', textAlign: 'right' }}>날짜</span>
+              <span style={{ flex: '1 1 160px', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 'var(--fw-semibold)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('allProjects.headerName')}</span>
+              <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 'var(--fw-semibold)', textTransform: 'uppercase', letterSpacing: '0.06em', width: '60px', textAlign: 'right' }}>{t('allProjects.headerDocs')}</span>
+              <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 'var(--fw-semibold)', textTransform: 'uppercase', letterSpacing: '0.06em', width: '56px', textAlign: 'right' }}>{t('allProjects.headerDate')}</span>
               <span style={{ width: '22px' }} />
               <span style={{ width: '12px' }} />
             </div>
