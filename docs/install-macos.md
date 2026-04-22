@@ -1,8 +1,8 @@
-# macOS 설치 가이드 — v0.3.0-beta.4
+# macOS 설치 가이드 — v0.3.0-beta.5
 
 Markwand 는 Apple 코드사이닝·공증 미적용 베타 빌드입니다. **ad-hoc 서명** 이 적용되어 있어 터미널 명령 없이 우클릭 → 열기 로 실행할 수 있습니다.
 
-> 이 버전은 **베타** 입니다. 릴리스 노트: [release-notes/v0.3.0-beta.4.md](./release-notes/v0.3.0-beta.4.md)
+> 이 버전은 **베타** 입니다. 릴리스 노트: [release-notes/v0.3.0-beta.5.md](./release-notes/v0.3.0-beta.5.md)
 
 ---
 
@@ -10,24 +10,24 @@ Markwand 는 Apple 코드사이닝·공증 미적용 베타 빌드입니다. **a
 
 본인 Mac 기종에 맞는 파일을 받으세요.
 
-- **Apple Silicon (M1/M2/M3/M4)**: `Markwand-0.3.0-beta.4-arm64.dmg`
-- **Intel Mac**: `Markwand-0.3.0-beta.4.dmg`
+- **Apple Silicon (M1/M2/M3/M4)**: `Markwand-0.3.0-beta.5-arm64.dmg`
+- **Intel Mac**: `Markwand-0.3.0-beta.5.dmg`
 
 ## 2. SHA256 무결성 확인 (선택)
 
 다운로드한 파일이 변조되지 않았는지 터미널에서 확인할 수 있습니다.
 
 ```bash
-shasum -a 256 ~/Downloads/Markwand-0.3.0-beta.4-arm64.dmg
+shasum -a 256 ~/Downloads/Markwand-0.3.0-beta.5-arm64.dmg
 # 또는
-shasum -a 256 ~/Downloads/Markwand-0.3.0-beta.4.dmg
+shasum -a 256 ~/Downloads/Markwand-0.3.0-beta.5.dmg
 ```
 
 예상 해시 (2026-04-22 빌드):
 
 ```
-668eb44b565d8a73368e5e975ca9f5f9ead7f3e07dc57a07d382442ffbd686fd  Markwand-0.3.0-beta.4-arm64.dmg
-afb7cc0159e2de30b3db937a61f3e50b4d74b93477c56f42eb17cb1ee5505725  Markwand-0.3.0-beta.4.dmg
+06ff61e33034d397361563a17e26c1897acf2c9ae69a6124b95614290de16022  Markwand-0.3.0-beta.5-arm64.dmg
+76eb70585c27bec763b8737b46134cc6db51e03b606c48dc539836cd42a925dd  Markwand-0.3.0-beta.5.dmg
 ```
 
 ## 3. DMG 마운트 + Applications 로 드래그
@@ -83,7 +83,7 @@ open /Applications/Markwand.app
 ### DMG 자체가 열리지 않는 경우
 
 ```bash
-xattr -dr com.apple.quarantine ~/Downloads/Markwand-0.3.0-beta.4*.dmg
+xattr -dr com.apple.quarantine ~/Downloads/Markwand-0.3.0-beta.5*.dmg
 ```
 
 다시 더블클릭하면 마운트됩니다.

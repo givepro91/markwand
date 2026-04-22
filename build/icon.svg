@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- Squircle background (macOS Big Sur+ style rounded square) -->
+  <rect x="32" y="32" width="960" height="960" rx="224" ry="224" fill="url(#bg)"/>
+
+  <!-- Markdown mark: M + downward arrow (classic markdown logo reference) -->
+  <g transform="translate(512, 512)" fill="#ffffff">
+    <!-- M -->
+    <path d="M -280,-140
+             L -280,140
+             L -220,140
+             L -220,-40
+             L -130,80
+             L -70,80
+             L 20,-40
+             L 20,140
+             L 80,140
+             L 80,-140
+             L 20,-140
+             L -100,20
+             L -220,-140
+             Z" />
+    <!-- ↓ arrow (right side) -->
+    <path d="M 160,-140
+             L 160,40
+             L 110,40
+             L 210,170
+             L 310,40
+             L 260,40
+             L 260,-140
+             Z" />
+  </g>
+</svg>

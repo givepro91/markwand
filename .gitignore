@@ -4,6 +4,7 @@ dist/
 out/
 releases/
 .vite/
+build/icon-work/
 *.local
 
 # macOS
