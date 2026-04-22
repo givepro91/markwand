@@ -46,7 +46,7 @@ export async function getStore(): Promise<import('electron-store').default<Store
   const { default: Store } = await import('electron-store')
 
   storeInstance = new Store<StoreSchema>({
-    name: 'md-viewer',
+    name: 'markwand',
     defaults: {
       workspaces: [],
       activeWorkspaceId: null,

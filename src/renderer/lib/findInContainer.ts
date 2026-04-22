@@ -33,8 +33,8 @@ export interface FindController {
   destroy(): void
 }
 
-const HL_ALL = 'md-viewer-find-match'
-const HL_ACTIVE = 'md-viewer-find-match-active'
+const HL_ALL = 'markwand-find-match'
+const HL_ACTIVE = 'markwand-find-match-active'
 
 // scroll 여백: find toolbar(검색 입력창 바)에 매치가 가려지지 않도록 상하에 확보하는 픽셀.
 // ProjectView의 find toolbar 실제 높이는 ~40px이며, 뷰포트 안 판정 시 이 여백을 제외한다.

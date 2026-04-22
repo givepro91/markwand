@@ -1,4 +1,4 @@
-# md-viewer
+# Markwand
 
 AI 산출물 큐레이터 — 여러 프로젝트에 산재한 마크다운 문서를 발견·소비·재진입하는 Electron 앱.
 
