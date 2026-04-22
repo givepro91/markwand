@@ -1,6 +1,6 @@
 {
   "name": "markwand",
-  "version": "0.3.0-beta.1",
+  "version": "0.3.0-beta.2",
   "description": "AI 산출물 큐레이터 — 여러 프로젝트에 산재한 마크다운 문서를 발견·소비·재진입",
   "main": "./out/main/index.js",
   "author": "jay@spacewalk.tech",
@@ -68,6 +68,7 @@
     ],
     "buildDependenciesFromSource": false,
     "npmRebuild": false,
+    "afterPack": "build/afterPack.js",
     "mac": {
       "category": "public.app-category.productivity",
       "target": [
@@ -80,9 +81,8 @@
         }
       ],
       "icon": "resources/icon.icns",
-      "hardenedRuntime": true,
-      "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist"
+      "identity": null,
+      "hardenedRuntime": false
     },
     "dmg": {
       "sign": false

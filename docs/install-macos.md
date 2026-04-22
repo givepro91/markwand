@@ -1,118 +1,84 @@
-# macOS 설치 가이드 (unsigned dmg) — v0.3.0-beta.1
+# macOS 설치 가이드 — v0.3.0-beta.2
 
-Markwand는 현재 Apple 코드사이닝 미적용 빌드입니다.
-아래 절차대로 진행하면 Gatekeeper 차단 없이 실행할 수 있습니다.
+Markwand 는 Apple 코드사이닝·공증 미적용 베타 빌드입니다. **ad-hoc 서명** 이 적용되어 있어 터미널 명령 없이 우클릭 → 열기 로 실행할 수 있습니다.
 
-> 이 버전은 **베타** 입니다. 원격 SSH 서버 지원이 포함됐으며, 예상치 못한 동작이 있을 수 있습니다.
-> 릴리스 노트: [release-notes/v0.3.0-beta.1.md](./release-notes/v0.3.0-beta.1.md)
+> 이 버전은 **베타** 입니다. 릴리스 노트: [release-notes/v0.3.0-beta.2.md](./release-notes/v0.3.0-beta.2.md)
 
 ---
 
-## 0. SHA256 무결성 확인
+## 1. DMG 다운로드
 
-다운로드한 dmg 파일이 변조되지 않았는지 확인합니다. Apple Silicon(M1/M2/M3) 은 `arm64`, Intel Mac 은 `x64` 파일을 받으세요.
+본인 Mac 기종에 맞는 파일을 받으세요.
+
+- **Apple Silicon (M1/M2/M3/M4)**: `Markwand-0.3.0-beta.2-arm64.dmg`
+- **Intel Mac**: `Markwand-0.3.0-beta.2.dmg`
+
+## 2. SHA256 무결성 확인 (선택)
+
+다운로드한 파일이 변조되지 않았는지 터미널에서 확인할 수 있습니다.
 
 ```bash
-# Apple Silicon
-shasum -a 256 ~/Downloads/Markwand-0.3.0-beta.1-arm64.dmg
-
-# Intel
-shasum -a 256 ~/Downloads/Markwand-0.3.0-beta.1.dmg
+shasum -a 256 ~/Downloads/Markwand-0.3.0-beta.2-arm64.dmg
+# 또는
+shasum -a 256 ~/Downloads/Markwand-0.3.0-beta.2.dmg
 ```
 
 예상 해시 (2026-04-22 빌드):
+
 ```
-39c19fc6973867f2797c94713cdc769c7e28b50938cc22f0be899ed02e983dc8  Markwand-0.3.0-beta.1-arm64.dmg
-8206eea58ad546c9a8ef444be0fa009dac2a9445262d36773afc4e2281ad12cc  Markwand-0.3.0-beta.1.dmg
-```
-
-출력값이 위와 일치하면 안전한 파일입니다.
-
----
-
-## 1. dmg 마운트
-
-Finder에서 `Markwand-*.dmg`를 더블클릭하거나 터미널에서 마운트합니다.
-
-```bash
-hdiutil attach ~/Downloads/Markwand-*.dmg
+4a616f3bc00c460467fea8d4015da36c2c9756cfe195c80d1439aca100034151  Markwand-0.3.0-beta.2-arm64.dmg
+8a046629b8a563ea78994209a994054c63c7f446aaa9a7f157493c3c2011d624  Markwand-0.3.0-beta.2.dmg
 ```
 
-> <!-- 스크린샷: dmg 마운트 후 Finder 창에 Markwand 아이콘과 Applications 폴더 별칭이 표시된 모습 -->
+## 3. DMG 마운트 + Applications 로 드래그
 
----
+1. 다운로드한 DMG 를 더블클릭하면 창이 뜹니다.
+2. **Markwand 아이콘을 Applications 폴더 아이콘 위로 드래그** 합니다.
 
-## 2. /Applications 복사
+## 4. 첫 실행 (중요)
 
-dmg 창에서 `Markwand.app`을 `Applications` 폴더로 드래그하거나 터미널에서 복사합니다.
+### 방법 A — 우클릭 → 열기 (권장)
 
-```bash
-cp -R /Volumes/Markwand/Markwand.app /Applications/
-```
+1. Finder → Applications → **`Markwand`** 를 **우클릭** (또는 Control+클릭)
+2. 메뉴에서 **열기** 선택
+3. 팝업 경고창에서 다시 **열기** 클릭
 
-> <!-- 스크린샷: /Applications/Markwand.app 복사 완료 모습 -->
+이 절차는 해당 앱 **한 번만** 거치면 되고, 이후부터는 더블클릭으로 바로 실행됩니다.
 
----
+### 방법 B — 시스템 설정 허용 (A 가 안 될 때)
 
-## 3. quarantine 속성 제거
-
-macOS는 인터넷에서 내려받은 앱에 quarantine 플래그를 붙입니다.
-아래 명령으로 플래그를 재귀적으로 제거합니다.
-
-```bash
-xattr -dr com.apple.quarantine /Applications/Markwand.app
-```
-
-명령이 성공하면 출력 없이 프롬프트로 돌아옵니다.
-제거 여부를 확인하려면:
-
-```bash
-xattr /Applications/Markwand.app
-# quarantine 줄이 없으면 정상
-```
-
-> <!-- 스크린샷: 터미널에서 xattr -dr 실행 후 빈 출력 확인 모습 -->
-
----
-
-## 4. 실행 확인
-
-```bash
-open /Applications/Markwand.app
-```
-
-또는 Finder → Applications → `Markwand` 더블클릭.
-
-Gatekeeper 경고 없이 앱이 바로 열리면 설치 완료입니다.
-
-> <!-- 스크린샷: Markwand 메인 화면 첫 실행 모습 -->
+1. 더블클릭 시 "확인되지 않은 개발자" 경고 팝업이 뜨면 일단 닫습니다.
+2. **시스템 설정 → 개인정보 보호 및 보안** 으로 이동.
+3. 아래로 스크롤하면 "`Markwand` 이(가) 확인되지 않은 개발자가 배포했기 때문에…" 문구 옆에 **그래도 열기** 버튼이 있습니다. 클릭.
+4. 한 번 더 팝업이 뜨면 **열기** 클릭.
 
 ---
 
 ## 문제 해결
 
-### "개발자를 확인할 수 없습니다" 경고가 계속 나올 때
+### "손상되었기 때문에 열 수 없습니다" 가 뜨면 (드문 케이스)
 
-xattr 명령이 정상 완료됐는지 확인하고, quarantine 줄이 남아있으면 다시 실행합니다.
+최신 macOS 가 quarantine 플래그를 엄격히 적용한 경우입니다. 터미널에서:
 
 ```bash
-xattr -l /Applications/Markwand.app | grep quarantine
-# 출력이 없어야 함
+xattr -cr /Applications/Markwand.app
+open /Applications/Markwand.app
 ```
 
-### 우클릭으로 열기 (터미널 사용 불가 시 대안)
+### DMG 자체가 열리지 않는 경우
 
-1. Finder에서 `/Applications/Markwand.app` 우클릭
-2. **열기** 선택
-3. 경고 팝업에서 **그래도 열기** 클릭
+```bash
+xattr -dr com.apple.quarantine ~/Downloads/Markwand-0.3.0-beta.2*.dmg
+```
 
-이 방법은 해당 실행에만 적용되므로, 이후에도 같은 경고가 나올 수 있습니다.
-영구 해제는 `xattr -dr` 방법을 권장합니다.
+다시 더블클릭하면 마운트됩니다.
 
 ---
 
-## dmg 언마운트 (선택)
+## DMG 언마운트 (선택)
+
+설치 후 Finder 사이드바의 `Markwand` 옆 ⏏ 아이콘 클릭, 또는:
 
 ```bash
-hdiutil detach /Volumes/Markwand
+hdiutil detach "/Volumes/Markwand 0.3.0-beta.2-arm64"
 ```
