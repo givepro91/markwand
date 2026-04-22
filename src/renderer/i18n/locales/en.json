@@ -1,0 +1,142 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "close": "Close",
+    "confirm": "Confirm",
+    "open": "Open",
+    "loading": "Loading…"
+  },
+
+  "language": {
+    "label": "Language",
+    "ko": "한국어",
+    "en": "English",
+    "hint": "Applies immediately."
+  },
+
+  "empty": {
+    "title": "Add a workspace",
+    "description": "Register a folder containing markdown documents to browse its projects and files.",
+    "cta": "+ Add workspace"
+  },
+
+  "loading": {
+    "workspaceAnalyzing": "Analyzing workspace…",
+    "workspaceDetail": "Scanning the folder and locating projects (.git, package.json, …).",
+    "projectAnalyzing": "Analyzing {{total}} projects · {{pct}}%",
+    "projectDetail": "Counting documents in each project. ({{done}}/{{total}})",
+    "progressAria": "{{pct}}% complete",
+    "filesLoading": "Loading file list…",
+    "filesLoadingRemote": "Remote servers may take a moment."
+  },
+
+  "picker": {
+    "select": "Select workspace",
+    "addLocal": "+ Add local folder",
+    "addSsh": "+ Add remote SSH server",
+    "addLocalShort": "+ Local folder",
+    "addSshShort": "+ Remote (SSH)",
+    "addLocalAria": "Add a local folder",
+    "addSshAria": "Add a remote SSH server folder",
+    "groupLocal": "This Mac",
+    "groupRemote": "Remote SSH servers",
+    "manage": "Manage workspaces"
+  },
+
+  "settings": {
+    "title": "Settings",
+    "aria": "Settings",
+    "trackReadDocs": "Track read documents",
+    "trackReadDocsHint": "Turning this off marks all documents as unread and clears history",
+    "confirmClear": "Delete all read history and turn off tracking?",
+    "clearButton": "Delete & turn off",
+    "experimentalSection": "Beta features",
+    "sshTransport": "Remote SSH server",
+    "sshTransportHint": "Browse markdown on remote servers (read-only). <1>Restart the app</1> after changing.",
+    "sshTransportTitle": "Enables read-only remote SSH workspaces. Restart the app after changing."
+  },
+
+  "ssh": {
+    "add": {
+      "title": "Add a remote SSH folder",
+      "description": "Browse a markdown folder on a remote server. Read-only — nothing is sent or changed on the server.",
+      "configSection": "Import from SSH config (~/.ssh/config)",
+      "configDirect": "— Enter manually —",
+      "configProxyJumpNote": "This host uses a ProxyJump. Only basic fields are auto-filled in this screen.",
+      "configRejectedSummary": "{{count}} hosts excluded (unsupported directives)",
+      "configEmpty": "The SSH config file exists but has no usable hosts.",
+      "name": "Name",
+      "nameSub": "(a nickname)",
+      "namePlaceholder": "e.g. dev-server, work-notes",
+      "host": "Server address",
+      "hostPlaceholder": "e.g. example.com, 192.168.0.10",
+      "port": "Port",
+      "user": "Account",
+      "userPlaceholder": "Remote user to log in as",
+      "authSection": "Authentication",
+      "authAgent": "Automatic login (recommended)",
+      "authAgentHint": "Uses your ssh-agent. If <1>ssh {{user}}@{{host}}</1> works in your terminal, this method works too.",
+      "authKeyFile": "Specify key file",
+      "authKeyFileHint": "Provide the path to a private key file used for connection.",
+      "keyPath": "Key file path",
+      "keyPathPlaceholder": "e.g. /Users/alice/.ssh/id_ed25519",
+      "keyPathHint": "Only the file path is stored. The key contents are not saved in the app.",
+      "root": "Remote folder path",
+      "rootPlaceholder": "e.g. /home/alice/docs",
+      "rootBrowse": "Browse…",
+      "rootBrowseAria": "Browse remote folders",
+      "rootHint": "Point to the folder containing markdown documents. You may type it or use <1>Browse</1>.",
+      "modeNote": "The selected folder will be registered as one project. Only one remote folder can be added per entry.",
+      "submit": "Connect & add",
+      "submitting": "Connecting…",
+      "picker": {
+        "title": "Folder browser",
+        "parent": "← Parent folder",
+        "empty": "No subfolders.",
+        "filesInFolder": "{{count}} files in this folder (not shown)",
+        "filesNone": "No files in this folder.",
+        "select": "Select this folder",
+        "errHostUser": "Enter the server address and account first.",
+        "errPort": "Port must be between 1 and 65535.",
+        "errKey": "Enter the key file path before browsing."
+      }
+    },
+    "prompt": {
+      "titleMismatch": "⚠ Server fingerprint changed — connection aborted",
+      "titleNew": "First time connecting to this server",
+      "descMismatch": "The stored server fingerprint no longer matches. The server may have been reinstalled, or someone could be intercepting (MITM). Verify with the server administrator.",
+      "descNew": "You've never trusted this server before. Confirm the fingerprint below matches the value given by your server administrator.",
+      "fieldServer": "Server",
+      "fieldAlgorithm": "Algorithm",
+      "algorithmUnknown": "checking",
+      "fieldExpected": "Stored fingerprint",
+      "fieldReceived": "Received fingerprint",
+      "fieldFingerprint": "Server fingerprint",
+      "md5Toggle": "Show legacy MD5 fingerprint",
+      "noticeNew": "<1>Trusting saves this fingerprint.</1> Future connections will be automatic — no more prompts. You can remove it later in settings.",
+      "noticeMismatch": "If the server was reinstalled: remove it from workspace management and re-add it to trust the new fingerprint.",
+      "abort": "Abort",
+      "reject": "Don't trust",
+      "trust": "Trust & remember",
+      "fingerprintAria": "SHA256 fingerprint {{value}}. Verify visually with your server administrator.",
+      "fingerprintAriaStored": "Stored SHA256 fingerprint {{value}}",
+      "fingerprintAriaReceived": "Received SHA256 fingerprint {{value}}"
+    }
+  },
+
+  "error": {
+    "sshTransportDisabled": "The SSH feature is disabled. Go to Settings (⚙) → Experimental → \"Remote SSH server\" and restart the app.",
+    "sshWorkspaceExists": "This account/server combination is already registered.",
+    "invalidRoot": "Folder path must be absolute (starting with /) and at least two levels deep (e.g. /home/user/docs).",
+    "connRefused": "Connection refused. Check the server address / port and make sure the server is running.",
+    "connTimeout": "Connection timed out. Check your network or firewall.",
+    "hostUnreachable": "Server not found. Verify the address (hostname or IP).",
+    "authFailed": "Authentication failed. Check the account name and authentication method (automatic login or key file path).",
+    "hostKeyRejected": "The server fingerprint was not trusted — connection cancelled.",
+    "hostKeyMismatch": "The server fingerprint differs from the stored value. Verify with the administrator and remove the old fingerprint in settings.",
+    "keyFileMissing": "Key file not found. Check the path.",
+    "portRange": "Port must be between 1 and 65535.",
+    "keyPathRequired": "Enter the key file path.",
+    "generic": "Connection failed: {{message}}"
+  }
+}

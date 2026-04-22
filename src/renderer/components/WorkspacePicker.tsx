@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button, IconButton } from './ui'
 import { WorkspaceManageModal } from './WorkspaceManageModal'
 import type { Workspace } from '../../../src/preload/types'
@@ -36,17 +37,18 @@ export function WorkspacePicker({
   experimentalSsh = false,
   onRemove,
 }: WorkspacePickerProps) {
+  const { t } = useTranslation()
   const [showManage, setShowManage] = useState(false)
 
   if (workspaces.length === 0) {
     return (
       <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
-        <Button variant="primary" size="sm" onClick={onAdd} aria-label="내 컴퓨터의 폴더 추가">
-          + 내 컴퓨터 폴더
+        <Button variant="primary" size="sm" onClick={onAdd} aria-label={t('picker.addLocalAria')}>
+          {t('picker.addLocalShort')}
         </Button>
         {experimentalSsh && onAddSsh && (
-          <Button variant="ghost" size="sm" onClick={onAddSsh} aria-label="원격 SSH 서버의 폴더 추가">
-            + 원격 SSH 서버
+          <Button variant="ghost" size="sm" onClick={onAddSsh} aria-label={t('picker.addSshAria')}>
+            {t('picker.addSshShort')}
           </Button>
         )}
       </div>
@@ -59,7 +61,7 @@ export function WorkspacePicker({
         <div style={{ position: 'relative' }}>
           <select
             value={activeId ?? ''}
-            aria-label="워크스페이스 선택"
+            aria-label={t('picker.select')}
             onChange={(e) => {
               const val = e.target.value
               if (val === '__add__') onAdd()
@@ -88,14 +90,14 @@ export function WorkspacePicker({
               return (
                 <>
                   {local.length > 0 && (
-                    <optgroup label="내 컴퓨터">
+                    <optgroup label={t('picker.groupLocal')}>
                       {local.map((w) => (
                         <option key={w.id} value={w.id}>{w.name}</option>
                       ))}
                     </optgroup>
                   )}
                   {remote.length > 0 && (
-                    <optgroup label="원격 SSH 서버">
+                    <optgroup label={t('picker.groupRemote')}>
                       {remote.map((w) => {
                         // FS9-B — "서버명 / 프로젝트폴더" 표시. root basename 을 추출.
                         const segments = w.root.split('/').filter((s) => s.length > 0)
@@ -111,9 +113,9 @@ export function WorkspacePicker({
                 </>
               )
             })()}
-            <option value="__add__">+ 내 컴퓨터 폴더 추가</option>
+            <option value="__add__">{t('picker.addLocal')}</option>
             {experimentalSsh && onAddSsh && (
-              <option value="__add_ssh__">+ 원격 서버(SSH) 추가</option>
+              <option value="__add_ssh__">{t('picker.addSsh')}</option>
             )}
           </select>
           <span
@@ -131,7 +133,7 @@ export function WorkspacePicker({
           </span>
         </div>
         <IconButton
-          aria-label="워크스페이스 관리"
+          aria-label={t('picker.manage')}
           size="sm"
           onClick={() => setShowManage(true)}
         >

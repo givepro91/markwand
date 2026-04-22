@@ -12,6 +12,7 @@
 
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties, FormEvent, KeyboardEvent } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import type {
   SshAuthConfig,
   LoadSshConfigResult,
@@ -34,41 +35,20 @@ interface Props {
   }) => Promise<void>
 }
 
-// 에러 맵 — 기술 상수 → 사용자 자연어 + 해결 방향.
-function humanizeError(message: string): string {
-  if (message === 'SSH_TRANSPORT_DISABLED') {
-    return 'SSH 기능이 꺼져있습니다. 설정(⚙) → Experimental → "SSH Remote Transport" 를 켜고 앱을 재시작해주세요.'
-  }
-  if (message === 'SSH_WORKSPACE_ALREADY_EXISTS') {
-    return '동일한 계정·서버 조합이 이미 등록되어 있습니다.'
-  }
-  if (message.includes('INVALID_SSH_ROOT')) {
-    return '폴더 경로는 슬래시(/) 로 시작하는 절대 경로여야 합니다. 최소 두 단계 이상이어야 합니다 (예: /home/user/docs).'
-  }
-  // ssh2/Node 에러 패턴
-  if (message.includes('ECONNREFUSED') || message.includes('CONN_REFUSED')) {
-    return '연결이 거부되었습니다. 서버 주소·포트가 맞는지, 서버가 켜져 있는지 확인해주세요.'
-  }
-  if (message.includes('ETIMEDOUT') || message.includes('CONNECT_TIMEOUT')) {
-    return '연결 시간이 초과되었습니다. 네트워크 또는 방화벽을 확인해주세요.'
-  }
-  if (message.includes('ENOTFOUND') || message.includes('HOST_UNREACHABLE')) {
-    return '서버를 찾을 수 없습니다. 주소(호스트명 또는 IP) 가 맞는지 확인해주세요.'
-  }
-  if (message.includes('AUTH_FAILED') || message.toLowerCase().includes('authentication')) {
-    return '인증에 실패했습니다. 계정 이름과 인증 방식(자동 로그인 또는 키 파일 경로) 을 확인해주세요.'
-  }
-  if (message.includes('HOST_KEY_REJECTED')) {
-    return '서버 지문을 신뢰하지 않아 연결이 중단되었습니다.'
-  }
-  if (message.includes('HOST_KEY_MISMATCH')) {
-    return '서버 지문이 저장된 값과 다릅니다. 관리자에게 확인한 뒤 설정에서 기존 지문을 제거해주세요.'
-  }
-  if (message.includes('ENOENT') && message.includes('.ssh')) {
-    return '키 파일을 찾을 수 없습니다. 경로를 다시 확인해주세요.'
-  }
-  // fallback — 원문 + 안내
-  return `연결 실패: ${message}`
+// 에러 맵 — 기술 상수 → 사용자 자연어 + 해결 방향. i18n 지원.
+type TFn = (key: string, opts?: Record<string, unknown>) => string
+function humanizeError(t: TFn, message: string): string {
+  if (message === 'SSH_TRANSPORT_DISABLED') return t('error.sshTransportDisabled')
+  if (message === 'SSH_WORKSPACE_ALREADY_EXISTS') return t('error.sshWorkspaceExists')
+  if (message.includes('INVALID_SSH_ROOT')) return t('error.invalidRoot')
+  if (message.includes('ECONNREFUSED') || message.includes('CONN_REFUSED')) return t('error.connRefused')
+  if (message.includes('ETIMEDOUT') || message.includes('CONNECT_TIMEOUT')) return t('error.connTimeout')
+  if (message.includes('ENOTFOUND') || message.includes('HOST_UNREACHABLE')) return t('error.hostUnreachable')
+  if (message.includes('AUTH_FAILED') || message.toLowerCase().includes('authentication')) return t('error.authFailed')
+  if (message.includes('HOST_KEY_REJECTED')) return t('error.hostKeyRejected')
+  if (message.includes('HOST_KEY_MISMATCH')) return t('error.hostKeyMismatch')
+  if (message.includes('ENOENT') && message.includes('.ssh')) return t('error.keyFileMissing')
+  return t('error.generic', { message })
 }
 
 export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
@@ -76,6 +56,7 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
   onClose,
   onSubmit,
 }: Props) {
+  const { t } = useTranslation()
   const [name, setName] = useState('')
   const [host, setHost] = useState('')
   const [port, setPort] = useState('22')
@@ -180,12 +161,12 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
     setPickerError(null)
     // 사전 검증
     if (!host.trim() || !user.trim()) {
-      setPickerError('먼저 서버 주소와 계정을 입력하세요.')
+      setPickerError(t('ssh.add.picker.errHostUser'))
       return
     }
     const portNum = parseInt(port, 10)
     if (!Number.isFinite(portNum) || portNum < 1 || portNum > 65535) {
-      setPickerError('포트 번호는 1~65535 범위여야 합니다.')
+      setPickerError(t('ssh.add.picker.errPort'))
       return
     }
     let authInput: SshAuthConfig
@@ -194,7 +175,7 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
     } else {
       const kp = keyFilePath.trim()
       if (!kp) {
-        setPickerError('키 파일 경로를 입력한 후 탐색하세요.')
+        setPickerError(t('ssh.add.picker.errKey'))
         return
       }
       authInput = { kind: 'key-file', path: kp }
@@ -231,10 +212,10 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
           setPickerPath(result.path)
           setPickerParent(result.parent)
         } catch (err2) {
-          setPickerError(humanizeError(err2 instanceof Error ? err2.message : String(err2)))
+          setPickerError(humanizeError(t, err2 instanceof Error ? err2.message : String(err2)))
         }
       } else {
-        setPickerError(humanizeError(err instanceof Error ? err.message : String(err)))
+        setPickerError(humanizeError(t, err instanceof Error ? err.message : String(err)))
       }
     } finally {
       setPickerLoading(false)
@@ -260,12 +241,12 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
         setPickerPath(result.path)
         setPickerParent(result.parent)
       } catch (err) {
-        setPickerError(humanizeError(err instanceof Error ? err.message : String(err)))
+        setPickerError(humanizeError(t, err instanceof Error ? err.message : String(err)))
       } finally {
         setPickerLoading(false)
       }
     },
-    [authKind, host, keyFilePath, port, user],
+    [authKind, host, keyFilePath, port, user, t],
   )
 
   const confirmPickerSelection = useCallback(() => {
@@ -280,7 +261,7 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
       setError(null)
       const portNum = parseInt(port, 10)
       if (!Number.isFinite(portNum) || portNum < 1 || portNum > 65535) {
-        setError('포트 번호는 1~65535 범위여야 합니다.')
+        setError(t('error.portRange'))
         return
       }
       let auth: SshAuthConfig
@@ -289,7 +270,7 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
       } else {
         const trimmedKeyPath = keyFilePath.trim()
         if (!trimmedKeyPath) {
-          setError('키 파일 경로를 입력하세요.')
+          setError(t('error.keyPathRequired'))
           return
         }
         auth = { kind: 'key-file', path: trimmedKeyPath }
@@ -309,11 +290,11 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
         onClose()
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
-        setError(humanizeError(message))
+        setError(humanizeError(t, message))
         setLoading(false)
       }
     },
-    [authKind, host, keyFilePath, loading, mode, name, onClose, onSubmit, port, reset, root, user],
+    [authKind, host, keyFilePath, loading, mode, name, onClose, onSubmit, port, reset, root, t, user],
   )
 
   if (!open) return null
@@ -384,10 +365,10 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
           id="ssh-add-title"
           style={{ margin: '0 0 var(--sp-2)', fontSize: 'var(--fs-lg)', fontWeight: 'var(--fw-semibold)' }}
         >
-          원격 SSH 서버의 문서 폴더 추가
+          {t('ssh.add.title')}
         </h2>
         <p style={{ ...hintStyle, margin: '0 0 var(--sp-4)' }}>
-          원격 서버에 있는 마크다운 폴더를 읽기 전용으로 불러옵니다. 서버에는 아무것도 전송·변경되지 않습니다.
+          {t('ssh.add.description')}
         </p>
 
         {error && (
@@ -411,7 +392,7 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
               htmlFor="ssh-config-select"
               style={{ ...labelStyle, display: 'block', marginBottom: 'var(--sp-2)' }}
             >
-              SSH 설정 파일(~/.ssh/config) 에서 불러오기
+              {t('ssh.add.configSection')}
             </label>
             <select
               id="ssh-config-select"
@@ -424,7 +405,7 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
                 cursor: loading ? 'not-allowed' : 'pointer',
               }}
             >
-              <option value="">— 직접 입력 —</option>
+              <option value="">{t('ssh.add.configDirect')}</option>
               {sshConfig.hosts.map((h) => (
                 <option key={h.alias} value={h.alias}>
                   {h.alias}
@@ -434,8 +415,7 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
             </select>
             {selectedAlias && sshConfig.hosts.find((h) => h.alias === selectedAlias)?.proxyJump && (
               <p style={{ ...hintStyle, marginTop: 'var(--sp-1)', color: 'var(--accent)' }}>
-                <span aria-hidden="true">ℹ</span>{' '}
-                이 호스트는 경유 서버(ProxyJump) 설정이 있습니다. 현재 화면에서는 기본 정보만 자동 입력됩니다.
+                <span aria-hidden="true">ℹ</span> {t('ssh.add.configProxyJumpNote')}
               </p>
             )}
             {sshConfig.permissionWarning && (
@@ -446,7 +426,7 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
             {sshConfig.rejected.length > 0 && (
               <details style={{ marginTop: 'var(--sp-2)' }}>
                 <summary style={{ ...hintStyle, cursor: 'pointer' }}>
-                  제외된 호스트 {sshConfig.rejected.length}개 (지원하지 않는 설정 포함)
+                  {t('ssh.add.configRejectedSummary', { count: sshConfig.rejected.length })}
                 </summary>
                 <ul style={{ margin: 'var(--sp-1) 0 0', paddingLeft: 'var(--sp-4)', fontSize: 'var(--fs-xs)' }}>
                   {sshConfig.rejected.map((r) => (
@@ -461,13 +441,15 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
         )}
         {sshConfig && sshConfig.exists && sshConfig.hosts.length === 0 && !sshConfig.permissionWarning && (
           <p style={{ ...hintStyle, marginBottom: 'var(--sp-3)' }}>
-            SSH 설정 파일은 있으나 불러올 수 있는 호스트가 없습니다.
+            {t('ssh.add.configEmpty')}
           </p>
         )}
 
         <form onSubmit={handleSubmit}>
           <div style={fieldStyle}>
-            <label htmlFor="ssh-name" style={labelStyle}>이름 <span style={hintStyle}>(구분하기 쉬운 별명)</span></label>
+            <label htmlFor="ssh-name" style={labelStyle}>
+              {t('ssh.add.name')} <span style={hintStyle}>{t('ssh.add.nameSub')}</span>
+            </label>
             <input
               id="ssh-name"
               ref={nameRef}
@@ -475,7 +457,7 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="예: 개발 서버, 회사 노트 서버"
+              placeholder={t('ssh.add.namePlaceholder')}
               style={inputStyle}
               disabled={loading}
             />
@@ -483,20 +465,20 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: 'var(--sp-3)' }}>
             <div style={fieldStyle}>
-              <label htmlFor="ssh-host" style={labelStyle}>서버 주소</label>
+              <label htmlFor="ssh-host" style={labelStyle}>{t('ssh.add.host')}</label>
               <input
                 id="ssh-host"
                 type="text"
                 required
                 value={host}
                 onChange={(e) => setHost(e.target.value)}
-                placeholder="예: example.com, 192.168.0.10"
+                placeholder={t('ssh.add.hostPlaceholder')}
                 style={inputStyle}
                 disabled={loading}
               />
             </div>
             <div style={fieldStyle}>
-              <label htmlFor="ssh-port" style={labelStyle}>포트</label>
+              <label htmlFor="ssh-port" style={labelStyle}>{t('ssh.add.port')}</label>
               <input
                 id="ssh-port"
                 type="number"
@@ -512,14 +494,14 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
           </div>
 
           <div style={fieldStyle}>
-            <label htmlFor="ssh-user" style={labelStyle}>계정 이름</label>
+            <label htmlFor="ssh-user" style={labelStyle}>{t('ssh.add.user')}</label>
             <input
               id="ssh-user"
               type="text"
               required
               value={user}
               onChange={(e) => setUser(e.target.value)}
-              placeholder="원격 서버에 로그인하는 계정"
+              placeholder={t('ssh.add.userPlaceholder')}
               style={inputStyle}
               disabled={loading}
             />
@@ -528,7 +510,7 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
           <fieldset
             style={{ ...fieldStyle, border: 'none', padding: 0, margin: '0 0 var(--sp-3)' }}
           >
-            <legend style={{ ...labelStyle, marginBottom: 'var(--sp-1)' }}>로그인 방식</legend>
+            <legend style={{ ...labelStyle, marginBottom: 'var(--sp-1)' }}>{t('ssh.add.authSection')}</legend>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', marginTop: 'var(--sp-1)' }}>
               <label style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'flex-start', fontSize: 'var(--fs-sm)', cursor: 'pointer' }}>
                 <input
@@ -541,10 +523,15 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
                   style={{ marginTop: '3px' }}
                 />
                 <span>
-                  <strong>자동 로그인 (권장)</strong>
+                  <strong>{t('ssh.add.authAgent')}</strong>
                   <br />
                   <span style={hintStyle}>
-                    시스템의 ssh-agent 를 사용합니다. 터미널에서 <code>ssh {user || '계정'}@{host || '서버'}</code> 로 접속할 수 있다면 이 방식이 가능합니다.
+                    <Trans
+                      i18nKey="ssh.add.authAgentHint"
+                      values={{ user: user || '...', host: host || '...' }}
+                    >
+                      시스템의 ssh-agent 를 사용합니다. 터미널에서 <code></code> 로 접속할 수 있다면 이 방식이 가능합니다.
+                    </Trans>
                   </span>
                 </span>
               </label>
@@ -559,9 +546,9 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
                   style={{ marginTop: '3px' }}
                 />
                 <span>
-                  <strong>키 파일 지정</strong>
+                  <strong>{t('ssh.add.authKeyFile')}</strong>
                   <br />
-                  <span style={hintStyle}>접속용 개인 키 파일 경로를 직접 지정합니다.</span>
+                  <span style={hintStyle}>{t('ssh.add.authKeyFileHint')}</span>
                 </span>
               </label>
             </div>
@@ -569,23 +556,23 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
 
           {authKind === 'key-file' && (
             <div style={fieldStyle}>
-              <label htmlFor="ssh-keypath" style={labelStyle}>키 파일 경로</label>
+              <label htmlFor="ssh-keypath" style={labelStyle}>{t('ssh.add.keyPath')}</label>
               <input
                 id="ssh-keypath"
                 type="text"
                 required
                 value={keyFilePath}
                 onChange={(e) => setKeyFilePath(e.target.value)}
-                placeholder="예: /Users/alice/.ssh/id_ed25519"
+                placeholder={t('ssh.add.keyPathPlaceholder')}
                 style={inputStyle}
                 disabled={loading}
               />
-              <span style={hintStyle}>파일 경로만 저장되며, 키 내용 자체는 앱에 저장되지 않습니다.</span>
+              <span style={hintStyle}>{t('ssh.add.keyPathHint')}</span>
             </div>
           )}
 
           <div style={fieldStyle}>
-            <label htmlFor="ssh-root" style={labelStyle}>원격 폴더 경로</label>
+            <label htmlFor="ssh-root" style={labelStyle}>{t('ssh.add.root')}</label>
             <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
               <input
                 id="ssh-root"
@@ -593,7 +580,7 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
                 required
                 value={root}
                 onChange={(e) => setRoot(e.target.value)}
-                placeholder="예: /home/alice/docs"
+                placeholder={t('ssh.add.rootPlaceholder')}
                 style={{ ...inputStyle, flex: 1 }}
                 disabled={loading || pickerOpen}
               />
@@ -603,13 +590,15 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
                 type="button"
                 onClick={openPicker}
                 disabled={loading || pickerOpen}
-                aria-label="원격 폴더 탐색"
+                aria-label={t('ssh.add.rootBrowseAria')}
               >
-                폴더 탐색…
+                {t('ssh.add.rootBrowse')}
               </Button>
             </div>
             <span style={hintStyle}>
-              서버에서 마크다운 문서가 모여있는 폴더를 가리켜주세요. 직접 입력하거나 <strong>폴더 탐색</strong> 으로 찾을 수 있습니다.
+              <Trans i18nKey="ssh.add.rootHint">
+                서버에서 마크다운 문서가 모여있는 폴더를 가리켜주세요. 직접 입력하거나 <strong>폴더 탐색</strong> 으로 찾을 수 있습니다.
+              </Trans>
             </span>
           </div>
 
@@ -625,7 +614,7 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', marginBottom: 'var(--sp-2)' }}>
-                <strong style={{ fontSize: 'var(--fs-sm)' }}>폴더 탐색</strong>
+                <strong style={{ fontSize: 'var(--fs-sm)' }}>{t('ssh.add.picker.title')}</strong>
                 <code
                   style={{ flex: 1, fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                   title={pickerPath}
@@ -633,7 +622,7 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
                   {pickerPath}
                 </code>
                 <Button variant="ghost" size="sm" type="button" onClick={() => setPickerOpen(false)}>
-                  닫기
+                  {t('common.close')}
                 </Button>
               </div>
               {pickerError && (
@@ -641,7 +630,7 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
                   {pickerError}
                 </div>
               )}
-              {pickerLoading && <p style={hintStyle}>읽는 중…</p>}
+              {pickerLoading && <p style={hintStyle}>{t('common.loading')}</p>}
               {!pickerLoading && !pickerError && (
                 <ul style={{
                   listStyle: 'none',
@@ -670,7 +659,7 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
                           cursor: 'pointer',
                         }}
                       >
-                        ← 상위 폴더
+                        {t('ssh.add.picker.parent')}
                       </button>
                     </li>
                   )}
@@ -700,7 +689,7 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
                   ))}
                   {pickerEntries.filter((e) => e.isDirectory).length === 0 && (
                     <li style={{ padding: 'var(--sp-3)', color: 'var(--text-muted)', fontSize: 'var(--fs-xs)' }}>
-                      하위 폴더가 없습니다.
+                      {t('ssh.add.picker.empty')}
                     </li>
                   )}
                 </ul>
@@ -708,11 +697,11 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--sp-2)' }}>
                 <span style={hintStyle}>
                   {pickerEntries.filter((e) => !e.isDirectory).length > 0
-                    ? `이 폴더의 파일 ${pickerEntries.filter((e) => !e.isDirectory).length}개 (미표시)`
-                    : '이 폴더에 파일이 없습니다.'}
+                    ? t('ssh.add.picker.filesInFolder', { count: pickerEntries.filter((e) => !e.isDirectory).length })
+                    : t('ssh.add.picker.filesNone')}
                 </span>
                 <Button variant="primary" size="sm" type="button" onClick={confirmPickerSelection} disabled={pickerLoading}>
-                  이 폴더 선택
+                  {t('ssh.add.picker.select')}
                 </Button>
               </div>
             </div>
@@ -729,16 +718,15 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
               marginBottom: 'var(--sp-3)',
             }}
           >
-            <span aria-hidden="true">ℹ</span>{' '}
-            선택한 폴더가 한 개의 프로젝트로 등록됩니다. 원격 서버에서는 한 번에 한 폴더만 추가할 수 있습니다.
+            <span aria-hidden="true">ℹ</span> {t('ssh.add.modeNote')}
           </p>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--sp-2)', marginTop: 'var(--sp-4)' }}>
             <Button variant="ghost" size="sm" type="button" onClick={handleClose} disabled={loading}>
-              취소
+              {t('common.cancel')}
             </Button>
             <Button variant="primary" size="sm" type="submit" disabled={loading}>
-              {loading ? '연결 중…' : '연결 및 추가'}
+              {loading ? t('ssh.add.submitting') : t('ssh.add.submit')}
             </Button>
           </div>
         </form>

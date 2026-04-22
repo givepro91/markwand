@@ -14,6 +14,7 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import { useSshHostKeyPrompt } from '../hooks/useSshHostKeyPrompt'
 
 // 43자 base64 지문을 2자씩 콜론으로 구분 — 시각 대조 용이 + SR 낭독 시 쉼표.
@@ -24,6 +25,7 @@ function formatFingerprint(sha256: string): string {
 }
 
 export const SshHostKeyPrompt = memo(function SshHostKeyPrompt() {
+  const { t } = useTranslation()
   const { current, respond } = useSshHostKeyPrompt()
   const rejectRef = useRef<HTMLButtonElement | null>(null)
 
@@ -120,47 +122,39 @@ export const SshHostKeyPrompt = memo(function SshHostKeyPrompt() {
         style={dialogStyle}
       >
         <h2 id={titleId} style={{ marginTop: 0, fontSize: 'var(--fs-lg)' }}>
-          {isMismatch ? (
-            <>
-              <span aria-hidden="true">⚠</span> 서버 지문이 바뀌었습니다 — 연결 중단됨
-            </>
-          ) : (
-            '이 서버를 처음 연결합니다'
-          )}
+          {isMismatch ? t('ssh.prompt.titleMismatch') : t('ssh.prompt.titleNew')}
         </h2>
         <p id={descId} style={{ color: 'var(--text-muted)', marginBottom: 'var(--sp-4)' }}>
-          {isMismatch
-            ? '이전에 저장된 서버 지문과 달라졌습니다. 서버를 새로 설치했거나, 누군가 중간에서 가로채는(MITM) 상황일 수 있습니다. 서버 관리자에게 확인해주세요.'
-            : '아직 이 서버를 신뢰한 적이 없습니다. 아래 지문이 서버 관리자가 알려준 값과 같은지 확인해주세요.'}
+          {isMismatch ? t('ssh.prompt.descMismatch') : t('ssh.prompt.descNew')}
         </p>
 
         <div role="list" style={{ marginBottom: 'var(--sp-4)' }}>
           <div style={fieldRowStyle} role="listitem">
-            <span style={{ color: 'var(--text-muted)' }}>서버</span>
+            <span style={{ color: 'var(--text-muted)' }}>{t('ssh.prompt.fieldServer')}</span>
             <span>
               {current.host}:{current.port}
             </span>
           </div>
           <div style={fieldRowStyle} role="listitem">
-            <span style={{ color: 'var(--text-muted)' }}>암호 방식</span>
-            <span>{current.algorithm === 'unknown' ? '확인 중' : current.algorithm}</span>
+            <span style={{ color: 'var(--text-muted)' }}>{t('ssh.prompt.fieldAlgorithm')}</span>
+            <span>{current.algorithm === 'unknown' ? t('ssh.prompt.algorithmUnknown') : current.algorithm}</span>
           </div>
           {isMismatch && current.expectedSha256 ? (
             <>
               <div style={fieldRowStyle} role="listitem">
-                <span style={{ color: 'var(--text-muted)' }}>저장된 지문</span>
+                <span style={{ color: 'var(--text-muted)' }}>{t('ssh.prompt.fieldExpected')}</span>
                 <span
                   style={fingerprintStyle}
-                  aria-label={`저장된 SHA256 지문 ${formattedExpected}`}
+                  aria-label={t('ssh.prompt.fingerprintAriaStored', { value: formattedExpected })}
                 >
                   SHA256:{formattedExpected}
                 </span>
               </div>
               <div style={fieldRowStyle} role="listitem">
-                <span style={{ color: 'var(--danger-fg)' }}>이번 연결의 지문</span>
+                <span style={{ color: 'var(--danger-fg)' }}>{t('ssh.prompt.fieldReceived')}</span>
                 <span
                   style={fingerprintStyle}
-                  aria-label={`이번 연결의 SHA256 지문 ${formattedFingerprint}`}
+                  aria-label={t('ssh.prompt.fingerprintAriaReceived', { value: formattedFingerprint })}
                 >
                   SHA256:{formattedFingerprint}
                 </span>
@@ -168,10 +162,10 @@ export const SshHostKeyPrompt = memo(function SshHostKeyPrompt() {
             </>
           ) : (
             <div style={fieldRowStyle} role="listitem">
-              <span style={{ color: 'var(--text-muted)' }}>서버 지문</span>
+              <span style={{ color: 'var(--text-muted)' }}>{t('ssh.prompt.fieldFingerprint')}</span>
               <span
                 style={fingerprintStyle}
-                aria-label={`SHA256 지문 ${formattedFingerprint}. 서버 관리자가 알려준 값과 대조하세요.`}
+                aria-label={t('ssh.prompt.fingerprintAria', { value: formattedFingerprint })}
               >
                 SHA256:{formattedFingerprint}
               </span>
@@ -186,7 +180,7 @@ export const SshHostKeyPrompt = memo(function SshHostKeyPrompt() {
                   cursor: 'pointer',
                 }}
               >
-                이전 방식(MD5) 지문 보기
+                {t('ssh.prompt.md5Toggle')}
               </summary>
               <div style={{ ...fingerprintStyle, marginTop: 'var(--sp-1)' }}>
                 MD5:{current.md5}
@@ -207,7 +201,9 @@ export const SshHostKeyPrompt = memo(function SshHostKeyPrompt() {
             }}
           >
             <span aria-hidden="true">💾</span>{' '}
-            <strong>신뢰 시 지문이 저장됩니다.</strong> 다음부터는 묻지 않고 자동으로 연결합니다. 설정에서 언제든 제거할 수 있습니다.
+            <Trans i18nKey="ssh.prompt.noticeNew">
+              <strong>신뢰 시 지문이 저장됩니다.</strong> 다음부터는 묻지 않고 자동으로 연결합니다.
+            </Trans>
           </p>
         )}
 
@@ -223,7 +219,7 @@ export const SshHostKeyPrompt = memo(function SshHostKeyPrompt() {
             }}
           >
             <span aria-hidden="true">🛠</span>{' '}
-            서버 교체가 확실하다면: 워크스페이스 관리에서 이 서버를 제거한 뒤 다시 추가하면 새 지문으로 신뢰할 수 있습니다.
+            {t('ssh.prompt.noticeMismatch')}
           </p>
         )}
 
@@ -241,7 +237,7 @@ export const SshHostKeyPrompt = memo(function SshHostKeyPrompt() {
             style={btnStyle('neutral')}
             data-testid="ssh-prompt-reject"
           >
-            {isMismatch ? '연결 중단' : '신뢰하지 않음'}
+            {isMismatch ? t('ssh.prompt.abort') : t('ssh.prompt.reject')}
           </button>
           {!isMismatch ? (
             <button
@@ -250,7 +246,7 @@ export const SshHostKeyPrompt = memo(function SshHostKeyPrompt() {
               style={btnStyle('primary')}
               data-testid="ssh-prompt-trust"
             >
-              신뢰하고 기억
+              {t('ssh.prompt.trust')}
             </button>
           ) : (
             // mismatch: bypass 없음. 사용자가 명시적 "Remove & re-trust" 원할 때만 허용 (DC-4).

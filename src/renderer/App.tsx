@@ -1,4 +1,6 @@
 import { useEffect, useCallback, useState, useRef, lazy, Suspense } from 'react'
+import { useTranslation } from 'react-i18next'
+import { loadLanguageFromPrefs } from './i18n'
 import { Sidebar } from './components/Sidebar'
 import { EmptyState, StatusMessage, ToastHost, toast } from './components/ui'
 import { ComposerTray } from './components/ComposerTray'
@@ -33,8 +35,14 @@ const ViewFallback = () => (
 )
 
 export default function App() {
+  const { t } = useTranslation()
   // M3 S3 — SSH transport 상태 이벤트 구독 (flag off 여도 구독 비용 미미, 이벤트가 없음)
   useTransportStatusSubscription()
+
+  // i18n — prefs 에 저장된 언어 override 를 1회 로드
+  useEffect(() => {
+    void loadLanguageFromPrefs()
+  }, [])
 
   const { workspaces, activeWorkspaceId, addWorkspace, addSshWorkspace, removeWorkspace, setActiveWorkspaceId } =
     useWorkspace()
@@ -332,9 +340,9 @@ export default function App() {
         <main style={{ flex: 1, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <EmptyState
             icon="🗂️"
-            title="워크스페이스를 추가하세요"
-            description="마크다운 문서가 있는 폴더를 워크스페이스로 등록하면 프로젝트와 문서를 탐색할 수 있습니다."
-            cta={{ label: '+ 워크스페이스 추가', onClick: handleAddWorkspace, variant: 'primary' }}
+            title={t('empty.title')}
+            description={t('empty.description')}
+            cta={{ label: t('empty.cta'), onClick: handleAddWorkspace, variant: 'primary' }}
             size="lg"
           />
         </main>
@@ -363,16 +371,16 @@ export default function App() {
           <span className="ui-spinner lg" aria-hidden="true" />
           <div className="app-loading-overlay__title">
             {projectsLoading
-              ? '워크스페이스 분석 중…'
-              : `프로젝트 ${docCountProgress.total}개 분석 중 · ${docPct}%`}
+              ? t('loading.workspaceAnalyzing')
+              : t('loading.projectAnalyzing', { total: docCountProgress.total, pct: docPct })}
           </div>
           <div className="app-loading-overlay__detail">
             {projectsLoading
-              ? '폴더를 스캔하고 프로젝트(.git, package.json 등 마커)를 찾고 있습니다.'
-              : `각 프로젝트의 문서 수를 계산 중입니다. (${docCountProgress.done}/${docCountProgress.total})`}
+              ? t('loading.workspaceDetail')
+              : t('loading.projectDetail', { done: docCountProgress.done, total: docCountProgress.total })}
           </div>
           {isDocCounting && (
-            <div className="app-loading-overlay__progress" aria-label={`${docPct}% 완료`}>
+            <div className="app-loading-overlay__progress" aria-label={t('loading.progressAria', { pct: docPct })}>
               <div
                 className="app-loading-overlay__progress-bar"
                 style={{ width: `${docPct}%` }}

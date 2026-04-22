@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { FileTree } from '../components/FileTree'
 import { MarkdownViewer } from '../components/MarkdownViewer'
 import { ImageViewer } from '../components/ImageViewer'
@@ -48,6 +49,7 @@ const ChevronRightIcon = () => (
 )
 
 export function ProjectView({ projectId, projectRoot, projectName, initialDocPath }: ProjectViewProps) {
+  const { t } = useTranslation()
   const { docs, isScanning } = useDocs(projectId)
   const metaFilter = useAppStore((s) => s.metaFilter)
   // FS9-B — 현재 프로젝트가 속한 workspace id. SSH 이면 MarkdownViewer 가 이미지 IPC 경유.
@@ -569,8 +571,8 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
                 }}
               >
                 <span className="ui-spinner" aria-hidden="true" />
-                <span>파일 목록 불러오는 중…</span>
-                <span style={{ fontSize: 'var(--fs-xs)' }}>원격 서버는 잠시 시간이 걸릴 수 있습니다.</span>
+                <span>{t('loading.filesLoading')}</span>
+                <span style={{ fontSize: 'var(--fs-xs)' }}>{t('loading.filesLoadingRemote')}</span>
               </div>
             ) : (
               <FileTree

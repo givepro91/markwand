@@ -1,17 +1,20 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import { IconButton, Checkbox, Button } from './ui'
 import { useAppStore } from '../state/store'
+import type { Language } from '../i18n'
 
 export function Settings() {
+  const { t, i18n } = useTranslation()
   const [open, setOpen] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
   const [sshEnabled, setSshEnabled] = useState(false)
+  const [language, setLanguage] = useState<Language>((i18n.language as Language) || 'en')
   const containerRef = useRef<HTMLDivElement>(null)
 
   const trackReadDocs = useAppStore((s) => s.trackReadDocs)
   const setTrackReadDocs = useAppStore((s) => s.setTrackReadDocs)
 
-  // Follow-up FS2 — Experimental SSH Transport flag 동기화.
   useEffect(() => {
     window.api.prefs
       .get('experimentalFeatures.sshTransport')
@@ -23,6 +26,15 @@ export function Settings() {
     setSshEnabled(next)
     await window.api.prefs.set('experimentalFeatures.sshTransport', next)
   }, [])
+
+  const handleLanguageChange = useCallback(
+    async (next: Language) => {
+      setLanguage(next)
+      await i18n.changeLanguage(next)
+      await window.api.prefs.set('language', next)
+    },
+    [i18n]
+  )
 
   useEffect(() => {
     if (!open) return
@@ -62,7 +74,6 @@ export function Settings() {
   )
 
   const handleConfirmClear = useCallback(async () => {
-    // single Zustand transaction — avoids 2-frame flicker from separate set calls
     useAppStore.setState({ trackReadDocs: false, readDocs: {} })
     setConfirmClear(false)
     await window.api.prefs.set('trackReadDocs', false)
@@ -72,7 +83,7 @@ export function Settings() {
   return (
     <div ref={containerRef} style={{ position: 'relative' }}>
       <IconButton
-        aria-label="설정"
+        aria-label={t('settings.aria')}
         aria-pressed={open}
         size="sm"
         variant={open ? 'primary' : 'ghost'}
@@ -87,7 +98,7 @@ export function Settings() {
       {open && (
         <div
           role="dialog"
-          aria-label="환경설정"
+          aria-label={t('settings.title')}
           style={{
             position: 'absolute',
             top: 'calc(100% + var(--sp-2))',
@@ -109,21 +120,23 @@ export function Settings() {
               margin: '0 0 var(--sp-3)',
             }}
           >
-            환경설정
+            {t('settings.title')}
           </h3>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
             <div>
               <label
                 style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', cursor: 'pointer' }}
-                title="끄면 모든 문서가 unread로 표시되며 이력이 삭제됩니다"
+                title={t('settings.trackReadDocsHint')}
               >
                 <Checkbox
                   checked={trackReadDocs}
                   onChange={handleToggle}
-                  aria-label="읽음 추적"
+                  aria-label={t('settings.trackReadDocs')}
                 />
-                <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text)' }}>읽음 추적</span>
+                <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text)' }}>
+                  {t('settings.trackReadDocs')}
+                </span>
               </label>
               <p
                 style={{
@@ -132,7 +145,7 @@ export function Settings() {
                   margin: 'var(--sp-1) 0 0 calc(16px + var(--sp-2))',
                 }}
               >
-                끄면 모든 문서가 unread로 표시되며 이력이 삭제됩니다
+                {t('settings.trackReadDocsHint')}
               </p>
             </div>
 
@@ -147,20 +160,20 @@ export function Settings() {
                 }}
               >
                 <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
-                  읽음 이력을 모두 삭제하고 추적을 끄시겠습니까?
+                  {t('settings.confirmClear')}
                 </span>
                 <div style={{ display: 'flex', gap: 'var(--sp-2)', justifyContent: 'flex-end' }}>
                   <Button variant="ghost" size="sm" onClick={() => setConfirmClear(false)}>
-                    취소
+                    {t('common.cancel')}
                   </Button>
                   <Button variant="danger" size="sm" onClick={handleConfirmClear}>
-                    삭제 후 끄기
+                    {t('settings.clearButton')}
                   </Button>
                 </div>
               </div>
             )}
 
-            {/* Follow-up FS2/FS9 — 베타 기능 섹션 */}
+            {/* 언어 토글 */}
             <div
               style={{
                 borderTop: '1px solid var(--border)',
@@ -178,18 +191,67 @@ export function Settings() {
                   margin: '0 0 var(--sp-2)',
                 }}
               >
-                베타 기능
+                {t('language.label')}
+              </h4>
+              <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+                <Button
+                  variant={language === 'ko' ? 'primary' : 'ghost'}
+                  size="sm"
+                  onClick={() => handleLanguageChange('ko')}
+                >
+                  {t('language.ko')}
+                </Button>
+                <Button
+                  variant={language === 'en' ? 'primary' : 'ghost'}
+                  size="sm"
+                  onClick={() => handleLanguageChange('en')}
+                >
+                  {t('language.en')}
+                </Button>
+              </div>
+              <p
+                style={{
+                  fontSize: 'var(--fs-xs)',
+                  color: 'var(--text-muted)',
+                  margin: 'var(--sp-2) 0 0',
+                }}
+              >
+                {t('language.hint')}
+              </p>
+            </div>
+
+            {/* Beta features */}
+            <div
+              style={{
+                borderTop: '1px solid var(--border)',
+                paddingTop: 'var(--sp-3)',
+                marginTop: 'var(--sp-2)',
+              }}
+            >
+              <h4
+                style={{
+                  fontSize: 'var(--fs-xs)',
+                  fontWeight: 'var(--fw-semibold)',
+                  color: 'var(--text-muted)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  margin: '0 0 var(--sp-2)',
+                }}
+              >
+                {t('settings.experimentalSection')}
               </h4>
               <label
                 style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', cursor: 'pointer' }}
-                title="원격 SSH 서버의 마크다운을 읽기 전용으로 불러옵니다. 변경 후 앱 재시작 필요."
+                title={t('settings.sshTransportTitle')}
               >
                 <Checkbox
                   checked={sshEnabled}
                   onChange={handleSshToggle}
-                  aria-label="원격 SSH 서버 연결"
+                  aria-label={t('settings.sshTransport')}
                 />
-                <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text)' }}>원격 SSH 서버 연결</span>
+                <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text)' }}>
+                  {t('settings.sshTransport')}
+                </span>
               </label>
               <p
                 style={{
@@ -198,7 +260,9 @@ export function Settings() {
                   margin: 'var(--sp-1) 0 0 calc(16px + var(--sp-2))',
                 }}
               >
-                원격 서버의 마크다운 문서를 읽기 전용으로 볼 수 있습니다. 변경 후 <strong>앱을 재시작</strong>해주세요.
+                <Trans i18nKey="settings.sshTransportHint">
+                  원격 서버의 마크다운 문서를 읽기 전용으로 볼 수 있습니다. 변경 후 <strong>앱을 재시작</strong>해주세요.
+                </Trans>
               </p>
             </div>
           </div>
