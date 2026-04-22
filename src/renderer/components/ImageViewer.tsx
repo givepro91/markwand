@@ -9,6 +9,8 @@ interface ImageViewerProps {
   name: string
   // 바이트 크기. Doc.size에서 전달 (scanner가 stat 시 채움).
   size?: number
+  // FS9-B — 현재 문서가 속한 workspace id. ssh:… 이면 IPC 스트리밍 경유.
+  workspaceId?: string | null
 }
 
 function formatBytes(bytes: number): string {
@@ -23,10 +25,14 @@ const FIT_MODES: { id: FitMode; label: string }[] = [
   { id: 'fill', label: 'Fill' },
 ]
 
-function ImageViewerInner({ path, name, size }: ImageViewerProps) {
+function ImageViewerInner({ path, name, size, workspaceId }: ImageViewerProps) {
   const [mode, setMode] = useState<FitMode>('fit')
   const [dims, setDims] = useState<{ w: number; h: number } | null>(null)
   const [errored, setErrored] = useState(false)
+  // FS9-B — SSH workspace 인 경우 IPC 로 바이너리 수신 후 blob URL 생성.
+  // 로컬 workspace 는 기존대로 app://local 직통.
+  const [sshBlobUrl, setSshBlobUrl] = useState<string | null>(null)
+  const isSsh = workspaceId?.startsWith('ssh:') ?? false
   // 각 radio 버튼 ref — arrow-key 이동 후 focus 전이에 사용.
   const radioRefs = useRef<Array<HTMLButtonElement | null>>([])
 
@@ -35,15 +41,45 @@ function ImageViewerInner({ path, name, size }: ImageViewerProps) {
   //   host를 소문자로 정규화하면서 /Users → /users 가 되어 워크스페이스 경로
   //   비교(startsWith)가 실패한다. protocol.ts 주석 참고.
   // - 세그먼트별 encodeURIComponent로 `#`·`?`·공백·비ASCII 안전화. `/`는 보존.
-  const src = `app://local${path.split('/').map(encodeURIComponent).join('/')}`
+  const localSrc = `app://local${path.split('/').map(encodeURIComponent).join('/')}`
+  const src = isSsh ? (sshBlobUrl ?? '') : localSrc
 
-  // path가 바뀌면 errored를 리셋한다. memo된 컴포넌트라 state가 유지되는데,
+  // path가 바뀌면 errored/dims/blob URL 리셋. memo된 컴포넌트라 state가 유지되는데,
   // errored=true 상태에서 <img>가 언마운트되므로 onLoad가 다시 호출되지 않아
   // 새 경로로 바꿔도 영구 에러 화면에 고착되는 문제를 막는다.
   useEffect(() => {
     setErrored(false)
     setDims(null)
+    setSshBlobUrl(null)
   }, [path])
+
+  // FS9-B — SSH 분기. path 또는 workspaceId 변경 시 재요청. cleanup 에서 URL.revokeObjectURL.
+  useEffect(() => {
+    if (!isSsh || !workspaceId) return
+    let cancelled = false
+    let currentUrl: string | null = null
+    window.api.ssh
+      .readImage({ workspaceId, path })
+      .then((result) => {
+        if (cancelled) return
+        const u8 =
+          result.data instanceof Uint8Array
+            ? result.data
+            : new Uint8Array(result.data as unknown as ArrayBuffer)
+        const ab = new ArrayBuffer(u8.byteLength)
+        new Uint8Array(ab).set(u8)
+        const blob = new Blob([ab], { type: result.mime })
+        currentUrl = URL.createObjectURL(blob)
+        setSshBlobUrl(currentUrl)
+      })
+      .catch(() => {
+        if (!cancelled) setErrored(true)
+      })
+    return () => {
+      cancelled = true
+      if (currentUrl) URL.revokeObjectURL(currentUrl)
+    }
+  }, [isSsh, workspaceId, path])
 
   const handleLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget
@@ -207,6 +243,20 @@ function ImageViewerInner({ path, name, size }: ImageViewerProps) {
             <div style={{ fontSize: 'var(--fs-xs)', marginTop: 'var(--sp-1)' }}>
               파일이 이동되었거나 접근 권한이 없습니다.
             </div>
+          </div>
+        ) : isSsh && !sshBlobUrl ? (
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              padding: 'var(--sp-6)',
+              color: 'var(--text-muted)',
+              fontSize: 'var(--fs-sm)',
+              textAlign: 'center',
+            }}
+          >
+            <span className="ui-spinner" aria-hidden="true" />
+            <div style={{ marginTop: 'var(--sp-2)' }}>원격 이미지 불러오는 중…</div>
           </div>
         ) : (
           <img

@@ -664,6 +664,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
                   path={selectedDoc.path}
                   name={selectedDoc.name}
                   size={selectedDoc.size}
+                  workspaceId={currentWorkspaceId}
                 />
               </ErrorBoundary>
             ) : (

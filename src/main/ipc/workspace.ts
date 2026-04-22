@@ -15,7 +15,7 @@ import {
   parseWorkspaceAddSshInput,
 } from '../security/validators'
 import { isSshTransportEnabled } from '../services/store'
-import { createSshTransport, computeSshTransportId } from '../transport/ssh'
+import { createSshTransport, computeSshTransportId, computeSshWorkspaceId } from '../transport/ssh'
 import type { SshTransport } from '../transport/ssh'
 import type { PromisifiedSftp } from '../transport/ssh/util/promisifiedSftp'
 import { getActiveTransport } from '../transport/resolve'
@@ -402,7 +402,10 @@ export function registerWorkspaceHandlers(): void {
       throw new Error('SSH_TRANSPORT_DISABLED')
     }
     const input = parseWorkspaceAddSshInput(raw)
-    const id = `ssh:${computeSshTransportId(input.user, input.host, input.port)}`
+    // FS9-C — workspace id 는 root 포함. 같은 서버의 다른 폴더를 별개 workspace 로 등록 가능.
+    // computeSshTransportId 는 pool 내부 연결 재사용용으로 유지 (v1.1+ 최적화 여지).
+    void computeSshTransportId
+    const id = `ssh:${computeSshWorkspaceId(input.user, input.host, input.port, input.root)}`
     const store = await getStore()
     const workspaces = store.get('workspaces')
     if (workspaces.find((w) => w.id === id)) {

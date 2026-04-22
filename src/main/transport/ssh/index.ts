@@ -22,7 +22,8 @@ export { createSshWatcherDriver, suggestInterval } from './watcher'
 export * from './types'
 
 /**
- * workspaceId seed — user@host:port. S1 Evaluator m-4: 인수 순서를 해시 포맷과 일치시켜 가독성 향상.
+ * Transport 연결 식별자 — user@host:port 기준. Pool 내 같은 서버로의 연결 재사용 가능성을
+ * 남기려 transport-level id 는 root 비포함 유지 (S1 Evaluator m-4 인수 순서 고정).
  */
 export function computeSshTransportId(
   username: string,
@@ -32,6 +33,26 @@ export function computeSshTransportId(
   return crypto
     .createHash('sha1')
     .update(`${username}@${host}:${port}`)
+    .digest('hex')
+    .slice(0, 16)
+}
+
+/**
+ * FS9-C — workspace id 계산. root 까지 포함하여 "같은 서버의 다른 폴더" 는 별개 workspace 로 등록 가능.
+ * 이전(root 제외) 로직은 같은 (user, host, port) 조합에서 중복 판정이 발생해 여러 폴더 등록 불가.
+ *
+ * 저장된 기존 workspace 는 새 id 로 자동 재계산되지 않음 — 기존 엔트리는 그대로 유지되고
+ * 새 등록 시만 이 id 가 사용된다 (마이그레이션 없이 하위 호환).
+ */
+export function computeSshWorkspaceId(
+  username: string,
+  host: string,
+  port: number,
+  root: string,
+): string {
+  return crypto
+    .createHash('sha1')
+    .update(`${username}@${host}:${port}#${root}`)
     .digest('hex')
     .slice(0, 16)
 }
