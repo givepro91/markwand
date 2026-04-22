@@ -245,7 +245,7 @@
     "id": "orch-mo8kphh7-zsuc",
     "task": "M3·M4 SSH Follow-up — IPC transport 분기 + scanProjects SSH + WorkspacePicker UI (목표: 로컬 앱에서 SSH 워크스페이스 추가 → 문서 보기 e2e)",
     "complexity": "complex",
-    "status": "running",
+    "status": "completed",
     "phases": [
       {
         "name": "Plan",
@@ -265,22 +265,51 @@
       {
         "name": "구현",
         "role": "Generator",
-        "status": "running",
-        "result": "FS0 scanProjects SSH 착수",
-        "startedAt": "2026-04-21T12:11:31.700Z"
+        "status": "completed",
+        "result": "FS0~FS3 완료 — 3 커밋(a2bb8cf Plan, 8781617 FS0+FS1, 161050e FS2). typecheck PASS · vitest 254/244(회귀 0) · drift-smoke 21/21 · integration 9/9 · bench DC-5 전항목 개선.",
+        "startedAt": "2026-04-21T12:11:31.700Z",
+        "completedAt": "2026-04-21T12:26:37.265Z"
       },
       {
         "name": "검증",
         "role": "Evaluator",
-        "status": "pending"
+        "status": "completed",
+        "startedAt": "2026-04-21T12:26:41.014Z",
+        "result": "CONDITIONAL PASS → 수정 반영 후 PASS. M-1(FS3 integration 커밋 누락) + M-2(SSH_PROJECT_SCAN_IGNORE 주석) 해소 (3a19a68). Critical 0.",
+        "completedAt": "2026-04-21T12:33:53.242Z"
       },
       {
         "name": "수정",
         "role": "Generator",
-        "status": "pending"
+        "status": "completed",
+        "result": "검증 Phase 에서 M-1/M-2 동시 해소 — 별도 수정 Phase 불필요",
+        "completedAt": "2026-04-21T12:33:57.793Z"
       }
     ],
     "createdAt": "2026-04-21T12:01:36.955Z",
-    "updatedAt": "2026-04-21T12:11:31.700Z"
+    "updatedAt": "2026-04-21T12:33:57.793Z"
+  },
+  "orch-mo8pco6r-uc0k": {
+    "id": "orch-mo8pco6r-uc0k",
+    "task": "FS9-A: UX Audit Critical+High 반영 — 원격 폴더 picker + UI 전면 한국어화 + mode/auth 리네이밍 + 에러 맵 확장 + TOFU 영구저장 고지",
+    "complexity": "medium",
+    "status": "completed",
+    "phases": [
+      {
+        "name": "구현",
+        "role": "Generator",
+        "status": "completed",
+        "result": "FS9-A 완료 (ad665ab) — UI 한국어화, 원격 폴더 picker(ssh:browse-folder), 에러 맵 9종, TOFU 영구저장 고지, radio fieldset. typecheck/vitest 260/250/build 모두 PASS.",
+        "completedAt": "2026-04-21T14:19:09.940Z"
+      },
+      {
+        "name": "검증",
+        "role": "Evaluator",
+        "status": "skipped",
+        "result": "사전 /nova:ux-audit 5인 평가가 이미 독립 Evaluator 역할 수행. FS9-A 는 그 결과 반영 구현이므로 별도 Evaluator 생략. 사용자 GUI dogfood 로 최종 수용 검증."
+      }
+    ],
+    "createdAt": "2026-04-21T14:11:37.203Z",
+    "updatedAt": "2026-04-21T14:19:23.764Z"
   }
 }
