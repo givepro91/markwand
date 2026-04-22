@@ -37,13 +37,14 @@ shasum -a 256 ~/Downloads/Markwand-0.3.0-beta.2.dmg
 
 ## 4. 첫 실행 (중요 — macOS 버전에 따라 경로가 다릅니다)
 
-### macOS Sequoia (15+) — 시스템 설정 경유
+### macOS Sequoia (15+) / Tahoe (26+) — 시스템 설정 경유
 
-Sequoia 부터는 "우클릭 → 열기" 경로가 막혀 **시스템 설정 허용** 이 유일한 경로입니다.
+이 버전부터는 "우클릭 → 열기" 경로가 막혀 **시스템 설정 허용** 이 유일한 경로입니다.
 
 1. Applications → **Markwand** 더블클릭
 2. "Apple은 'Markwand.app' 에… 악성 코드가 없음을 확인할 수 없습니다" 경고가 뜨면 **완료** 클릭 (닫기)
-3. **시스템 설정 → 개인정보 보호 및 보안** 열기 (Spotlight ⌘Space → "개인정보 보호" 검색)
+3. 👉 **[시스템 설정 → 개인정보 보호 및 보안 열기](x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension)** 링크 클릭 — 이 문서를 브라우저에서 보고 있다면 한 번에 해당 패널로 이동합니다.
+   - 링크가 안 되면 수동으로: Spotlight ⌘Space → "개인정보 보호" 검색 → 시스템 설정 앱
 4. 아래로 스크롤하면 **"'Markwand.app' 이(가) 차단되었습니다…"** 문구 옆 **그래도 열기** 버튼이 있습니다 → 클릭
 5. macOS 암호 또는 Touch ID 입력
 6. Applications → Markwand 다시 더블클릭 → **"정말 여시겠습니까?"** 확인창에서 **열기** 클릭
