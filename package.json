@@ -1,6 +1,6 @@
 {
   "name": "markwand",
-  "version": "0.3.0-beta.3",
+  "version": "0.3.0-beta.4",
   "description": "AI 산출물 큐레이터 — 여러 프로젝트에 산재한 마크다운 문서를 발견·소비·재진입",
   "main": "./out/main/index.js",
   "author": "jay@spacewalk.tech",
@@ -93,7 +93,7 @@
       "contents": [
         { "x": 140, "y": 180, "type": "file" },
         { "x": 420, "y": 180, "type": "link", "path": "/Applications" },
-        { "x": 280, "y": 330, "type": "file", "path": "build/설치 도움말.webloc" }
+        { "x": 280, "y": 330, "type": "file", "path": "build/여기를 먼저 더블클릭.html" }
       ]
     }
   },
