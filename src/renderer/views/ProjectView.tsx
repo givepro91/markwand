@@ -8,6 +8,7 @@ import { FilterBar } from '../components/FilterBar'
 import { TableOfContents } from '../components/TableOfContents'
 import { DriftPanel } from '../components/DriftPanel'
 import { ErrorBoundary } from '../components/ErrorBoundary'
+import { RecentDocsPanel } from '../components/RecentDocsPanel'
 import { EmptyState, IconButton } from '../components/ui'
 import { useDocs } from '../hooks/useDocs'
 import { useAppStore } from '../state/store'
@@ -550,6 +551,15 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
             </span>
             <ClaudeButton projectDir={projectRoot} />
           </div>
+          {/* 최근 7일 문서 — FileTree 위 별도 섹션. 시각 구분(다른 배경 + 굵은 borderBottom).
+              빈 상태(7일 내 수정 0건)일 땐 컴포넌트 자체가 null 반환해 헷갈림 방지.
+              docs source 는 raw `docs` 사용 — FilterBar 날짜 필터(today/7d)가 활성이면
+              filteredDocs 를 넘길 경우 패널 제목("최근 7일")과 실제 내용이 불일치한다. */}
+          <RecentDocsPanel
+            docs={docs}
+            selectedPath={selectedDoc?.path ?? null}
+            onSelect={loadDoc}
+          />
           {/* F1: flex:1 + minHeight:0 — FileTree가 남은 공간 전체 사용 */}
           <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             {/* FS9-B — 원격 스캔 중 빈 트리가 "버그처럼 보이는" 문제 해소. 로딩 중 & 아직 청크 미도착 시에만 표시. */}
@@ -692,7 +702,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
               <EmptyState
                 icon="📄"
                 title={t('projectView.selectFile')}
-                description="트리에서 .md 또는 이미지 파일을 클릭하면 여기 표시됩니다."
+                description={t('projectView.selectFileDesc')}
               />
             </div>
           )}

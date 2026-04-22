@@ -30,6 +30,8 @@ export const ALLOWED_PREFS_KEYS = new Set([
   'lastSelectedDocPaths',
   // 사이드바 리사이즈 핸들 (v0.3)
   'sidebarWidth',
+  // ProjectView 최근 문서 패널 접힘 상태
+  'recentDocsCollapsed',
   // M3 S3: experimental flag. 재시작 후 반영.
   'experimentalFeatures.sshTransport',
   // i18n — 언어 override (ko / en). 미설정 시 시스템 locale 기반 자동 감지.
