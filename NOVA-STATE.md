@@ -18,16 +18,24 @@
 - **Kept**: 체크박스 멀티셀렉트, Tray 칩·게이지, 토큰 추정(휴리스틱), 온보딩, 마지막 선택 복원, stale 경로 자동 정리
 - **Final UX**: 파일 체크 → `📋 Copy @ref` → `@/p1 @/p2 @/p3` 나열로 클립보드 복사 → 사용자가 터미널에 직접 붙여넣기
 
-## Release Checklist — v0.2.0 (2026-04-21)
+## Release Checklist — v0.3.0-beta.1 (2026-04-22)
 | 항목 | 상태 | 비고 |
 |------|------|------|
-| v0.2.0 태그 → HEAD 일치 | ❌ FAIL (hard-block) | 태그=561209c, HEAD=842650f; 6커밋 차이 (dmg빌드·Gatekeeper·QA·골든패스 미포함) |
-| DMG 아티팩트 존재 + SHA256 | ❌ FAIL (hard-block) | dist/out/ 어디에도 .dmg 없음; 0b0c491 커밋은 package.json만 수정 |
-| install-macos.md SHA256 섹션 | ⚠️ FAIL (soft-block) | v0.2.0 명기 없음, SHA256 검증 섹션 없음 (템플릿 추가됨 — 실제 해시 기입 필요) |
-| Known Risks 실측치 기록 | ✅ CONDITIONAL PASS | 4개 항목 실측 완료; 5k FPS·dmg 실설치는 GUI 필요로 추정값 |
-| 골든 패스 전 구간 PASS | ⚠️ PARTIAL | Step1-2 PASS; Step3(doc view)·Step4(Copy @ref)·Step5(paste) GUI 미검증 |
+| v0.3.0-beta.1 태그 → HEAD 일치 | ✅ PASS | 태그 `v0.3.0-beta.1` → `95aed6d` (HEAD 동일) |
+| DMG 아티팩트 존재 + SHA256 | ✅ PASS | `dist/Markwand-0.3.0-beta.1-arm64.dmg` (136MB) + `-x64.dmg` (141MB). SHA256 기록 완료 |
+| install-macos.md SHA256 섹션 | ✅ PASS | arm64/x64 양쪽 실제 해시 기입. xattr 우회 가이드 유지 |
+| release-notes 문서 | ✅ PASS | `docs/release-notes/v0.3.0-beta.1.md` — 주요 기능 · 성능 · 보안 · 알려진 제한 · 저장 항목 · SHA256 |
+| 자동 검증 | ✅ PASS | typecheck · vitest 260/250 (회귀 0) · bench DC-5 · Docker 통합 9/9 |
+| 수동 GUI 검증 (SSH e2e) | ✅ PASS | 사용자 dogfood 완료 (FS9-C 세션 마무리 시점) |
+| 코드사이닝 / 공증 | ⏸ SKIP | 베타 (unsigned dmg + xattr 우회) — v1.0 에서 도입 검토 |
 
-> **릴리스 블로커**: Hard 2건 해소 전 배포 금지. (1) `git tag -f v0.2.0 842650f` 후 재서명 또는 재생성, (2) `pnpm dist:mac` 실행 후 SHA256 기록.
+v0.2.0 hard-block 2건 (태그 ≠ HEAD · DMG 부재) 은 해당 버전 블로커였고 v0.3.0-beta.1 은 별개 릴리스로 준비 완료.
+
+## 이전 Release Checklist — v0.2.0 (2026-04-21)
+| 항목 | 상태 |
+|------|------|
+| v0.2.0 태그 → HEAD 일치 | ❌ FAIL (hard-block, 해당 버전 배포 안 함) |
+| DMG 아티팩트 | ❌ FAIL (없음, 해당 버전 배포 안 함) |
 
 ## Tasks
 | Task | Status | Verdict | Note |
@@ -102,6 +110,8 @@
 > --emergency 플래그 사용 또는 Evaluator 건너뛸 때 반드시 기록. 미기록 = Hard-Block.
 
 ## Last Activity
+- **Release v0.3.0-beta.1 준비 완료 (2026-04-22, 95aed6d, tag `v0.3.0-beta.1`)** — 원격 SSH 서버 지원 베타. package.json 0.2.0 → 0.3.0-beta.1. `docs/release-notes/v0.3.0-beta.1.md` 신규. install-macos.md arm64/x64 SHA256 기입. **DMG**: `dist/Markwand-0.3.0-beta.1-arm64.dmg` (136MB, SHA256 `39c19fc…e983dc8`) · `dist/Markwand-0.3.0-beta.1.dmg` (141MB, x64, SHA256 `8206eea…ad12cc`). **빌드 이슈 해결**: electron-builder `npmRebuild: false` 추가 — node-gyp Python 3.12 distutils 부재 우회(ssh2/cpu-features prebuilt 사용). tag push 완료 (origin/main=95aed6d). GitHub Release 생성은 사용자 결정 대기. | 2026-04-22T
+- **FS9-A/B/C 완료 (2026-04-21~22)** — UX Audit 후속 3 커밋. FS9-A(ad665ab): UI 전면 한국어화 + 원격 폴더 picker(ssh:browse-folder) + 에러 맵 9종 + TOFU 영구저장 고지 + radio fieldset + 에러 focus 이동. FS9-B(f18e61c): 파일트리 로딩 UI(useDocs isScanning) + SSH single 강제(container 비활성) + WorkspacePicker "🌐 서버/프로젝트" + 원격 이미지 IPC(ssh:read-image · SshImage 컴포넌트). FS9-C(248a4a4): ImageViewer SSH 분기 + workspace id 에 root 포함하여 같은 서버 여러 폴더 등록 가능(computeSshWorkspaceId). | 2026-04-22T
 - **/nova:ux-audit → Critical 4 / High 12 / Medium 13 / Low 3 — SSH 플로우 5인 적대적 평가 (2026-04-21)** — SshWorkspaceAddModal + SshHostKeyPrompt + Settings + WorkspacePicker + TransportBadge 대상. **평가자 1 Newcomer**(C3/H3/M2) 영문 기술어 하드코딩·TOFU 설명 부재·root POSIX 수동입력. **평가자 2 Accessibility**(C2/H4/M2) focus trap 부재·SHA256 낭독 지옥·fieldset 부재·radio 그룹 미구조화·reduced-motion 전무. **평가자 3 Cognitive Load**(C3/H3/M2+D3) 9필드 동시 노출(Miller's Law)·TOFU 5개념·재시작 수동·인라인 CSS 500+줄(Button 컴포넌트 미사용). **평가자 4 Performance**(H3/M4/L1) useDocs listener race·allDocs spread O(N)·Modal unmount 로 ssh:load-config 매번 재호출·BFS 완료 후 첫 chunk yield. **평가자 5 Dark Pattern**(H3/M3/L2) TOFU "Trust" 영구 저장 hidden commitment·mode single "(추천)" pre-selection·workspace 제거 시 host key 고지 부재. **잘 된 점**: DC-4 bypass 0 (Trust 버튼 DOM 제거 + destructive default focus), 디자인 토큰 92개, WorkspacePicker optgroup. **다음 스프린트 FS9** 에서 Critical·High 우선 반영 예정 (수정 전 사용자 승인). | 2026-04-21T
 - **/nova:auto → Follow-up FS0~FS3 PASS (orch-mo8kphh7-zsuc, 2026-04-21)** — SSH e2e 경로 **완성**. 사용자 목표("로컬 앱 → SSH workspace 추가 → 문서 보기") 달성. **Plan(a2bb8cf)**: docs/plans/remote-fs-transport-followup.md(701→321 lines 압축, 4 sprints, D-1 path prefix 역매핑 · D-2 scanProjectsSsh 별도 함수). **FS0+FS1(8781617)**: `parseWorkspaceAddSshInput` root + `isValidSshRoot` depth≥2 검증 · `scanProjectsSsh` SFTP depth 2 탐색 + `scanProjectsViaSftp` 테스트 헬퍼 · `workspace:add-ssh` root 하드코딩(`/`) 제거 · `getOrScanProjects` SSH 분기 · IPC 3개 `getActiveTransport` 경유 · `fs:read-doc` `resolveTransportForPath` 헬퍼(prefix 충돌 방어) · `assertInWorkspace posix` 전달. **FS2(161050e)**: WorkspacePicker `__add_ssh__` 조건부 렌더(DC-6 — flag off 시 DOM 제거) · `SshWorkspaceAddModal` 폼(host/port/user/auth/root/loading race 방어) · Settings Experimental 섹션 · useWorkspace `addSshWorkspace` · App.tsx 배선. **FS3(3a19a68)**: integration 3건 신규(T-ipc-scan/docs/read — 9/9 PASS, Docker sshd) + M-2 주석 보강. **Evaluator**(nova:senior-dev): CONDITIONAL PASS → M-1(FS3 커밋) + M-2(IGNORE 주석) 즉시 반영 → PASS. **검증**: typecheck PASS · vitest 254/244(회귀 0) · drift-smoke 21/21 · integration 9/9(Docker) · bench:transport DC-5 전항목 개선(-10~-38%). | 2026-04-21T
 - context compacted | 2026-04-21T11:36:55Z
