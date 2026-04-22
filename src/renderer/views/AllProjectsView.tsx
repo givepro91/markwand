@@ -319,7 +319,7 @@ export function AllProjectsView({ workspaceId, onOpenProject }: AllProjectsViewP
             /* 그룹별 섹션 */
             <div>
               {docGroups.map((group) => (
-                <section key={group.label} aria-label={`${group.label} 그룹`}>
+                <section key={group.label} aria-label={t('allProjects.groupAria', { name: group.label })}>
                   <div
                     style={{
                       display: 'flex',

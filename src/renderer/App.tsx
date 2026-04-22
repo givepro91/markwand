@@ -131,7 +131,7 @@ export default function App() {
     const available = new Set<string>(docs.map((d) => d.path))
     const removed = pruneStaleDocSelection(available)
     if (removed > 0) {
-      toast.info(`${removed}개 문서가 더 이상 존재하지 않아 선택에서 제거되었습니다`)
+      toast.info(t('app.staleSelectionRemoved', { count: removed }))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docs])
@@ -151,11 +151,11 @@ export default function App() {
     const removed = pendingRestore.length - surviving.length
     const msg =
       removed > 0
-        ? `마지막 선택 ${surviving.length}개 복원됨 (${removed}개 누락)`
-        : `마지막 선택 ${surviving.length}개 복원됨`
+        ? t('app.lastSelectionRestoredPartial', { count: surviving.length, missing: removed })
+        : t('app.lastSelectionRestored', { count: surviving.length })
     toast.info(msg, {
       action: {
-        label: 'Clear',
+        label: t('app.lastSelectionClear'),
         onClick: () => useAppStore.getState().clearDocSelection(),
       },
       durationMs: 6000,
@@ -305,7 +305,7 @@ export default function App() {
     if (wasIndexingRef.current && docCountProgress.total > 0) {
       wasIndexingRef.current = false
       if (!cmdkHintSeen) {
-        toast.info('⌘K로 모든 프로젝트 문서 검색', { durationMs: 7000 })
+        toast.info(t('app.cmdkHint'), { durationMs: 7000 })
         setCmdkHintSeen(true)
         void window.api.prefs.set('hints.cmdk.seen', true)
       }

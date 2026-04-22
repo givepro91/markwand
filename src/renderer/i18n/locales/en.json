@@ -10,6 +10,14 @@
     "remove": "Remove"
   },
 
+  "app": {
+    "staleSelectionRemoved": "{{count}} document(s) no longer exist and were removed from selection",
+    "lastSelectionRestored": "Restored last selection of {{count}} doc(s)",
+    "lastSelectionRestoredPartial": "Restored last selection of {{count}} doc(s) ({{missing}} missing)",
+    "lastSelectionClear": "Clear",
+    "cmdkHint": "Press ⌘K to search documents across all projects"
+  },
+
   "language": {
     "label": "Language",
     "ko": "한국어",
@@ -81,7 +89,8 @@
     "groupLabel": "Group",
     "filterEmptyDesc": "Try different filter criteria.",
     "selectWorkspaceDesc": "Pick a workspace at the top to see its projects.",
-    "notFoundDesc": "Clear filters or try a different workspace."
+    "notFoundDesc": "Clear filters or try a different workspace.",
+    "groupAria": "{{name}} group"
   },
 
   "projectView": {
@@ -95,8 +104,20 @@
     "tocToggle": "Toggle table of contents",
     "sidebarResize": "Resize sidebar",
     "selectFile": "Select a file from the left",
+    "selectFileDesc": "Click a .md or image file in the tree to open it here.",
     "selectProject": "Select a project",
-    "allProjectsCta": "See all projects"
+    "allProjectsCta": "See all projects",
+    "recentDocs": {
+      "title": "Recent (7 days)",
+      "collapseAria": "Collapse recent docs",
+      "expandAria": "Expand recent docs",
+      "empty": "No recent edits",
+      "dateToday": "Today",
+      "dateYesterday": "Yesterday",
+      "dateNDaysAgo": "{{n}}d ago",
+      "openAria": "Open {{name}}, modified {{when}}",
+      "moreCount": "+{{count}} more"
+    }
   },
 
   "sidebar": {
@@ -371,7 +392,7 @@
   },
 
   "error": {
-    "sshTransportDisabled": "The SSH feature is disabled. Go to Settings (⚙) → Experimental → \"Remote SSH server\" and restart the app.",
+    "sshTransportDisabled": "The SSH feature is disabled. Go to Settings (⚙) → Beta features → \"Remote SSH server\" and restart the app.",
     "sshWorkspaceExists": "This account/server combination is already registered.",
     "invalidRoot": "Folder path must be absolute (starting with /) and at least two levels deep (e.g. /home/user/docs).",
     "connRefused": "Connection refused. Check the server address / port and make sure the server is running.",
