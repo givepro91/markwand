@@ -30,6 +30,8 @@ interface MarkdownViewerProps {
   basePath: string
   onDocNavigate: (absPath: string) => void
   onHeadings?: (headings: Heading[]) => void
+  /** FS9-B — 현재 문서가 속한 workspace id. SSH(ssh:…) 면 이미지는 IPC 스트리밍 경유. */
+  workspaceId?: string | null
 }
 
 let mermaidCounter = 0
@@ -132,6 +134,80 @@ const SafeImage = memo(function SafeImage({
   )
 })
 
+// FS9-B — 원격 SSH workspace 의 이미지. IPC 로 버퍼 받아 blob URL 생성 후 <img> 에 주입.
+// 실패 시 SafeImage 와 동일한 alt 배지 fallback.
+const SshImage = memo(function SshImage({
+  workspaceId,
+  path,
+  alt,
+  extraProps,
+}: {
+  workspaceId: string
+  path: string
+  alt?: string
+  extraProps: React.ImgHTMLAttributes<HTMLImageElement>
+}) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    let currentUrl: string | null = null
+    setFailed(false)
+    setBlobUrl(null)
+    window.api.ssh
+      .readImage({ workspaceId, path })
+      .then((result) => {
+        if (cancelled) return
+        // result.data 는 IPC 직렬화 후 Uint8Array 또는 Buffer-like. Blob 생성에 필요한 ArrayBuffer 로 강제.
+        const u8 =
+          result.data instanceof Uint8Array
+            ? result.data
+            : new Uint8Array(result.data as unknown as ArrayBuffer)
+        const ab = new ArrayBuffer(u8.byteLength)
+        new Uint8Array(ab).set(u8)
+        const blob = new Blob([ab], { type: result.mime })
+        currentUrl = URL.createObjectURL(blob)
+        setBlobUrl(currentUrl)
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true)
+      })
+    return () => {
+      cancelled = true
+      if (currentUrl) URL.revokeObjectURL(currentUrl)
+    }
+  }, [workspaceId, path])
+
+  if (failed || !blobUrl) {
+    return (
+      <span
+        style={{
+          display: 'inline-block',
+          padding: '1px 6px',
+          fontSize: 'var(--fs-xs)',
+          color: 'var(--text-muted)',
+          background: 'var(--bg-elev)',
+          borderRadius: 'var(--r-sm)',
+          border: '1px solid var(--border)',
+        }}
+        title={failed ? `원격 이미지 로드 실패: ${path}` : '이미지 불러오는 중…'}
+      >
+        {alt || (failed ? 'image' : '…')}
+      </span>
+    )
+  }
+  return (
+    <img
+      src={blobUrl}
+      alt={alt}
+      {...extraProps}
+      style={{ maxWidth: '100%' }}
+      onError={() => setFailed(true)}
+    />
+  )
+})
+
 // 헤딩 레벨 → 태그 이름
 const HEADING_TAGS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const
 
@@ -163,7 +239,8 @@ function makeHeadingComponent(level: 1 | 2 | 3 | 4 | 5 | 6, slugCounter: Map<str
   }
 }
 
-function MarkdownViewerInner({ content, basePath, onDocNavigate, onHeadings }: MarkdownViewerProps) {
+function MarkdownViewerInner({ content, basePath, onDocNavigate, onHeadings, workspaceId }: MarkdownViewerProps) {
+  const isSshContext = workspaceId?.startsWith('ssh:') ?? false
   const resolveRelativePath = useCallback(
     (href: string): string => {
       if (!href || href.startsWith('http://') || href.startsWith('https://')) return href
@@ -241,6 +318,10 @@ function MarkdownViewerInner({ content, basePath, onDocNavigate, onHeadings }: M
         return <SafeImage src={src} alt={alt} extraProps={props} />
       }
       const abs = src.startsWith('app://') ? src.replace(/^app:\/\/(?:local)?/, '') : resolveRelativePath(src)
+      // FS9-B — SSH workspace 의 이미지는 app:// 로컬 fallthrough 불가 → IPC 스트리밍.
+      if (isSshContext && workspaceId) {
+        return <SshImage workspaceId={workspaceId} path={abs} alt={alt} extraProps={props} />
+      }
       const encoded = abs.split('/').map(encodeURIComponent).join('/')
       const resolved = `app://local${encoded}`
       return <SafeImage src={resolved} alt={alt} extraProps={props} />
@@ -265,7 +346,7 @@ function MarkdownViewerInner({ content, basePath, onDocNavigate, onHeadings }: M
       return <code className={className} {...props}>{children}</code>
     },
     }
-  }, [content, resolveRelativePath, onDocNavigate])
+  }, [content, resolveRelativePath, onDocNavigate, isSshContext, workspaceId])
 
   return (
     <div className="markdown-viewer">

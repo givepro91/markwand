@@ -48,8 +48,13 @@ const ChevronRightIcon = () => (
 )
 
 export function ProjectView({ projectId, projectRoot, projectName, initialDocPath }: ProjectViewProps) {
-  const { docs } = useDocs(projectId)
+  const { docs, isScanning } = useDocs(projectId)
   const metaFilter = useAppStore((s) => s.metaFilter)
+  // FS9-B — 현재 프로젝트가 속한 workspace id. SSH 이면 MarkdownViewer 가 이미지 IPC 경유.
+  const currentWorkspaceId = useAppStore((s) => {
+    const p = s.projects.find((x) => x.id === projectId)
+    return p?.workspaceId ?? null
+  })
 
   const isFilterActive =
     metaFilter.tags.length > 0 ||
@@ -545,15 +550,39 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
           </div>
           {/* F1: flex:1 + minHeight:0 — FileTree가 남은 공간 전체 사용 */}
           <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <FileTree
-              key={projectId}
-              projectId={projectId}
-              rootPath={projectRoot}
-              docs={filteredDocs}
-              onSelect={loadDoc}
-              initialExpanded={initialExpanded}
-              onExpandChange={handleExpandChange}
-            />
+            {/* FS9-B — 원격 스캔 중 빈 트리가 "버그처럼 보이는" 문제 해소. 로딩 중 & 아직 청크 미도착 시에만 표시. */}
+            {isScanning && filteredDocs.length === 0 ? (
+              <div
+                role="status"
+                aria-live="polite"
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 'var(--sp-2)',
+                  color: 'var(--text-muted)',
+                  fontSize: 'var(--fs-sm)',
+                  padding: 'var(--sp-4)',
+                  textAlign: 'center',
+                }}
+              >
+                <span className="ui-spinner" aria-hidden="true" />
+                <span>파일 목록 불러오는 중…</span>
+                <span style={{ fontSize: 'var(--fs-xs)' }}>원격 서버는 잠시 시간이 걸릴 수 있습니다.</span>
+              </div>
+            ) : (
+              <FileTree
+                key={projectId}
+                projectId={projectId}
+                rootPath={projectRoot}
+                docs={filteredDocs}
+                onSelect={loadDoc}
+                initialExpanded={initialExpanded}
+                onExpandChange={handleExpandChange}
+              />
+            )}
           </div>
         </div>
 
@@ -651,6 +680,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
                   basePath={selectedDoc.path}
                   onDocNavigate={handleDocNavigate}
                   onHeadings={setHeadings}
+                  workspaceId={currentWorkspaceId}
                 />
               </ErrorBoundary>
             )

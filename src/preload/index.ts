@@ -102,5 +102,8 @@ contextBridge.exposeInMainWorld('api', {
       auth: { kind: 'agent' } | { kind: 'key-file'; path: string }
       path: string
     }) => ipcRenderer.invoke('ssh:browse-folder', input),
+    // Follow-up FS9-B — 원격 이미지 바이너리 fetch
+    readImage: (input: { workspaceId: string; path: string }) =>
+      ipcRenderer.invoke('ssh:read-image', input),
   },
 })

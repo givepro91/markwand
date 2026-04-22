@@ -129,6 +129,19 @@ const SshRootInput = z
     message: 'INVALID_SSH_ROOT (must be POSIX absolute path with depth ≥ 2)',
   })
 
+// Follow-up FS9-B — ssh:read-image input. workspaceId 기반 pool 경유 readFile.
+export function parseSshReadImageInput(raw: unknown): {
+  workspaceId: string
+  path: string
+} {
+  return z
+    .object({
+      workspaceId: WorkspaceIdInput,
+      path: PathInput,
+    })
+    .parse(raw)
+}
+
 // Follow-up FS9 — ssh:browse-folder input. 원격 폴더 탐색용 임시 연결 + readdir.
 // path 는 POSIX 절대경로만 수용. depth 는 '/' 부터 허용 (picker 탐색용 — add-ssh 의 root 제약과 별개).
 const BrowsePathInput = z

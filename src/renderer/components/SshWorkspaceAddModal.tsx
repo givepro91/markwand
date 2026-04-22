@@ -83,7 +83,9 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
   const [authKind, setAuthKind] = useState<'agent' | 'key-file'>('agent')
   const [keyFilePath, setKeyFilePath] = useState('')
   const [root, setRoot] = useState('')
-  const [mode, setMode] = useState<'container' | 'single'>('single')
+  // FS9-B — 베타에서는 single 강제. container 는 비활성화(원격 RTT × N 비용 큼 · UX 감사 결과).
+  // 향후 v1.0 에서 고급 옵션으로 재활성 가능.
+  const mode: 'container' | 'single' = 'single'
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -143,7 +145,6 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
     setAuthKind('agent')
     setKeyFilePath('')
     setRoot('')
-    setMode('single')
     setError(null)
     setLoading(false)
     setSelectedAlias('')
@@ -717,46 +718,20 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
             </div>
           )}
 
-          <fieldset
-            style={{ ...fieldStyle, border: 'none', padding: 0, margin: '0 0 var(--sp-3)' }}
+          {/* FS9-B — 베타에서는 등록 방식 선택 제거. 선택한 폴더 = 단일 프로젝트로 고정. */}
+          <p
+            style={{
+              fontSize: 'var(--fs-xs)',
+              color: 'var(--text-muted)',
+              background: 'var(--bg-elev)',
+              padding: 'var(--sp-2) var(--sp-3)',
+              borderRadius: 'var(--r-sm)',
+              marginBottom: 'var(--sp-3)',
+            }}
           >
-            <legend style={{ ...labelStyle, marginBottom: 'var(--sp-1)' }}>등록 방식</legend>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', marginTop: 'var(--sp-1)' }}>
-              <label style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'flex-start', fontSize: 'var(--fs-sm)', cursor: 'pointer' }}>
-                <input
-                  type="radio"
-                  name="mode"
-                  value="single"
-                  checked={mode === 'single'}
-                  onChange={() => setMode('single')}
-                  disabled={loading}
-                  style={{ marginTop: '3px' }}
-                />
-                <span>
-                  <strong>이 폴더 하나만</strong>{' '}
-                  <span style={{ color: 'var(--accent)' }}>(권장)</span>
-                  <br />
-                  <span style={hintStyle}>선택한 폴더 자체를 한 개 프로젝트로 등록합니다. 원격 환경에서 가장 빠릅니다.</span>
-                </span>
-              </label>
-              <label style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'flex-start', fontSize: 'var(--fs-sm)', cursor: 'pointer' }}>
-                <input
-                  type="radio"
-                  name="mode"
-                  value="container"
-                  checked={mode === 'container'}
-                  onChange={() => setMode('container')}
-                  disabled={loading}
-                  style={{ marginTop: '3px' }}
-                />
-                <span>
-                  <strong>여러 프로젝트가 있는 상위 폴더</strong>
-                  <br />
-                  <span style={hintStyle}>하위에 있는 여러 프로젝트 폴더를 자동으로 찾아냅니다. 원격에서는 탐색이 느릴 수 있습니다.</span>
-                </span>
-              </label>
-            </div>
-          </fieldset>
+            <span aria-hidden="true">ℹ</span>{' '}
+            선택한 폴더가 한 개의 프로젝트로 등록됩니다. 원격 서버에서는 한 번에 한 폴더만 추가할 수 있습니다.
+          </p>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--sp-2)', marginTop: 'var(--sp-4)' }}>
             <Button variant="ghost" size="sm" type="button" onClick={handleClose} disabled={loading}>

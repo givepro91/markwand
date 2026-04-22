@@ -257,6 +257,11 @@ export interface WindowApi {
       auth: SshAuthConfig
       path: string
     }) => Promise<SshBrowseFolderResult>
+    /** Follow-up FS9-B — 원격 이미지 바이너리 fetch. MarkdownViewer SshImage 가 호출. */
+    readImage: (input: {
+      workspaceId: string
+      path: string
+    }) => Promise<{ data: Buffer; mime: string }>
   }
 }
 

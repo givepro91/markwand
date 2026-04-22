@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo } from 'react'
+import { useEffect, useCallback, useMemo, useState } from 'react'
 import { useAppStore } from '../state/store'
 import type { Doc, FsChangeEvent } from '../../preload/types'
 import { isViewable } from '../../lib/viewable'
@@ -8,6 +8,8 @@ export function useDocs(projectId: string | null) {
   const appendDocs = useAppStore((s) => s.appendDocs)
   const updateDoc = useAppStore((s) => s.updateDoc)
   const removeDoc = useAppStore((s) => s.removeDoc)
+  // Follow-up FS9-B — 좌측 파일 트리 로딩 UI 용. SSH 원격은 수 초 걸려 빈 상태가 버그처럼 보이는 문제 해소.
+  const [isScanning, setIsScanning] = useState(false)
 
   const projectDocs = useMemo(
     () => (projectId ? docs.filter((d) => d.projectId === projectId) : []),
@@ -19,12 +21,14 @@ export function useDocs(projectId: string | null) {
   // 초기화하면 이미 스캔 완료된 다른 프로젝트들의 docs 도 함께 날아가 재스캔 유발. 대신 현 프로젝트의
   // stale docs 만 제거하고 append 방식으로 누적. main 쪽 캐시(docsCache)가 hit 이면 chunk 하나로
   // 즉시 보내주므로 flicker 도 거의 없음.
+  // FS9-B — isScanning 상태로 파일 트리 로딩 UI 제공.
   const scanDocs = useCallback(
     (pid: string): (() => void) => {
       // 현 프로젝트의 기존 docs 제거(중복 방지). 다른 프로젝트 docs 는 유지.
       useAppStore.setState((state) => ({
         docs: state.docs.filter((d) => d.projectId !== pid),
       }))
+      setIsScanning(true)
 
       const unsub = window.api.project.onDocsChunk((chunk: Doc[]) => {
         const relevant = chunk.filter((d) => d.projectId === pid)
@@ -39,7 +43,10 @@ export function useDocs(projectId: string | null) {
         .catch((err) => {
           console.error('문서 스캔 실패:', err)
         })
-        .finally(() => unsub())
+        .finally(() => {
+          unsub()
+          setIsScanning(false)
+        })
 
       return unsub
     },
@@ -70,5 +77,5 @@ export function useDocs(projectId: string | null) {
     return unsubscribe
   }, [updateDoc, removeDoc])
 
-  return { docs: projectDocs, scanDocs }
+  return { docs: projectDocs, scanDocs, isScanning }
 }

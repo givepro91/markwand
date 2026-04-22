@@ -96,9 +96,16 @@ export function WorkspacePicker({
                   )}
                   {remote.length > 0 && (
                     <optgroup label="원격 SSH 서버">
-                      {remote.map((w) => (
-                        <option key={w.id} value={w.id}>🌐 {w.name}</option>
-                      ))}
+                      {remote.map((w) => {
+                        // FS9-B — "서버명 / 프로젝트폴더" 표시. root basename 을 추출.
+                        const segments = w.root.split('/').filter((s) => s.length > 0)
+                        const projectName = segments[segments.length - 1] ?? w.root
+                        return (
+                          <option key={w.id} value={w.id}>
+                            🌐 {w.name} / {projectName}
+                          </option>
+                        )
+                      })}
                     </optgroup>
                   )}
                 </>
