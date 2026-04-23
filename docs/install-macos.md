@@ -1,5 +1,7 @@
 # macOS 설치 가이드 — v0.3.0-beta.7
 
+> [English](./install-macos.en.md) · **한국어**
+
 Markwand 는 Apple 코드사이닝·공증 미적용 베타 빌드입니다. **ad-hoc 서명** 이 적용되어 있어 터미널 명령 없이 우클릭 → 열기 로 실행할 수 있습니다.
 
 > 이 버전은 **베타** 입니다. 릴리스 노트: [release-notes/v0.3.0-beta.7.md](./release-notes/v0.3.0-beta.7.md)
