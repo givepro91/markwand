@@ -20,10 +20,10 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
 }
 
-const FIT_MODES: { id: FitMode; label: string }[] = [
-  { id: 'fit', label: 'Fit' },
-  { id: '100%', label: '100%' },
-  { id: 'fill', label: 'Fill' },
+const FIT_MODES: { id: FitMode; labelKey: string }[] = [
+  { id: 'fit', labelKey: 'imageViewer.fitMode' },
+  { id: '100%', labelKey: 'imageViewer.actualSize' },
+  { id: 'fill', labelKey: 'imageViewer.fillMode' },
 ]
 
 function ImageViewerInner({ path, name, size, workspaceId }: ImageViewerProps) {
@@ -185,7 +185,7 @@ function ImageViewerInner({ path, name, size, workspaceId }: ImageViewerProps) {
                   fontFamily: 'inherit',
                 }}
               >
-                {m.label}
+                {t(m.labelKey)}
               </button>
             )
           })}

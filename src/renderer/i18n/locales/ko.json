@@ -26,9 +26,11 @@
   },
 
   "empty": {
-    "title": "워크스페이스를 추가하세요",
-    "description": "마크다운 문서가 있는 폴더를 워크스페이스로 등록하면 프로젝트와 문서를 탐색할 수 있습니다.",
-    "cta": "+ 워크스페이스 추가"
+    "title": "마크다운 문서를 한 곳에서 읽어요",
+    "description": "프로젝트 폴더를 추가하면, 안의 .md 문서를 자동으로 모아 보여드려요.",
+    "cta": "+ 워크스페이스 추가",
+    "example1": "예: 개발 중인 프로젝트 폴더",
+    "example2": "예: 회사 문서 저장소"
   },
 
   "loading": {
@@ -103,8 +105,8 @@
     "findNoResults": "결과 없음",
     "tocToggle": "목차 토글",
     "sidebarResize": "사이드바 폭 조절",
-    "selectFile": "왼쪽에서 파일을 선택하세요",
-    "selectFileDesc": "트리에서 .md 또는 이미지 파일을 클릭하면 여기 표시됩니다.",
+    "selectFile": "왼쪽 파일 목록에서 문서를 선택하세요",
+    "selectFileDesc": "문서 또는 이미지를 클릭하면 여기 표시됩니다.",
     "selectProject": "프로젝트를 선택하세요",
     "allProjectsCta": "전체 프로젝트 보기",
     "recentDocs": {
@@ -169,7 +171,7 @@
     "removeAria": "{{name}} 제거",
     "remove": "제거",
     "removing": "제거 중…",
-    "confirm": "정말 제거하시겠습니까?"
+    "confirm": "이 워크스페이스를 제거할까요?"
   },
 
   "project": {
@@ -209,9 +211,16 @@
     "rangeAll": "전체",
     "statusSection": "상태",
     "statusAria": "상태: {{name}}",
+    "statusDraft": "초안",
+    "statusPublished": "게시됨",
+    "statusArchived": "보관됨",
     "sourceSection": "출처",
     "sourceAria": "출처: {{name}}",
     "sourceAIHint": " (AI 산출물)",
+    "sourceClaude": "Claude",
+    "sourceCodex": "Codex",
+    "sourceDesign": "Design",
+    "sourceReview": "Review",
     "reset": "✕ 초기화",
     "resetAria": "필터 초기화"
   },
@@ -219,6 +228,9 @@
   "imageViewer": {
     "toolbarAria": "이미지 보기 옵션",
     "fitAria": "맞춤 모드",
+    "fitMode": "맞춤",
+    "actualSize": "실제 크기",
+    "fillMode": "채우기",
     "loadFailed": "이미지를 불러올 수 없습니다",
     "loadFailedDetail": "파일이 이동되었거나 접근 권한이 없습니다.",
     "remoteLoading": "원격 이미지 불러오는 중…"
@@ -259,18 +271,48 @@
   },
 
   "composer": {
-    "copied": "@참조 {{count}}개 복사됨 — Claude/Codex에 붙여넣기",
+    "copied": "참조 {{count}}개 복사됨 — Claude/Codex에 붙여넣기",
     "copyFailed": "복사 실패: {{msg}}",
     "trayToggle": "{{count}} docs 선택됨 ▲",
     "collapseAria": "접기",
-    "copyAria": "@참조를 클립보드에 복사",
+    "copyAria": "참조 링크를 클립보드에 복사",
     "copy": "📋 Copy @ref",
     "copying": "복사 중…",
     "chipRemoveAria": "{{label}} 제거",
+    "tray": {
+      "aria": "문서 묶음"
+    },
+    "clearAll": "전체 해제",
     "onboardingAria": "Composer 안내",
     "onboardingBadge": "Context Composer (신규)",
     "onboardingBody": "체크박스로 여러 파일을 선택한 뒤 하단의 Composer로 Claude Code · Codex에 한 번에 전달하세요.",
     "onboardingAck": "확인했어요"
+  },
+
+  "composerOnboarding": {
+    "badgeTitle": "한 번에 보내기 (신규)",
+    "body": "여러 문서를 AI에게 한꺼번에 보내요. 개발 도구(Claude Code · Codex)가 있어야 활용할 수 있어요"
+  },
+
+  "onboarding": {
+    "step1": {
+      "title": "폴더 = 워크스페이스",
+      "body": "마크다운 파일이 있는 폴더를 추가하면 워크스페이스가 됩니다."
+    },
+    "step2": {
+      "title": ".git 또는 package.json 이 있는 폴더 = 프로젝트",
+      "body": "워크스페이스 안에서 프로젝트 마커가 있는 폴더를 자동으로 프로젝트로 묶어요."
+    },
+    "step3": {
+      "title": "ESC 로 닫기",
+      "body": "언제든지 ESC 를 눌러 이 안내를 닫을 수 있습니다."
+    },
+    "close": "닫기",
+    "start": "시작하기"
+  },
+
+  "workspace": {
+    "addedToast": "'{{name}}'에서 {{count}}개 프로젝트를 찾았어요"
   },
 
   "toc": {
@@ -291,8 +333,15 @@
   "drift": {
     "ariaToggle": "drift 리포트 토글",
     "totalRefs": "문서↔코드 참조 {{count}}개",
-    "missingTitle": "{{count}}개 missing — 파일 없음",
-    "staleTitle": "{{count}}개 stale — 문서 이후 수정됨",
+    "statusMissing": "깨진 링크",
+    "statusStale": "오래된 참조",
+    "statusOk": "동기화됨",
+    "badgeMissingText": "깨진 링크 {{count}}개",
+    "badgeStaleText": "오래된 참조 {{count}}개",
+    "openInFinder": "Finder에서 열기",
+    "sizeSkippedCount": "크기 한도 초과로 {{count}}개 건너뜀 (2MB)",
+    "missingTitle": "{{count}}개 깨진 링크 — 파일 없음",
+    "staleTitle": "{{count}}개 오래된 참조 — 문서 이후 수정됨",
     "ok": "전부 OK",
     "ignoredTitle": "{{count}}개 참조가 무시 목록에 있음",
     "ignoredLabel": "무시 {{count}}",
@@ -415,6 +464,22 @@
     "keyFileMissing": "키 파일을 찾을 수 없습니다. 경로를 다시 확인해주세요.",
     "portRange": "포트 번호는 1~65535 범위여야 합니다.",
     "keyPathRequired": "키 파일 경로를 입력하세요.",
-    "generic": "연결 실패: {{message}}"
+    "generic": "오류: {{message}}",
+    "fs": {
+      "tooLarge": "파일이 너무 큽니다.",
+      "notTextDoc": "텍스트 문서가 아닙니다."
+    },
+    "drift": {
+      "revalidateFailed": "참조 재검증에 실패했습니다.",
+      "fileTooLarge": "파일이 너무 커서 참조 검증을 건너뛰었습니다 (2MB 초과)."
+    }
+  },
+
+  "errorBoundary": {
+    "title": "이 영역에서 오류가 발생했어요",
+    "body": "일시적인 오류일 수 있습니다. 아래 버튼으로 복구를 시도해보세요.",
+    "retry": "다시 시도",
+    "restart": "앱 다시 시작",
+    "support": "지원"
   }
 }

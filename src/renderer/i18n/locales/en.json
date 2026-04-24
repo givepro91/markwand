@@ -26,9 +26,11 @@
   },
 
   "empty": {
-    "title": "Add a workspace",
-    "description": "Register a folder containing markdown documents to browse its projects and files.",
-    "cta": "+ Add workspace"
+    "title": "Read your markdown documents in one place",
+    "description": "Add a project folder and Markwand will automatically collect all .md files inside.",
+    "cta": "+ Add workspace",
+    "example1": "e.g. an active development project",
+    "example2": "e.g. a company documentation repo"
   },
 
   "loading": {
@@ -103,8 +105,8 @@
     "findNoResults": "No matches",
     "tocToggle": "Toggle table of contents",
     "sidebarResize": "Resize sidebar",
-    "selectFile": "Select a file from the left",
-    "selectFileDesc": "Click a .md or image file in the tree to open it here.",
+    "selectFile": "Select a document from the file list on the left",
+    "selectFileDesc": "Click a document or image to open it here.",
     "selectProject": "Select a project",
     "allProjectsCta": "See all projects",
     "recentDocs": {
@@ -209,9 +211,16 @@
     "rangeAll": "All",
     "statusSection": "Status",
     "statusAria": "Status: {{name}}",
+    "statusDraft": "Draft",
+    "statusPublished": "Published",
+    "statusArchived": "Archived",
     "sourceSection": "Source",
     "sourceAria": "Source: {{name}}",
     "sourceAIHint": " (AI)",
+    "sourceClaude": "Claude",
+    "sourceCodex": "Codex",
+    "sourceDesign": "Design",
+    "sourceReview": "Review",
     "reset": "✕ Reset",
     "resetAria": "Reset filters"
   },
@@ -219,6 +228,9 @@
   "imageViewer": {
     "toolbarAria": "Image view options",
     "fitAria": "Fit mode",
+    "fitMode": "Fit",
+    "actualSize": "Actual size",
+    "fillMode": "Fill",
     "loadFailed": "Could not load image",
     "loadFailedDetail": "The file may have been moved or you don't have permission.",
     "remoteLoading": "Loading remote image…"
@@ -259,18 +271,48 @@
   },
 
   "composer": {
-    "copied": "Copied {{count}} @refs — paste into Claude/Codex",
+    "copied": "Copied {{count}} refs — paste into Claude/Codex",
     "copyFailed": "Copy failed: {{msg}}",
     "trayToggle": "{{count}} docs selected ▲",
     "collapseAria": "Collapse",
-    "copyAria": "Copy @refs to clipboard",
+    "copyAria": "Copy reference links to clipboard",
     "copy": "📋 Copy @ref",
     "copying": "Copying…",
     "chipRemoveAria": "Remove {{label}}",
+    "tray": {
+      "aria": "Document bundle"
+    },
+    "clearAll": "Clear all",
     "onboardingAria": "Composer help",
     "onboardingBadge": "Context Composer (new)",
     "onboardingBody": "Check multiple files, then send them to Claude Code / Codex in one step via the Composer at the bottom.",
     "onboardingAck": "Got it"
+  },
+
+  "composerOnboarding": {
+    "badgeTitle": "Send at once (new)",
+    "body": "Send multiple documents to your AI tool at once. Requires a developer tool (Claude Code · Codex)."
+  },
+
+  "onboarding": {
+    "step1": {
+      "title": "Folder = workspace",
+      "body": "Add any folder containing markdown files to create a workspace."
+    },
+    "step2": {
+      "title": "Folder with .git or package.json = project",
+      "body": "Markwand automatically groups folders with project markers into projects."
+    },
+    "step3": {
+      "title": "Press ESC to close",
+      "body": "You can close this guide at any time by pressing ESC."
+    },
+    "close": "Close",
+    "start": "Get started"
+  },
+
+  "workspace": {
+    "addedToast": "Found {{count}} projects in '{{name}}'"
   },
 
   "toc": {
@@ -291,6 +333,13 @@
   "drift": {
     "ariaToggle": "Toggle drift report",
     "totalRefs": "{{count}} doc↔code references",
+    "statusMissing": "Missing",
+    "statusStale": "Stale",
+    "statusOk": "In sync",
+    "badgeMissingText": "{{count}} missing",
+    "badgeStaleText": "{{count}} stale",
+    "openInFinder": "Open in Finder",
+    "sizeSkippedCount": "{{count}} skipped (>2MB)",
     "missingTitle": "{{count}} missing — file not found",
     "staleTitle": "{{count}} stale — modified after document",
     "ok": "All OK",
@@ -415,6 +464,22 @@
     "keyFileMissing": "Key file not found. Check the path.",
     "portRange": "Port must be between 1 and 65535.",
     "keyPathRequired": "Enter the key file path.",
-    "generic": "Connection failed: {{message}}"
+    "generic": "Error: {{message}}",
+    "fs": {
+      "tooLarge": "File is too large.",
+      "notTextDoc": "Not a text document."
+    },
+    "drift": {
+      "revalidateFailed": "Reference revalidation failed.",
+      "fileTooLarge": "File too large to validate references (>2MB)."
+    }
+  },
+
+  "errorBoundary": {
+    "title": "Something went wrong in this area",
+    "body": "This may be a temporary error. Try one of the options below.",
+    "retry": "Try again",
+    "restart": "Restart app",
+    "support": "Support"
   }
 }

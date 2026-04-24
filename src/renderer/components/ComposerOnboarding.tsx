@@ -42,10 +42,10 @@ export function ComposerOnboarding({ onDismiss }: ComposerOnboardingProps) {
     <div style={container} role="note" aria-label={t('composer.onboardingAria')}>
       <div style={title}>
         <span aria-hidden>☑</span>
-        <span>{t('composer.onboardingBadge')}</span>
+        <span>{t('composerOnboarding.badgeTitle')}</span>
       </div>
       <div style={body}>
-        {t('composer.onboardingBody')}
+        {t('composerOnboarding.body')}
       </div>
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <Button variant="primary" size="sm" onClick={onDismiss}>

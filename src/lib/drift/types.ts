@@ -37,4 +37,6 @@ export interface DriftReport {
     stale: number
   }
   verifiedAt: number
+  // 크기 한도(2MB) 초과로 건너뛴 파일 수 — 존재할 경우 UI 푸터에 안내.
+  sizeSkipped?: number
 }

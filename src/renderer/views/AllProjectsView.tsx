@@ -8,6 +8,7 @@ import { InboxItem } from '../components/InboxItem'
 import { EmptyState, StatusMessage, Button, IconButton } from '../components/ui'
 import { useAppStore } from '../state/store'
 import { applyMetaFilter, buildDocGroups, sortDocsByOrder, type GroupByField } from '../utils/docFilters'
+import { humanizeError } from '../lib/humanizeError'
 import type { Project, SortOrder, ViewLayout } from '../../../src/preload/types'
 
 interface AllProjectsViewProps {
@@ -303,7 +304,7 @@ export function AllProjectsView({ workspaceId, onOpenProject }: AllProjectsViewP
           </div>
         ) : error ? (
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--sp-12)' }}>
-            <StatusMessage variant="error">{t('allProjects.scanFailed', { error })}</StatusMessage>
+            <StatusMessage variant="error">{humanizeError(t, error)}</StatusMessage>
           </div>
         ) : isFilterActive ? (
           /* 필터 활성: 문서 뷰 */

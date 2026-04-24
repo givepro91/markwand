@@ -9,6 +9,7 @@ import { CommandPalette } from './components/CommandPalette'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { SshHostKeyPrompt } from './components/SshHostKeyPrompt'
 import { SshWorkspaceAddModal } from './components/SshWorkspaceAddModal'
+import { FirstRunOnboarding } from './components/FirstRunOnboarding'
 import { useWorkspace } from './hooks/useWorkspace'
 import { useViewMode } from './hooks/useViewMode'
 import { useDrift } from './hooks/useDrift'
@@ -293,12 +294,25 @@ export default function App() {
     [setActiveWorkspaceId, viewMode, setViewMode]
   )
 
+  // v0.4 C3 — 첫 워크스페이스 추가 직후 1회 onboarding 오버레이. prefs 로 영속.
+  const [showFirstRunOnboarding, setShowFirstRunOnboarding] = useState(false)
+
+  const maybeTriggerOnboarding = useCallback(async () => {
+    const shown = await window.api.prefs.get('onboardingShown').catch(() => undefined)
+    if (shown === true) return
+    setShowFirstRunOnboarding(true)
+    window.api.prefs.set('onboardingShown', true).catch(() => undefined)
+  }, [])
+
   // 워크스페이스 추가 직후엔 always 'all' 뷰로 전환 — 진행률 카드 그리드를 보여주기 위해.
   const handleAddWorkspace = useCallback(async () => {
     const ws = await addWorkspace()
-    if (ws) setViewMode('all')
+    if (ws) {
+      setViewMode('all')
+      void maybeTriggerOnboarding()
+    }
     return ws
-  }, [addWorkspace, setViewMode])
+  }, [addWorkspace, setViewMode, maybeTriggerOnboarding])
 
   // Follow-up FS2 — SSH 추가 모달 트리거.
   const handleAddSshWorkspace = useCallback(() => {
@@ -308,9 +322,12 @@ export default function App() {
   const handleSshSubmit = useCallback(
     async (input: Parameters<typeof addSshWorkspace>[0]) => {
       const ws = await addSshWorkspace(input)
-      if (ws) setViewMode('all')
+      if (ws) {
+        setViewMode('all')
+        void maybeTriggerOnboarding()
+      }
     },
-    [addSshWorkspace, setViewMode],
+    [addSshWorkspace, setViewMode, maybeTriggerOnboarding],
   )
 
   const projectsLoading = useAppStore((s) => s.projectsLoading)
@@ -474,6 +491,9 @@ export default function App() {
       </main>
       <ToastHost />
       <CommandPalette />
+      {showFirstRunOnboarding && (
+        <FirstRunOnboarding onClose={() => setShowFirstRunOnboarding(false)} />
+      )}
     </div>
   )
 }

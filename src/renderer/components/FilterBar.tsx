@@ -18,17 +18,17 @@ const UPDATED_RANGE_KEYS: Record<UpdatedRange, string> = {
 
 const UPDATED_RANGES: UpdatedRange[] = ['today', '7d', '30d', 'all']
 
-const STATUS_LABELS: Record<string, string> = {
-  draft: 'Draft',
-  published: 'Published',
-  archived: 'Archived',
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  draft: 'filter.statusDraft',
+  published: 'filter.statusPublished',
+  archived: 'filter.statusArchived',
 }
 
-const SOURCE_LABELS: Record<string, string> = {
-  claude: 'Claude',
-  codex: 'Codex',
-  design: 'Design',
-  review: 'Review',
+const SOURCE_LABEL_KEYS: Record<string, string> = {
+  claude: 'filter.sourceClaude',
+  codex: 'filter.sourceCodex',
+  design: 'filter.sourceDesign',
+  review: 'filter.sourceReview',
 }
 
 function sourceStyle(source: string): CSSProperties {
@@ -359,7 +359,7 @@ export function FilterBar({ docs }: FilterBarProps) {
           {allStatuses.map((s) => {
             const active = metaFilter.statuses.includes(s)
             const colors = active ? statusStyle(s) : {}
-            const name = STATUS_LABELS[s] ?? s
+            const name = STATUS_LABEL_KEYS[s] ? t(STATUS_LABEL_KEYS[s]) : s
             return (
               <button
                 key={s}
@@ -387,7 +387,7 @@ export function FilterBar({ docs }: FilterBarProps) {
             const active = metaFilter.sources.includes(src)
             const isAI = AI_SOURCES.has(src)
             const colors = active ? sourceStyle(src) : {}
-            const name = SOURCE_LABELS[src] ?? src
+            const name = SOURCE_LABEL_KEYS[src] ? t(SOURCE_LABEL_KEYS[src]) : src
             return (
               <button
                 key={src}

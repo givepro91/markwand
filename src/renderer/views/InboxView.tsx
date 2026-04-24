@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { InboxItem } from '../components/InboxItem'
 import { EmptyState, StatusMessage, Button } from '../components/ui'
 import { useAppStore } from '../state/store'
+import { humanizeError } from '../lib/humanizeError'
 import type { Doc } from '../../preload/types'
 
 type DateGroup = 'today' | 'yesterday' | 'thisWeek' | 'earlier'
@@ -213,7 +214,7 @@ export function InboxView({ workspaceId, onOpenDoc }: InboxViewProps) {
       )}
       {!loading && error && (
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--sp-12)' }}>
-          <StatusMessage variant="error">{t('inbox.collectFailed', { error })}</StatusMessage>
+          <StatusMessage variant="error">{humanizeError(t, error)}</StatusMessage>
         </div>
       )}
       {!loading && !error && filteredDocs.length === 0 && (

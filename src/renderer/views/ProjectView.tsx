@@ -7,7 +7,7 @@ import { ClaudeButton } from '../components/ClaudeButton'
 import { FilterBar } from '../components/FilterBar'
 import { TableOfContents } from '../components/TableOfContents'
 import { DriftPanel } from '../components/DriftPanel'
-import { ErrorBoundary } from '../components/ErrorBoundary'
+import { I18nErrorBoundary } from '../components/ErrorBoundary'
 import { RecentDocsPanel } from '../components/RecentDocsPanel'
 import { EmptyState, IconButton } from '../components/ui'
 import { useDocs } from '../hooks/useDocs'
@@ -15,6 +15,7 @@ import { useAppStore } from '../state/store'
 import { createFindController, type FindController } from '../lib/findInContainer'
 import { classifyAsset } from '../../lib/viewable'
 import { applyMetaFilter } from '../utils/docFilters'
+import { humanizeError } from '../lib/humanizeError'
 import type { Doc } from '../../../src/preload/types'
 import type { Heading } from '../components/TableOfContents'
 
@@ -260,7 +261,8 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
       setDocContent(result.content)
     } catch (err) {
       console.error('문서 읽기 실패:', err)
-      setDocContent(t('projectView.docReadFailed'))
+      const msg = err instanceof Error ? err.message : String(err)
+      setDocContent(humanizeError(t, msg))
     }
   }, [projectId, setLastViewedDoc])
 
@@ -725,23 +727,23 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
           )}
           {selectedDoc ? (
             classifyAsset(selectedDoc.path) === 'image' ? (
-              <ErrorBoundary resetKey={selectedDoc.path}>
+              <I18nErrorBoundary resetKey={selectedDoc.path}>
                 <ImageViewer
                   path={selectedDoc.path}
                   name={selectedDoc.name}
                   size={selectedDoc.size}
                   workspaceId={currentWorkspaceId}
                 />
-              </ErrorBoundary>
+              </I18nErrorBoundary>
             ) : (
-              <ErrorBoundary resetKey={selectedDoc.path}>
-                <ErrorBoundary resetKey={selectedDoc.path}>
+              <I18nErrorBoundary resetKey={selectedDoc.path}>
+                <I18nErrorBoundary resetKey={selectedDoc.path}>
                   <DriftPanel
                     docPath={selectedDoc.path}
                     projectRoot={projectRoot}
                     onJumpToRef={handleJumpToRef}
                   />
-                </ErrorBoundary>
+                </I18nErrorBoundary>
                 <MarkdownViewer
                   content={docContent}
                   basePath={selectedDoc.path}
@@ -749,7 +751,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
                   onHeadings={setHeadings}
                   workspaceId={currentWorkspaceId}
                 />
-              </ErrorBoundary>
+              </I18nErrorBoundary>
             )
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>

@@ -16,19 +16,19 @@ interface DriftPanelProps {
 function buildStatusMeta(t: TFunction): Record<DriftStatus, { label: string; color: string; bg: string; icon: string }> {
   return {
     ok: {
-      label: t('drift.prompt.syncedLabel'),
+      label: t('drift.statusOk'),
       color: 'var(--color-success)',
       bg: 'var(--color-success-bg)',
       icon: '●',
     },
     stale: {
-      label: 'stale',
+      label: t('drift.statusStale'),
       color: 'var(--color-warning)',
       bg: 'var(--color-warning-bg)',
       icon: '◐',
     },
     missing: {
-      label: 'missing',
+      label: t('drift.statusMissing'),
       color: 'var(--color-danger)',
       bg: 'var(--color-danger-bg)',
       icon: '✕',
@@ -233,7 +233,7 @@ export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProp
                 color: STATUS_META.missing.color,
               }}
             >
-              {counts.missing} missing
+              {t('drift.badgeMissingText', { count: counts.missing })}
             </span>
           )}
           {counts.stale > 0 && (
@@ -248,7 +248,7 @@ export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProp
                 color: STATUS_META.stale.color,
               }}
             >
-              {counts.stale} stale
+              {t('drift.badgeStaleText', { count: counts.stale })}
             </span>
           )}
           {!hasIssues && (
@@ -344,13 +344,13 @@ export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProp
               }}
             >
               <div>
-                <span style={{ color: STATUS_META.missing.color, fontWeight: 'var(--fw-medium)' }}>✕ missing</span>
+                <span style={{ color: STATUS_META.missing.color, fontWeight: 'var(--fw-medium)' }}>✕ {t('drift.statusMissing')}</span>
                 <Trans i18nKey="drift.missingDetail">
                   {' '}— text. <strong>Jump</strong>, <strong>Ignore</strong>.
                 </Trans>
               </div>
               <div style={{ marginTop: '4px' }}>
-                <span style={{ color: STATUS_META.stale.color, fontWeight: 'var(--fw-medium)' }}>◐ stale</span>
+                <span style={{ color: STATUS_META.stale.color, fontWeight: 'var(--fw-medium)' }}>◐ {t('drift.statusStale')}</span>
                 <Trans i18nKey="drift.staleDetail">
                   {' '}— text <em>file</em>. <strong>Ignore</strong>.
                 </Trans>
@@ -387,6 +387,19 @@ export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProp
               />
             ))}
           </ul>
+        </div>
+      )}
+      {/* 2MB skip 고지 — report 에 sizeSkipped 가 있을 때만 표시 */}
+      {(report.sizeSkipped ?? 0) > 0 && (
+        <div
+          style={{
+            padding: 'var(--sp-2) var(--sp-3)',
+            fontSize: 'var(--fs-xs)',
+            color: 'var(--text-muted)',
+            borderTop: '1px solid var(--border-muted)',
+          }}
+        >
+          {t('drift.sizeSkippedCount', { count: report.sizeSkipped })}
         </div>
       )}
     </div>
@@ -515,7 +528,7 @@ function DriftRefRow({ ref_, projectRoot, ignored, onToggleIgnore, onJump }: Dri
           style={actionBtn}
           title={ref_.isDirectory ? t('drift.revealFolder') : t('drift.revealFile')}
         >
-          Finder
+          {t('drift.openInFinder')}
         </button>
       )}
       <button

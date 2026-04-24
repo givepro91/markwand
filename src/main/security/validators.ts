@@ -36,6 +36,12 @@ export const ALLOWED_PREFS_KEYS = new Set([
   'experimentalFeatures.sshTransport',
   // i18n — 언어 override (ko / en). 미설정 시 시스템 locale 기반 자동 감지.
   'language',
+  // v0.4 — RecentDocsPanel 활성 탭 (docs | images)
+  'recentDocsTab',
+  // v0.4 C3 — FirstRunOnboarding 1회 노출 플래그
+  'onboardingShown',
+  // v0.4 C4 — FilterBar 접힘 상태 (기본 true)
+  'filterBarCollapsed',
 ])
 
 // ── parse 함수들 ──────────────────────────────────────────────

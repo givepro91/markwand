@@ -38,7 +38,7 @@ export const DriftBadge = memo(function DriftBadge({ report, compact = false }: 
   const parts: Array<{ label: string; color: string; bg: string; title: string }> = []
   if (missing > 0) {
     parts.push({
-      label: compact ? `${missing}` : `${missing} missing`,
+      label: compact ? `${missing}` : t('drift.badgeMissingText', { count: missing }),
       color: 'var(--color-danger)',
       bg: 'var(--color-danger-bg)',
       title: t('drift.badgeMissingTitle', { count: missing }),
@@ -46,7 +46,7 @@ export const DriftBadge = memo(function DriftBadge({ report, compact = false }: 
   }
   if (stale > 0) {
     parts.push({
-      label: compact ? `${stale}` : `${stale} stale`,
+      label: compact ? `${stale}` : t('drift.badgeStaleText', { count: stale }),
       color: 'var(--color-warning)',
       bg: 'var(--color-warning-bg)',
       title: t('drift.badgeStaleTitle', { count: stale }),

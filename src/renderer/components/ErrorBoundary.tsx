@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface ErrorBoundaryProps {
   children: ReactNode
@@ -6,6 +7,12 @@ interface ErrorBoundaryProps {
   onError?: (err: Error) => void
   // key 가 바뀌면 boundary state 리셋 — 문서 전환 시 자동 회복
   resetKey?: string | number
+  // i18n 라벨 props — I18nErrorBoundary 래퍼가 주입, 직접 사용 시 선택적
+  retryLabel?: string
+  restartLabel?: string
+  supportLabel?: string
+  contentTitle?: string
+  contentBody?: string
 }
 
 interface ErrorBoundaryState {
@@ -43,6 +50,15 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   render(): ReactNode {
     if (this.state.error) {
       if (this.props.fallback) return this.props.fallback(this.state.error, this.reset)
+
+      const {
+        retryLabel = '다시 시도',
+        restartLabel = '앱 다시 시작',
+        supportLabel = '지원',
+        contentTitle = '이 영역에서 오류가 발생했어요',
+        contentBody,
+      } = this.props
+
       return (
         <div
           role="alert"
@@ -57,29 +73,91 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           }}
         >
           <div style={{ fontWeight: 'var(--fw-semibold)', marginBottom: 'var(--sp-2)' }}>
-            이 영역에서 오류가 발생했어요
+            {contentTitle}
           </div>
-          <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 'var(--fs-xs)', marginBottom: 'var(--sp-3)', wordBreak: 'break-word' }}>
-            {this.state.error.message}
+          {contentBody && (
+            <div style={{ marginBottom: 'var(--sp-2)', color: 'var(--text-muted)', fontSize: 'var(--fs-xs)' }}>
+              {contentBody}
+            </div>
+          )}
+          <details style={{ marginBottom: 'var(--sp-3)' }}>
+            <summary style={{ fontSize: 'var(--fs-xs)', cursor: 'pointer', userSelect: 'none', opacity: 0.7 }}>
+              상세 오류
+            </summary>
+            <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 'var(--fs-xs)', marginTop: 'var(--sp-1)', wordBreak: 'break-word' }}>
+              {this.state.error.message}
+            </div>
+          </details>
+          <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={this.reset}
+              style={{
+                fontSize: 'var(--fs-xs)',
+                padding: '4px 10px',
+                borderRadius: 'var(--r-sm)',
+                border: '1px solid var(--color-danger)',
+                background: 'transparent',
+                color: 'var(--color-danger)',
+                cursor: 'pointer',
+              }}
+            >
+              {retryLabel}
+            </button>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              style={{
+                fontSize: 'var(--fs-xs)',
+                padding: '4px 10px',
+                borderRadius: 'var(--r-sm)',
+                border: '1px solid var(--color-danger)',
+                background: 'transparent',
+                color: 'var(--color-danger)',
+                cursor: 'pointer',
+              }}
+            >
+              {restartLabel}
+            </button>
+            <a
+              href="https://github.com/givepro91/markwand/issues"
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                fontSize: 'var(--fs-xs)',
+                padding: '4px 10px',
+                borderRadius: 'var(--r-sm)',
+                border: '1px solid var(--color-danger)',
+                background: 'transparent',
+                color: 'var(--color-danger)',
+                cursor: 'pointer',
+                textDecoration: 'none',
+              }}
+            >
+              {supportLabel}
+            </a>
           </div>
-          <button
-            type="button"
-            onClick={this.reset}
-            style={{
-              fontSize: 'var(--fs-xs)',
-              padding: '4px 10px',
-              borderRadius: 'var(--r-sm)',
-              border: '1px solid var(--color-danger)',
-              background: 'transparent',
-              color: 'var(--color-danger)',
-              cursor: 'pointer',
-            }}
-          >
-            다시 시도
-          </button>
         </div>
       )
     }
     return this.props.children
   }
+}
+
+/**
+ * ErrorBoundary 함수형 래퍼 — useTranslation 훅으로 라벨을 주입.
+ * class 컴포넌트 제약(훅 사용 불가)을 우회하는 패턴.
+ */
+export function I18nErrorBoundary(props: Omit<ErrorBoundaryProps, 'retryLabel' | 'restartLabel' | 'supportLabel' | 'contentTitle' | 'contentBody'>) {
+  const { t } = useTranslation()
+  return (
+    <ErrorBoundary
+      retryLabel={t('errorBoundary.retry')}
+      restartLabel={t('errorBoundary.restart')}
+      supportLabel={t('errorBoundary.support')}
+      contentTitle={t('errorBoundary.title')}
+      contentBody={t('errorBoundary.body')}
+      {...props}
+    />
+  )
 }

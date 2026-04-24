@@ -106,7 +106,7 @@ export function ComposerTray() {
   }
 
   return (
-    <div style={barStyle} role="region" aria-label="Composer Tray">
+    <div style={barStyle} role="region" aria-label={t('composer.tray.aria')}>
       <div style={chipRow}>
         {paths.map((p) => (
           <ComposerChip key={p} absPath={p} onRemove={() => toggleDocSelection(p)} />
@@ -114,7 +114,7 @@ export function ComposerTray() {
       </div>
       <Gauge value={tokens} max={TOKEN_WARN} warn={TOKEN_WARN} crit={TOKEN_CRIT} width={140} />
       <Button variant="ghost" size="sm" onClick={clearDocSelection}>
-        Clear
+        {t('composer.clearAll')}
       </Button>
       <Button
         variant="ghost"
