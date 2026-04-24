@@ -1,9 +1,9 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InboxItem } from '../components/InboxItem'
 import { EmptyState, StatusMessage, Button } from '../components/ui'
 import { useAppStore } from '../state/store'
-import { humanizeError } from '../lib/humanizeError'
+import { useAllDocsFlat } from '../hooks/useDocs'
 import type { Doc } from '../../preload/types'
 
 type DateGroup = 'today' | 'yesterday' | 'thisWeek' | 'earlier'
@@ -57,88 +57,39 @@ export function InboxView({ workspaceId, onOpenDoc }: InboxViewProps) {
   const readDocs = useAppStore((s) => s.readDocs)
   const markDocRead = useAppStore((s) => s.markDocRead)
   const trackReadDocs = useAppStore((s) => s.trackReadDocs)
-  const [allDocs, setAllDocs] = useState<InboxDoc[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const docCountProgress = useAppStore((s) => s.docCountProgress)
+  const projectsLoading = useAppStore((s) => s.projectsLoading)
   const [readFilter, setReadFilter] = useState<ReadFilter>('all')
 
-  // App.tsx가 채운 projects가 도착하면 docs를 스트리밍으로 수집한다.
-  // onDocsChunk를 먼저 구독한 뒤 scanDocs를 invoke해 첫 청크부터 즉시 렌더한다.
-  useEffect(() => {
-    if (!workspaceId || projects.length === 0) {
-      setAllDocs([])
-      return
-    }
+  // C8: 자체 scan 루프 삭제 — store docs(cachedFlat) 구독만 사용.
+  // useDocs/App.tsx 가 이미 scan을 수행하므로 중복 트리거 없음.
+  const allStoreDocs = useAllDocsFlat()
 
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    setAllDocs([])
-
-    const projectMap = new Map(projects.map((p) => [p.id, p]))
-
-    const unsub = window.api.project.onDocsChunk((chunk: Doc[]) => {
-      if (cancelled) return
-      const incoming: InboxDoc[] = []
-      for (const doc of chunk) {
-        const project = projectMap.get(doc.projectId)
-        if (!project) continue
-        incoming.push({
-          ...doc,
-          projectName: project.name,
-          title: (doc.frontmatter?.title as string | undefined) ?? doc.name.replace(/\.md$/, ''),
-          isRead: false,
-        })
-      }
-      if (incoming.length > 0) {
-        setAllDocs((prev) => [...prev, ...incoming])
-      }
-    })
-
-    async function runScans() {
-      try {
-        const CONCURRENCY = 5
-        const queue = [...projects]
-        let totalCount = 0
-
-        async function worker() {
-          while (queue.length > 0) {
-            if (cancelled) return
-            const project = queue.shift()!
-            try {
-              const result = await window.api.project.scanDocs(project.id)
-              totalCount += result.length
-            } catch {
-              // 개별 프로젝트 실패는 silent
-            }
-          }
-        }
-
-        await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()))
-        if (!cancelled) {
-          console.log(`[InboxView] scanDocs complete: ${totalCount} docs`)
-        }
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err))
-      } finally {
-        unsub()
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    runScans()
-
-    return () => {
-      cancelled = true
-      unsub()
-    }
-  }, [workspaceId, projects])
-
-  // readDocs 반영 (trackReadDocs=false면 항상 unread)
-  const enrichedDocs = useMemo<InboxDoc[]>(
-    () => allDocs.map((d) => ({ ...d, isRead: trackReadDocs ? !!readDocs[d.path] : false })),
-    [allDocs, readDocs, trackReadDocs]
+  // projects 맵 — 메모이즈
+  const projectMap = useMemo(
+    () => new Map(projects.map((p) => [p.id, p])),
+    [projects]
   )
+
+  // store docs → InboxDoc 변환 + isRead 계산
+  // C8: deps에서 projects 배열 참조 제거 (projectMap 참조로 대체 — 내용 변경 시만 재계산)
+  const enrichedDocs = useMemo<InboxDoc[]>(() => {
+    if (!workspaceId) return []
+    const result: InboxDoc[] = []
+    for (const doc of allStoreDocs) {
+      const project = projectMap.get(doc.projectId)
+      if (!project) continue
+      // 현재 workspaceId의 프로젝트만 포함
+      if (project.workspaceId !== workspaceId) continue
+      result.push({
+        ...doc,
+        projectName: project.name,
+        title: (doc.frontmatter?.title as string | undefined) ?? doc.name.replace(/\.md$/, ''),
+        isRead: trackReadDocs ? !!readDocs[doc.path] : false,
+      })
+    }
+    return result
+  }, [allStoreDocs, projectMap, workspaceId, readDocs, trackReadDocs])
 
   // 필터 적용
   const filteredDocs = useMemo<InboxDoc[]>(() => {
@@ -174,6 +125,9 @@ export function InboxView({ workspaceId, onOpenDoc }: InboxViewProps) {
     }
     return result
   }, [filteredDocs])
+
+  // C8: loading 상태 = store의 진행률 공유
+  const loading = projectsLoading || (docCountProgress.total > 0 && docCountProgress.done < docCountProgress.total)
 
   if (!workspaceId) {
     return (
@@ -212,12 +166,7 @@ export function InboxView({ workspaceId, onOpenDoc }: InboxViewProps) {
           <StatusMessage variant="loading">{t('inbox.collecting')}</StatusMessage>
         </div>
       )}
-      {!loading && error && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--sp-12)' }}>
-          <StatusMessage variant="error">{humanizeError(t, error)}</StatusMessage>
-        </div>
-      )}
-      {!loading && !error && filteredDocs.length === 0 && (
+      {!loading && filteredDocs.length === 0 && (
         <EmptyState
           icon="📭"
           title={t('inbox.noDocsTitle')}
@@ -225,7 +174,7 @@ export function InboxView({ workspaceId, onOpenDoc }: InboxViewProps) {
         />
       )}
 
-      {!error && GROUP_ORDER.map((group) => {
+      {GROUP_ORDER.map((group) => {
         const items = grouped[group]
         if (items.length === 0) return null
         return (

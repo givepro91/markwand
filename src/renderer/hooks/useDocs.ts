@@ -3,17 +3,36 @@ import { useAppStore } from '../state/store'
 import type { Doc, FsChangeEvent } from '../../preload/types'
 import { isViewable } from '../../lib/viewable'
 
+// B: O(1) per-project selector (Map lookup)
+export function useDocsOf(projectId: string): Doc[] {
+  return useAppStore((s) => s.docsByProject.get(projectId) ?? [])
+}
+
+// B: flat all-docs accessor (cachedFlat 참조)
+export function useAllDocsFlat(): Doc[] {
+  return useAppStore((s) => s.docs)
+}
+
+// B: frontmatter 인덱스 → Array (Set → sorted array)
+export function useFrontmatterIndex(): { statuses: string[]; sources: string[] } {
+  return useAppStore((s) => ({
+    statuses: [...s.frontmatterIndex.statuses].sort(),
+    sources: [...s.frontmatterIndex.sources].sort(),
+  }))
+}
+
 export function useDocs(projectId: string | null) {
-  const docs = useAppStore((s) => s.docs)
   const appendDocs = useAppStore((s) => s.appendDocs)
   const updateDoc = useAppStore((s) => s.updateDoc)
   const removeDoc = useAppStore((s) => s.removeDoc)
   // Follow-up FS9-B — 좌측 파일 트리 로딩 UI 용. SSH 원격은 수 초 걸려 빈 상태가 버그처럼 보이는 문제 해소.
   const [isScanning, setIsScanning] = useState(false)
 
-  const projectDocs = useMemo(
-    () => (projectId ? docs.filter((d) => d.projectId === projectId) : []),
-    [docs, projectId]
+  // B: useDocsOf를 내부 위임으로 사용
+  const projectDocs = useDocsOf(projectId ?? '')
+  const filteredDocs = useMemo(
+    () => (projectId ? projectDocs : []),
+    [projectDocs, projectId]
   )
 
   // Returns an unsubscribe fn so callers (and the effect cleanup) can cancel early.
@@ -25,9 +44,19 @@ export function useDocs(projectId: string | null) {
   const scanDocs = useCallback(
     (pid: string): (() => void) => {
       // 현 프로젝트의 기존 docs 제거(중복 방지). 다른 프로젝트 docs 는 유지.
-      useAppStore.setState((state) => ({
-        docs: state.docs.filter((d) => d.projectId !== pid),
-      }))
+      // C7: Map 기반 제거 — 해당 버킷만 삭제하고 cachedFlat 재계산
+      useAppStore.setState((state) => {
+        const map = new Map(state.docsByProject)
+        map.delete(pid)
+        const remaining: Doc[] = []
+        for (const bucket of map.values()) {
+          for (const doc of bucket) remaining.push(doc)
+        }
+        return {
+          docs: remaining,
+          docsByProject: map,
+        }
+      })
       setIsScanning(true)
 
       const unsub = window.api.project.onDocsChunk((chunk: Doc[]) => {
@@ -77,5 +106,5 @@ export function useDocs(projectId: string | null) {
     return unsubscribe
   }, [updateDoc, removeDoc])
 
-  return { docs: projectDocs, scanDocs, isScanning }
+  return { docs: filteredDocs, scanDocs, isScanning }
 }

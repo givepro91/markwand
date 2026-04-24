@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
-import { rehypeSanitize, rehypeHighlight, remarkGfm, remarkBreaks, sanitizeSchema } from '../lib/markdown'
+import { rehypeSanitize, remarkGfm, remarkBreaks, sanitizeSchema } from '../lib/markdown'
 import 'highlight.js/styles/github.css'
 import 'highlight.js/styles/github-dark.css'
 import { renderMermaid, onMermaidThemeChange } from '../lib/mermaid'
@@ -260,6 +260,20 @@ function makeHeadingComponent(level: 1 | 2 | 3 | 4 | 5 | 6, slugCounter: Map<str
 
 function MarkdownViewerInner({ content, basePath, onDocNavigate, onHeadings, workspaceId }: MarkdownViewerProps) {
   const isSshContext = workspaceId?.startsWith('ssh:') ?? false
+
+  // H8: rehype-highlight dynamic import — 로딩 전(첫 렌더)엔 plain text, import 완료 후 highlight 적용.
+  // rehype-highlight + highlight.js core는 ~1MB이므로 bundle chunk 분리 효과.
+  const [rehypeHighlightPlugin, setRehypeHighlightPlugin] = useState<unknown[]>([])
+  useEffect(() => {
+    let alive = true
+    void (async () => {
+      const mod = await import('rehype-highlight')
+      if (!alive) return
+      setRehypeHighlightPlugin([mod.default])
+    })()
+    return () => { alive = false }
+  }, [])
+
   const resolveRelativePath = useCallback(
     (href: string): string => {
       if (!href || href.startsWith('http://') || href.startsWith('https://')) return href
@@ -372,9 +386,9 @@ function MarkdownViewerInner({ content, basePath, onDocNavigate, onHeadings, wor
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkBreaks]}
         rehypePlugins={[
-          rehypeHighlight,
+          ...rehypeHighlightPlugin,
           [rehypeSanitize, sanitizeSchema],
-        ]}
+        ] as Parameters<typeof ReactMarkdown>[0]['rehypePlugins']}
         components={components}
       >
         {content}

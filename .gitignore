@@ -49,5 +49,5 @@ yarn-error.log*
 .nova-worktrees/
 .claude/worktrees/
 
-# Bench baseline은 머신별로 달라서 로컬 비교용으로만 유지 (Plan §S3)
-scripts/bench-transport.baseline.json
+# Bench baseline은 머신별로 달라서 로컬 비교용으로만 유지 (Plan §S3/S4)
+scripts/*.baseline.json

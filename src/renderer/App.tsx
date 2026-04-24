@@ -124,43 +124,51 @@ export default function App() {
   }, [])
 
   // Composer — docs가 바뀌면 stale 경로 제거.
+  // H7: docs chunk마다 effect 재실행 방지 — 500ms debounce로 마지막 chunk 안정 후 1회 실행.
   // deps는 docs만 — pruneStaleDocSelection이 바뀌지 않는 store 액션이고,
   // selectedDocPaths를 deps에 넣으면 pruning → state 변화 → effect 재실행의 의존 싸이클 유발.
   useEffect(() => {
-    if (useAppStore.getState().selectedDocPaths.size === 0) return
-    if (docs.length === 0) return
-    const available = new Set<string>(docs.map((d) => d.path))
-    const removed = pruneStaleDocSelection(available)
-    if (removed > 0) {
-      toast.info(t('app.staleSelectionRemoved', { count: removed }))
-    }
+    const id = setTimeout(() => {
+      if (useAppStore.getState().selectedDocPaths.size === 0) return
+      if (docs.length === 0) return
+      const available = new Set<string>(docs.map((d) => d.path))
+      const removed = pruneStaleDocSelection(available)
+      if (removed > 0) {
+        toast.info(t('app.staleSelectionRemoved', { count: removed }))
+      }
+    }, 500)
+    return () => clearTimeout(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docs])
 
   // P1.5 — docs가 처음 로드되는 시점에 lastSelectedDocPaths를 stale 필터 후 복원 (1회).
+  // H7: 500ms debounce — 마지막 chunk 안정 후 1회 실행.
   // v0.3.1: 이전 세션에 이미지가 선택돼 있었어도 복원에서 제외 — Composer 대상은 md 전용.
   useEffect(() => {
     if (pendingRestore === null) return
-    if (docs.length === 0) return
-    const available = new Set<string>(docs.map((d) => d.path))
-    const surviving = pendingRestore.filter(
-      (p) => available.has(p) && classifyAsset(p) === 'md'
-    )
-    setPendingRestore(null)
-    if (surviving.length === 0) return
-    useAppStore.getState().replaceDocSelection(surviving)
-    const removed = pendingRestore.length - surviving.length
-    const msg =
-      removed > 0
-        ? t('app.lastSelectionRestoredPartial', { count: surviving.length, missing: removed })
-        : t('app.lastSelectionRestored', { count: surviving.length })
-    toast.info(msg, {
-      action: {
-        label: t('app.lastSelectionClear'),
-        onClick: () => useAppStore.getState().clearDocSelection(),
-      },
-      durationMs: 6000,
-    })
+    const id = setTimeout(() => {
+      if (docs.length === 0) return
+      const available = new Set<string>(docs.map((d) => d.path))
+      const surviving = pendingRestore.filter(
+        (p) => available.has(p) && classifyAsset(p) === 'md'
+      )
+      setPendingRestore(null)
+      if (surviving.length === 0) return
+      useAppStore.getState().replaceDocSelection(surviving)
+      const removed = pendingRestore.length - surviving.length
+      const msg =
+        removed > 0
+          ? t('app.lastSelectionRestoredPartial', { count: surviving.length, missing: removed })
+          : t('app.lastSelectionRestored', { count: surviving.length })
+      toast.info(msg, {
+        action: {
+          label: t('app.lastSelectionClear'),
+          onClick: () => useAppStore.getState().clearDocSelection(),
+        },
+        durationMs: 6000,
+      })
+    }, 500)
+    return () => clearTimeout(id)
   }, [docs, pendingRestore])
 
   // 선택이 바뀔 때마다 prefs에 저장(앱 종료 전에 유실 방지). debounce 500ms.

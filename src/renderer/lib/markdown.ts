@@ -1,10 +1,9 @@
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
-import rehypeHighlight from 'rehype-highlight'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 
-// rehype-highlight는 highlight.js 기반 동기 transformer.
-// shiki(WASM 비동기)는 react-markdown v10의 runSync와 호환되지 않아 제거.
+// H8: rehype-highlight는 dynamic import로 지연 로드 (~1MB 번들 분리).
+// MarkdownViewer.tsx에서 useEffect로 비동기 import 후 rehypePlugins에 주입.
 
 // rehype-sanitize 스키마:
 // - highlight.js가 생성하는 hljs-* className 허용
@@ -38,4 +37,4 @@ export const sanitizeSchema = {
   },
 }
 
-export { rehypeSanitize, rehypeHighlight, remarkGfm, remarkBreaks }
+export { rehypeSanitize, remarkGfm, remarkBreaks }

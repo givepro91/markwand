@@ -1,6 +1,7 @@
-import { useMemo, useState, useEffect, CSSProperties } from 'react'
+import { useState, useEffect, CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppStore, type MetaFilter, type UpdatedRange } from '../state/store'
+import { useFrontmatterIndex } from '../hooks/useDocs'
 import type { Doc } from '../../../src/preload/types'
 
 interface FilterBarProps {
@@ -130,7 +131,7 @@ function toggle<T>(arr: T[], item: T): T[] {
 
 const DEFAULT_FILTER: MetaFilter = { tags: [], statuses: [], sources: [], updatedRange: 'all' }
 
-export function FilterBar({ docs }: FilterBarProps) {
+export function FilterBar({ docs: _docs }: FilterBarProps) {
   const { t } = useTranslation()
   const metaFilter = useAppStore((s) => s.metaFilter)
   const setMetaFilter = useAppStore((s) => s.setMetaFilter)
@@ -146,18 +147,8 @@ export function FilterBar({ docs }: FilterBarProps) {
     })
   }, [])
 
-  const { allStatuses, allSources } = useMemo(() => {
-    const statuses = new Set<string>()
-    const sources = new Set<string>()
-    for (const doc of docs) {
-      if (doc.frontmatter?.status) statuses.add(doc.frontmatter.status)
-      if (doc.frontmatter?.source) sources.add(doc.frontmatter.source)
-    }
-    return {
-      allStatuses: [...statuses].sort(),
-      allSources: [...sources].sort(),
-    }
-  }, [docs])
+  // M8: store frontmatterIndex 구독 — docs 전체 for-loop 제거
+  const { statuses: allStatuses, sources: allSources } = useFrontmatterIndex()
 
   const isActive =
     metaFilter.statuses.length > 0 ||

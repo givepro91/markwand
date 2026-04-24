@@ -11,6 +11,29 @@ import type {
 } from '../../../src/preload/types'
 import { classifyAsset } from '../../lib/viewable'
 
+// C7: 모듈 스코프 캐시 — Zustand 5 identity 보장.
+// appendDocs/setDocs/updateDoc/removeDoc 각 액션에서 이 변수를 갱신한 뒤
+// set({ docs: cachedFlat, ... }) 단일 호출로 구독자에게 notify한다.
+let cachedFlat: Doc[] = []
+
+function buildFlatAndIndex(map: Map<string, Doc[]>): {
+  flat: Doc[]
+  statuses: Set<string>
+  sources: Set<string>
+} {
+  const flat: Doc[] = []
+  const statuses = new Set<string>()
+  const sources = new Set<string>()
+  for (const bucket of map.values()) {
+    for (const doc of bucket) {
+      flat.push(doc)
+      if (doc.frontmatter?.status) statuses.add(doc.frontmatter.status as string)
+      if (doc.frontmatter?.source) sources.add(doc.frontmatter.source as string)
+    }
+  }
+  return { flat, statuses, sources }
+}
+
 export type UpdatedRange = 'today' | '7d' | '30d' | 'all'
 
 export interface MetaFilter {
@@ -32,6 +55,10 @@ interface AppState {
   // 명시적 새로고침 트리거 (사용자가 새로고침 버튼 클릭 시 증가)
   refreshKey: number
   docs: Doc[]
+  // C7: projectId → Doc[] 버킷 맵. O(1) 조회용.
+  docsByProject: Map<string, Doc[]>
+  // C7: appendDocs 시 증분으로 관리하는 frontmatter 인덱스.
+  frontmatterIndex: { statuses: Set<string>; sources: Set<string> }
   viewMode: ViewMode
   sortOrder: SortOrder
   viewLayout: ViewLayout
@@ -71,7 +98,7 @@ interface AppState {
   setDocCountProgress: (progress: { done: number; total: number }) => void
   bumpRefreshKey: () => void
   setDocs: (docs: Doc[]) => void
-  appendDocs: (docs: Doc[]) => void
+  appendDocs: (newDocs: Doc[]) => void
   updateDoc: (path: string, updates: Partial<Doc>) => void
   removeDoc: (path: string) => void
   setViewMode: (mode: ViewMode) => void
@@ -119,6 +146,8 @@ export const useAppStore = create<AppState>((set) => ({
   docCountProgress: { done: 0, total: 0 },
   refreshKey: 0,
   docs: [],
+  docsByProject: new Map(),
+  frontmatterIndex: { statuses: new Set(), sources: new Set() },
   viewMode: 'all',
   sortOrder: 'recent',
   viewLayout: 'grid',
@@ -161,15 +190,81 @@ export const useAppStore = create<AppState>((set) => ({
   setProjectsError: (projectsError) => set({ projectsError }),
   setDocCountProgress: (docCountProgress) => set({ docCountProgress }),
   bumpRefreshKey: () => set((s) => ({ refreshKey: s.refreshKey + 1 })),
-  setDocs: (docs) => set({ docs }),
-  appendDocs: (docs) =>
-    set((state) => ({ docs: [...state.docs, ...docs] })),
+  setDocs: (docs) => {
+    // Map 재빌드 + frontmatterIndex 재빌드 + cachedFlat 재할당
+    const map = new Map<string, Doc[]>()
+    for (const doc of docs) {
+      const bucket = map.get(doc.projectId)
+      if (bucket) bucket.push(doc)
+      else map.set(doc.projectId, [doc])
+    }
+    const { flat, statuses, sources } = buildFlatAndIndex(map)
+    cachedFlat = flat
+    set({
+      docs: cachedFlat,
+      docsByProject: map,
+      frontmatterIndex: { statuses, sources },
+    })
+  },
+  appendDocs: (newDocs) =>
+    set((state) => {
+      // C7: Map 버킷에 append — O(chunk) 아닌 O(N) 재할당 제거
+      const map = state.docsByProject
+      for (const doc of newDocs) {
+        const bucket = map.get(doc.projectId)
+        if (bucket) bucket.push(doc)
+        else map.set(doc.projectId, [doc])
+        // frontmatterIndex 증분 add (감소는 removeDoc에서 재빌드)
+        if (doc.frontmatter?.status) state.frontmatterIndex.statuses.add(doc.frontmatter.status as string)
+        if (doc.frontmatter?.source) state.frontmatterIndex.sources.add(doc.frontmatter.source as string)
+      }
+      cachedFlat = Array.from(map.values()).flat()
+      return {
+        docs: cachedFlat,
+        docsByProject: new Map(map),
+        frontmatterIndex: {
+          statuses: new Set(state.frontmatterIndex.statuses),
+          sources: new Set(state.frontmatterIndex.sources),
+        },
+      }
+    }),
   updateDoc: (path, updates) =>
-    set((state) => ({
-      docs: state.docs.map((d) => (d.path === path ? { ...d, ...updates } : d)),
-    })),
+    set((state) => {
+      // 해당 projectId 버킷에서 path 일치 doc 교체
+      const targetProjectId = state.docs.find((d) => d.path === path)?.projectId
+      if (!targetProjectId) return {}
+      const map = new Map(state.docsByProject)
+      const bucket = map.get(targetProjectId)
+      if (!bucket) return {}
+      map.set(
+        targetProjectId,
+        bucket.map((d) => (d.path === path ? { ...d, ...updates } : d))
+      )
+      cachedFlat = Array.from(map.values()).flat()
+      return {
+        docs: cachedFlat,
+        docsByProject: map,
+      }
+    }),
   removeDoc: (path) =>
-    set((state) => ({ docs: state.docs.filter((d) => d.path !== path) })),
+    set((state) => {
+      const targetProjectId = state.docs.find((d) => d.path === path)?.projectId
+      if (!targetProjectId) return {}
+      const map = new Map(state.docsByProject)
+      const bucket = map.get(targetProjectId)
+      if (!bucket) return {}
+      const newBucket = bucket.filter((d) => d.path !== path)
+      if (newBucket.length === 0) map.delete(targetProjectId)
+      else map.set(targetProjectId, newBucket)
+      cachedFlat = Array.from(map.values()).flat()
+      // frontmatterIndex 보수적 재빌드 (removeDoc은 정확한 감소 불가 → 전체 재스캔)
+      const { statuses, sources } = buildFlatAndIndex(map)
+      return {
+        docs: cachedFlat,
+        docsByProject: map,
+        frontmatterIndex: { statuses, sources },
+      }
+    }),
   setViewMode: (mode) => set({ viewMode: mode }),
   setSortOrder: (order) => set({ sortOrder: order }),
   setViewLayout: (viewLayout) => set({ viewLayout }),
