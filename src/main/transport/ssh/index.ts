@@ -114,6 +114,7 @@ export async function createSshTransport(options: SshConnectOptions): Promise<Ss
 
   // S4 Evaluator M-1 — watcher error 이벤트 → pool onTransportOffline 연결.
   // SshPoller 가 MAX_CONSEC_FAILURES 초과 시 emit('error') 하면 pool 에서 즉시 evict.
+  // S8-2 — project-change 이벤트 → 기존 fs:project-change IPC 채널로 send.
   const wrappedWatcher: typeof watcher = {
     watch(roots, opts) {
       const handle = watcher.watch(roots, opts)
@@ -122,6 +123,15 @@ export async function createSshTransport(options: SshConnectOptions): Promise<Ss
         emitStatus(id, options, 'offline')
         void onTransportOffline(id).catch(() => undefined)
       })
+      // project-change 이벤트가 있으면 구독 (SshPoller 전용 확장 이벤트)
+      try {
+        const extHandle = handle as unknown as { on(e: 'project-change', cb: () => void): void }
+        extHandle.on('project-change', () => {
+          emitProjectChange()
+        })
+      } catch {
+        // project-change 미지원 handle 에서는 skip
+      }
       return handle
     },
   }
@@ -137,6 +147,19 @@ export async function createSshTransport(options: SshConnectOptions): Promise<Ss
     async dispose() {
       await client.dispose()
     },
+  }
+}
+
+// S8-2 — 원격 프로젝트 변경 알림. 기존 fs:project-change IPC 채널 재사용.
+function emitProjectChange(): void {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { BrowserWindow } = require('electron') as typeof import('electron')
+    const wc = BrowserWindow.getAllWindows()[0]?.webContents
+    if (!wc || wc.isDestroyed()) return
+    wc.send('fs:project-change')
+  } catch {
+    // main process 가 아닌 환경(test/CLI) — silent drop
   }
 }
 

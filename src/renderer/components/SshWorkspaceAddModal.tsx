@@ -42,11 +42,13 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
   onSubmit,
 }: Props) {
   const { t } = useTranslation()
+  // S6-1 — 2-step wizard
+  const [step, setStep] = useState<1 | 2>(1)
   const [name, setName] = useState('')
   const [host, setHost] = useState('')
   const [port, setPort] = useState('22')
   const [user, setUser] = useState('')
-  const [authKind, setAuthKind] = useState<'agent' | 'key-file'>('agent')
+  const [authKind, setAuthKind] = useState<'agent' | 'key-file' | ''>('')
   const [keyFilePath, setKeyFilePath] = useState('')
   const [root, setRoot] = useState('')
   // FS9-B — 베타에서는 single 강제. container 는 비활성화(원격 RTT × N 비용 큼 · UX 감사 결과).
@@ -69,10 +71,46 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
   const [pickerError, setPickerError] = useState<string | null>(null)
 
   const nameRef = useRef<HTMLInputElement | null>(null)
+  const step2FirstRef = useRef<HTMLInputElement | null>(null)
   const errorRef = useRef<HTMLDivElement | null>(null)
+  const dialogRef = useRef<HTMLDivElement | null>(null)
+  // S6-2 — trigger 요소 복귀용 ref
+  const triggerRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
-    if (open && nameRef.current) nameRef.current.focus()
+    if (open) {
+      triggerRef.current = document.activeElement as HTMLElement
+      if (step === 1 && nameRef.current) nameRef.current.focus()
+      else if (step === 2 && step2FirstRef.current) step2FirstRef.current.focus()
+    }
+  }, [open, step])
+
+  // S6-2 — focus trap
+  useEffect(() => {
+    if (!open) return
+    const FOCUSABLE = 'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== 'Tab') return
+      const el = dialogRef.current
+      if (!el) return
+      const focusable = Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE))
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown, true)
+    return () => window.removeEventListener('keydown', handleKeyDown, true)
   }, [open])
 
   // 에러 발생 시 focus 이동 (UX Audit A6 반영)
@@ -104,11 +142,12 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
   }, [name, sshConfig])
 
   const reset = useCallback(() => {
+    setStep(1)
     setName('')
     setHost('')
     setPort('22')
     setUser('')
-    setAuthKind('agent')
+    setAuthKind('')
     setKeyFilePath('')
     setRoot('')
     setError(null)
@@ -125,6 +164,8 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
     if (loading) return
     reset()
     onClose()
+    // S6-2 — 모달 닫힌 후 trigger 요소로 focus 복귀
+    setTimeout(() => triggerRef.current?.focus(), 0)
   }, [loading, onClose, reset])
 
   const onKeyDown = useCallback(
@@ -239,6 +280,25 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
     setPickerOpen(false)
   }, [pickerPath])
 
+  // S6-1 — step1 검증 후 step2 이동
+  const handleNext = useCallback(() => {
+    setError(null)
+    if (!name.trim()) { setError(t('ssh.add.name') + ' ' + t('error.keyPathRequired')); return }
+    if (!host.trim()) { setError(t('ssh.add.host') + ' 입력 필요'); return }
+    if (!user.trim()) { setError(t('ssh.add.user') + ' 입력 필요'); return }
+    const portNum = parseInt(port, 10)
+    if (!Number.isFinite(portNum) || portNum < 1 || portNum > 65535) {
+      setError(t('error.portRange'))
+      return
+    }
+    setStep(2)
+  }, [name, host, user, port, t])
+
+  const handlePrev = useCallback(() => {
+    setError(null)
+    setStep(1)
+  }, [])
+
   const handleSubmit = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault()
@@ -247,6 +307,10 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
       const portNum = parseInt(port, 10)
       if (!Number.isFinite(portNum) || portNum < 1 || portNum > 65535) {
         setError(t('error.portRange'))
+        return
+      }
+      if (!authKind) {
+        setError(t('ssh.add.authSection') + ' 선택 필요')
         return
       }
       let auth: SshAuthConfig
@@ -341,29 +405,35 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
   return (
     <div style={backdropStyle} onKeyDown={onKeyDown}>
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="ssh-add-title"
         style={dialogStyle}
       >
-        <h2
-          id="ssh-add-title"
-          style={{ margin: '0 0 var(--sp-2)', fontSize: 'var(--fs-lg)', fontWeight: 'var(--fw-semibold)' }}
-        >
-          {t('ssh.add.title')}
-        </h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--sp-2)' }}>
+          <h2
+            id="ssh-add-title"
+            style={{ margin: 0, fontSize: 'var(--fs-lg)', fontWeight: 'var(--fw-semibold)' }}
+          >
+            {step === 1 ? t('ssh.add.step1Title') : t('ssh.add.step2Title')}
+          </h2>
+          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
+            {t('ssh.add.stepIndicator', { step, total: 2 })}
+          </span>
+        </div>
         <p style={{ ...hintStyle, margin: '0 0 var(--sp-4)' }}>
           {t('ssh.add.description')}
         </p>
 
         {error && (
-          <div role="alert" ref={errorRef} tabIndex={-1} style={errorStyle}>
+          <div id="ssh-add-error" role="alert" ref={errorRef} tabIndex={-1} style={errorStyle}>
             {error}
           </div>
         )}
 
-        {/* Follow-up FS5 — ~/.ssh/config import 섹션 */}
-        {sshConfig && sshConfig.exists && sshConfig.hosts.length > 0 && (
+        {/* Follow-up FS5 — ~/.ssh/config import 섹션 (Step1에만 표시) */}
+        {step === 1 && sshConfig && sshConfig.exists && sshConfig.hosts.length > 0 && (
           <div
             style={{
               padding: 'var(--sp-3)',
@@ -424,74 +494,88 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
             )}
           </div>
         )}
-        {sshConfig && sshConfig.exists && sshConfig.hosts.length === 0 && !sshConfig.permissionWarning && (
+        {step === 1 && sshConfig && sshConfig.exists && sshConfig.hosts.length === 0 && !sshConfig.permissionWarning && (
           <p style={{ ...hintStyle, marginBottom: 'var(--sp-3)' }}>
             {t('ssh.add.configEmpty')}
           </p>
         )}
 
-        <form onSubmit={handleSubmit}>
-          <div style={fieldStyle}>
-            <label htmlFor="ssh-name" style={labelStyle}>
-              {t('ssh.add.name')} <span style={hintStyle}>{t('ssh.add.nameSub')}</span>
-            </label>
-            <input
-              id="ssh-name"
-              ref={nameRef}
-              type="text"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t('ssh.add.namePlaceholder')}
-              style={inputStyle}
-              disabled={loading}
-            />
-          </div>
+        <form onSubmit={step === 1 ? (e) => { e.preventDefault(); handleNext() } : handleSubmit}>
+          {/* S6-1 Step1 — 이름·주소·계정 */}
+          {step === 1 && (
+            <>
+              <div style={fieldStyle}>
+                <label htmlFor="ssh-name" style={labelStyle}>
+                  {t('ssh.add.name')} <span style={hintStyle}>{t('ssh.add.nameSub')}</span>
+                </label>
+                <input
+                  id="ssh-name"
+                  ref={nameRef}
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t('ssh.add.namePlaceholder')}
+                  style={inputStyle}
+                  disabled={loading}
+                  aria-invalid={!name && error ? 'true' : 'false'}
+                />
+              </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: 'var(--sp-3)' }}>
-            <div style={fieldStyle}>
-              <label htmlFor="ssh-host" style={labelStyle}>{t('ssh.add.host')}</label>
-              <input
-                id="ssh-host"
-                type="text"
-                required
-                value={host}
-                onChange={(e) => setHost(e.target.value)}
-                placeholder={t('ssh.add.hostPlaceholder')}
-                style={inputStyle}
-                disabled={loading}
-              />
-            </div>
-            <div style={fieldStyle}>
-              <label htmlFor="ssh-port" style={labelStyle}>{t('ssh.add.port')}</label>
-              <input
-                id="ssh-port"
-                type="number"
-                min={1}
-                max={65535}
-                required
-                value={port}
-                onChange={(e) => setPort(e.target.value)}
-                style={inputStyle}
-                disabled={loading}
-              />
-            </div>
-          </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: 'var(--sp-3)' }}>
+                <div style={fieldStyle}>
+                  <label htmlFor="ssh-host" style={labelStyle}>{t('ssh.add.host')}</label>
+                  <input
+                    id="ssh-host"
+                    type="text"
+                    required
+                    value={host}
+                    onChange={(e) => setHost(e.target.value)}
+                    placeholder={t('ssh.add.hostPlaceholder')}
+                    style={inputStyle}
+                    disabled={loading}
+                    aria-invalid={!host && error ? 'true' : 'false'}
+                    aria-describedby={!host && error ? 'ssh-add-error' : undefined}
+                  />
+                </div>
+                <div style={fieldStyle}>
+                  <label htmlFor="ssh-port" style={labelStyle}>{t('ssh.add.port')}</label>
+                  <input
+                    id="ssh-port"
+                    type="number"
+                    min={1}
+                    max={65535}
+                    required
+                    value={port}
+                    onChange={(e) => setPort(e.target.value)}
+                    style={inputStyle}
+                    disabled={loading}
+                    aria-invalid={error && error.includes('포트') ? 'true' : 'false'}
+                    aria-describedby={error && error.includes('포트') ? 'ssh-add-error' : undefined}
+                  />
+                </div>
+              </div>
 
-          <div style={fieldStyle}>
-            <label htmlFor="ssh-user" style={labelStyle}>{t('ssh.add.user')}</label>
-            <input
-              id="ssh-user"
-              type="text"
-              required
-              value={user}
-              onChange={(e) => setUser(e.target.value)}
-              placeholder={t('ssh.add.userPlaceholder')}
-              style={inputStyle}
-              disabled={loading}
-            />
-          </div>
+              <div style={fieldStyle}>
+                <label htmlFor="ssh-user" style={labelStyle}>{t('ssh.add.user')}</label>
+                <input
+                  id="ssh-user"
+                  type="text"
+                  required
+                  value={user}
+                  onChange={(e) => setUser(e.target.value)}
+                  placeholder={t('ssh.add.userPlaceholder')}
+                  style={inputStyle}
+                  disabled={loading}
+                  aria-invalid={!user && error ? 'true' : 'false'}
+                />
+              </div>
+            </>
+          )}
 
+          {/* S6-1 Step2 — 인증·폴더 */}
+          {step === 2 && (
+            <>
           <fieldset
             style={{ ...fieldStyle, border: 'none', padding: 0, margin: '0 0 var(--sp-3)' }}
           >
@@ -499,6 +583,7 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', marginTop: 'var(--sp-1)' }}>
               <label style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'flex-start', fontSize: 'var(--fs-sm)', cursor: 'pointer' }}>
                 <input
+                  ref={step2FirstRef}
                   type="radio"
                   name="auth"
                   value="agent"
@@ -705,14 +790,29 @@ export const SshWorkspaceAddModal = memo(function SshWorkspaceAddModal({
           >
             <span aria-hidden="true">ℹ</span> {t('ssh.add.modeNote')}
           </p>
+            </>
+          )}
 
+          {/* 버튼 영역 — step별 분기 */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--sp-2)', marginTop: 'var(--sp-4)' }}>
             <Button variant="ghost" size="sm" type="button" onClick={handleClose} disabled={loading}>
               {t('common.cancel')}
             </Button>
-            <Button variant="primary" size="sm" type="submit" disabled={loading}>
-              {loading ? t('ssh.add.submitting') : t('ssh.add.submit')}
-            </Button>
+            {step === 1 && (
+              <Button variant="primary" size="sm" type="submit" disabled={loading || !name || !host || !user}>
+                {t('ssh.add.next')}
+              </Button>
+            )}
+            {step === 2 && (
+              <>
+                <Button variant="ghost" size="sm" type="button" onClick={handlePrev} disabled={loading}>
+                  {t('ssh.add.prev')}
+                </Button>
+                <Button variant="primary" size="sm" type="submit" disabled={loading}>
+                  {loading ? t('ssh.add.submitting') : t('ssh.add.submit')}
+                </Button>
+              </>
+            )}
           </div>
         </form>
       </div>

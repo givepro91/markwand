@@ -6,15 +6,31 @@ import type { Workspace } from '../../../src/preload/types'
 interface WorkspaceManageModalProps {
   workspaces: Workspace[]
   onRemove: (id: string) => Promise<void>
+  /** S5-2 undo — workspace 재등록 콜백. 미전달 시 undo 비활성. */
+  onAdd?: (ws: Workspace) => Promise<void>
   onClose: () => void
 }
 
-export function WorkspaceManageModal({ workspaces, onRemove, onClose }: WorkspaceManageModalProps) {
+export function WorkspaceManageModal({ workspaces, onRemove, onAdd, onClose }: WorkspaceManageModalProps) {
   const { t } = useTranslation()
   const modalRef = useRef<HTMLDivElement | null>(null)
   // 인라인 confirm 상태: null이면 미활성, string이면 해당 id 확인 중
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [removing, setRemoving] = useState(false)
+  // S5-2 — undo 버퍼: 최근 제거된 workspace 10초 보관
+  const [undoBuffer, setUndoBuffer] = useState<Workspace | null>(null)
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearUndoBuffer = useCallback(() => {
+    setUndoBuffer(null)
+    if (undoTimerRef.current) {
+      clearTimeout(undoTimerRef.current)
+      undoTimerRef.current = null
+    }
+  }, [])
+
+  // 컴포넌트 unmount 시 타이머 정리
+  useEffect(() => () => { clearUndoBuffer() }, [clearUndoBuffer])
 
   // 모달 열릴 때 첫 포커서블에 focus
   useEffect(() => {
@@ -60,14 +76,35 @@ export function WorkspaceManageModal({ workspaces, onRemove, onClose }: Workspac
   }, [onClose])
 
   const handleConfirmRemove = useCallback(async (id: string) => {
+    const target = workspaces.find((w) => w.id === id)
     setRemoving(true)
     try {
       await onRemove(id)
       setConfirmId(null)
+      // S5-2 — undo 버퍼에 보관 (이전 버퍼 폐기)
+      if (target) {
+        clearUndoBuffer()
+        setUndoBuffer(target)
+        undoTimerRef.current = setTimeout(() => {
+          setUndoBuffer(null)
+          undoTimerRef.current = null
+        }, 10_000)
+      }
     } finally {
       setRemoving(false)
     }
-  }, [onRemove])
+  }, [onRemove, workspaces, clearUndoBuffer])
+
+  const handleUndo = useCallback(async () => {
+    if (!undoBuffer || !onAdd) return
+    const ws = undoBuffer
+    clearUndoBuffer()
+    try {
+      await onAdd(ws)
+    } catch {
+      // undo 실패는 silent — 이미 서버에서 삭제됨
+    }
+  }, [undoBuffer, clearUndoBuffer, onAdd])
 
   return (
     <div
@@ -211,6 +248,34 @@ export function WorkspaceManageModal({ workspaces, onRemove, onClose }: Workspac
               </li>
             ))}
           </ul>
+        )}
+
+        {/* S5-2 — undo 토스트 (onAdd 가 있을 때만) */}
+        {undoBuffer && onAdd && (
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              marginTop: 'var(--sp-3)',
+              padding: 'var(--sp-2) var(--sp-3)',
+              background: 'var(--bg)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--r-md)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 'var(--sp-2)',
+              fontSize: 'var(--fs-sm)',
+              color: 'var(--text-muted)',
+            }}
+          >
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {undoBuffer.name} {undoBuffer.transport?.type === 'ssh' ? `— ${t('manage.removeSshDataHint')}` : ''}
+            </span>
+            <Button variant="ghost" size="sm" onClick={handleUndo}>
+              {t('manage.undoRemove')}
+            </Button>
+          </div>
         )}
       </div>
     </div>

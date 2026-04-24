@@ -6,12 +6,32 @@
 //   - DC-4 bypass 0: mismatch 반환 시 호출자가 연결 중단. "Remove & re-trust" 만 허용.
 //
 // ~/.ssh/known_hosts 는 v1.1 참조 전용 (Plan Design §4.2). v1.0 은 electron-store 독립 저장.
+//
+// S5-3 — 세션-only 신뢰: 메모리 Map (key = `${hostname}:${port}`) 에 저장.
+//   같은 호스트:포트 의 여러 workspace 가 공유. 앱 재시작 시 휘발.
 
 import { getStore } from '../../services/store'
 import type { SshKnownHostEntry } from '../../services/store'
 import type { HostKeyInfo } from './types'
 
 export type VerifyResult = 'match' | 'mismatch' | 'unknown'
+
+// 세션-only 신뢰 맵: key = "host:port", value = sha256
+const sessionTrust = new Map<string, string>()
+
+function sessionKey(info: Pick<HostKeyInfo, 'host' | 'port'>): string {
+  return `${info.host}:${info.port}`
+}
+
+/** 세션-only 신뢰를 등록한다. 앱 재시작 시 휘발. */
+export function trustSessionOnly(info: Pick<HostKeyInfo, 'host' | 'port' | 'sha256' | 'algorithm'>): void {
+  sessionTrust.set(sessionKey(info), info.sha256)
+}
+
+/** 테스트 전용 — 세션 신뢰 초기화 */
+export function clearSessionTrust(): void {
+  sessionTrust.clear()
+}
 
 export async function getHostKey(workspaceId: string): Promise<SshKnownHostEntry | undefined> {
   const store = await getStore()
@@ -60,8 +80,14 @@ export async function removeHostKey(workspaceId: string): Promise<void> {
  */
 export async function verifyHostKey(
   workspaceId: string,
-  info: Pick<HostKeyInfo, 'sha256' | 'algorithm'>,
+  info: Pick<HostKeyInfo, 'host' | 'port' | 'sha256' | 'algorithm'>,
 ): Promise<VerifyResult> {
+  // 세션-only 신뢰 먼저 확인 (host:port 기준, workspaceId 무관).
+  const sk = sessionKey(info)
+  if (sessionTrust.has(sk)) {
+    return sessionTrust.get(sk) === info.sha256 ? 'match' : 'mismatch'
+  }
+
   const entry = await getHostKey(workspaceId)
   if (!entry) return 'unknown'
   if (entry.sha256 !== info.sha256) return 'mismatch'

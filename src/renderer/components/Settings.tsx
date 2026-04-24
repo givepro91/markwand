@@ -9,6 +9,7 @@ export function Settings() {
   const [open, setOpen] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
   const [sshEnabled, setSshEnabled] = useState(false)
+  const [sshPurgeChecked, setSshPurgeChecked] = useState(false)
   const [language, setLanguage] = useState<Language>((i18n.language as Language) || 'en')
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -25,7 +26,12 @@ export function Settings() {
   const handleSshToggle = useCallback(async (next: boolean) => {
     setSshEnabled(next)
     await window.api.prefs.set('experimentalFeatures.sshTransport', next)
-  }, [])
+    // S5-7 — OFF + purge 체크 시 SSH 데이터 전체 삭제
+    if (!next && sshPurgeChecked) {
+      await window.api.ssh.purgeAll().catch(() => undefined)
+      setSshPurgeChecked(false)
+    }
+  }, [sshPurgeChecked])
 
   const handleLanguageChange = useCallback(
     async (next: Language) => {
@@ -264,6 +270,28 @@ export function Settings() {
                   원격 서버의 마크다운 문서를 읽기 전용으로 볼 수 있습니다. 변경 후 <strong>앱을 재시작</strong>해주세요.
                 </Trans>
               </p>
+              {/* S5-7 — SSH OFF 시 purge 옵션 */}
+              {!sshEnabled && (
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 'var(--sp-2)',
+                    cursor: 'pointer',
+                    marginTop: 'var(--sp-2)',
+                    marginLeft: 'calc(16px + var(--sp-2))',
+                  }}
+                >
+                  <Checkbox
+                    checked={sshPurgeChecked}
+                    onChange={setSshPurgeChecked}
+                    aria-label={t('settings.ssh.purgeOption')}
+                  />
+                  <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
+                    {t('settings.ssh.purgeOption')}
+                  </span>
+                </label>
+              )}
             </div>
           </div>
         </div>

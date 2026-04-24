@@ -36,7 +36,8 @@ export const SshHostKeyPrompt = memo(function SshHostKeyPrompt() {
     }
   }, [current])
 
-  const onTrust = useCallback(() => void respond(true), [respond])
+  const onTrustPermanent = useCallback(() => void respond(true, 'permanent'), [respond])
+  const onTrustSession = useCallback(() => void respond(true, 'session'), [respond])
   const onReject = useCallback(() => void respond(false), [respond])
 
   const onKeyDown = useCallback(
@@ -96,18 +97,16 @@ export const SshHostKeyPrompt = memo(function SshHostKeyPrompt() {
     fontSize: 'var(--fs-xs)',
     wordBreak: 'break-all',
   }
-  const btnStyle = (variant: 'neutral' | 'danger' | 'primary'): CSSProperties => ({
+  // S5-4 — 3 버튼 동일 weight (border/padding). Reject 는 destructive color, primary 스타일 아님.
+  const btnStyle = (variant: 'neutral' | 'danger' | 'ghost'): CSSProperties => ({
     padding: 'var(--sp-2) var(--sp-4)',
     borderRadius: 'var(--r-sm)',
-    border:
-      variant === 'neutral' ? '1px solid var(--border)' : '1px solid transparent',
+    border: '1px solid var(--border)',
     background:
-      variant === 'primary'
-        ? 'var(--accent)'
-        : variant === 'danger'
-          ? 'var(--danger-bg)'
-          : 'var(--bg-hover)',
-    color: variant === 'primary' ? 'white' : 'var(--text)',
+      variant === 'danger'
+        ? 'var(--danger-bg, #fee2e2)'
+        : 'transparent',
+    color: variant === 'danger' ? 'var(--danger-fg, #b91c1c)' : 'var(--text)',
     cursor: 'pointer',
     fontWeight: 'var(--fw-medium)' as CSSProperties['fontWeight'],
   })
@@ -234,23 +233,30 @@ export const SshHostKeyPrompt = memo(function SshHostKeyPrompt() {
             ref={rejectRef}
             type="button"
             onClick={onReject}
-            style={btnStyle('neutral')}
+            style={btnStyle('danger')}
             data-testid="ssh-prompt-reject"
           >
             {isMismatch ? t('ssh.prompt.abort') : t('ssh.prompt.reject')}
           </button>
-          {!isMismatch ? (
-            <button
-              type="button"
-              onClick={onTrust}
-              style={btnStyle('primary')}
-              data-testid="ssh-prompt-trust"
-            >
-              {t('ssh.prompt.trust')}
-            </button>
-          ) : (
-            // mismatch: bypass 없음. 사용자가 명시적 "Remove & re-trust" 원할 때만 허용 (DC-4).
-            null
+          {!isMismatch && (
+            <>
+              <button
+                type="button"
+                onClick={onTrustSession}
+                style={btnStyle('ghost')}
+                data-testid="ssh-prompt-trust-session"
+              >
+                {t('ssh.prompt.trustSession')}
+              </button>
+              <button
+                type="button"
+                onClick={onTrustPermanent}
+                style={btnStyle('neutral')}
+                data-testid="ssh-prompt-trust-permanent"
+              >
+                {t('ssh.prompt.trustPermanent')}
+              </button>
+            </>
           )}
         </div>
       </div>

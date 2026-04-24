@@ -111,8 +111,12 @@ export function parseShellShowItemInput(raw: unknown): { path: string } {
 // ssh:respond-host-key. nonce 는 crypto.randomUUID() (36자 UUID).
 const NonceInput = z.string().uuid()
 
-export function parseSshRespondHostKeyInput(raw: unknown): { nonce: string; trust: boolean } {
-  return z.object({ nonce: NonceInput, trust: z.boolean() }).parse(raw)
+export function parseSshRespondHostKeyInput(raw: unknown): { nonce: string; trust: boolean; persistence?: 'session' | 'permanent' } {
+  return z.object({
+    nonce: NonceInput,
+    trust: z.boolean(),
+    persistence: z.enum(['session', 'permanent']).optional(),
+  }).parse(raw)
 }
 
 // M3 S4 Evaluator M-3 — workspace:add-ssh payload.

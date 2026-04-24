@@ -20,6 +20,8 @@ import { createSshTransport, computeSshTransportId, computeSshWorkspaceId } from
 import type { SshTransport } from '../transport/ssh'
 import type { PromisifiedSftp } from '../transport/ssh/util/promisifiedSftp'
 import { getActiveTransport } from '../transport/resolve'
+import { removeHostKey } from '../transport/ssh/hostKeyDb'
+import { dispose as disposeTransport } from '../transport/pool'
 import type { Workspace, Project, Doc, WorkspaceMode } from '../../preload/types'
 
 // LocalScannerDriver.countDocs 가 patterns/ignore 를 받도록 설계 (§2.2 rev. M1). 기존
@@ -461,6 +463,11 @@ export function registerWorkspaceHandlers(): void {
     // v0.3.0-beta.9 — 로컬 워크스페이스만 watcher 에서 해제 (SSH 는 watcher 대상 아님).
     if (!target.transport || target.transport.type === 'local') {
       removeWatchRoot(target.root)
+    }
+    // S5-1 — SSH 워크스페이스 제거 시 host key 삭제 (GDPR) + pool transport 해제.
+    if (target.transport?.type === 'ssh') {
+      await removeHostKey(target.id).catch(() => undefined)
+      await disposeTransport(target.id).catch(() => undefined)
     }
     invalidateProjectsCache()  // 전체 캐시 무효화 (단일 id 한정 시 stale 위험)
   })

@@ -244,8 +244,10 @@ export interface WindowApi {
   ssh: {
     /** main → renderer: hostKey 확인 요청 (TOFU 또는 mismatch). nonce 로 라우팅 */
     onHostKeyPrompt: (cb: (data: HostKeyPromptPayload) => void) => () => void
-    /** renderer → main: 사용자 응답. trust=true 면 연결 허용, false 면 중단 */
-    respondHostKey: (nonce: string, trust: boolean) => Promise<void>
+    /** renderer → main: 사용자 응답. trust=true 면 연결 허용, false 면 중단. persistence='session' 이면 세션-only 신뢰 */
+    respondHostKey: (nonce: string, trust: boolean, persistence?: 'session' | 'permanent') => Promise<void>
+    /** S5-7 — SSH 데이터 전체 삭제 (host keys + SSH workspaces). */
+    purgeAll: () => Promise<{ removed: number }>
     /** main → renderer: transport 상태 전이 */
     onStatus: (cb: (data: TransportStatusEvent) => void) => () => void
     /** Follow-up FS5 — ~/.ssh/config 호스트 import. feature flag on 필수. */

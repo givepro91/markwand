@@ -92,8 +92,9 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.on('ssh:host-key-prompt', wrapper)
       return () => ipcRenderer.off('ssh:host-key-prompt', wrapper)
     },
-    respondHostKey: (nonce: string, trust: boolean) =>
-      ipcRenderer.invoke('ssh:respond-host-key', { nonce, trust }),
+    respondHostKey: (nonce: string, trust: boolean, persistence?: 'session' | 'permanent') =>
+      ipcRenderer.invoke('ssh:respond-host-key', { nonce, trust, ...(persistence ? { persistence } : {}) }),
+    purgeAll: () => ipcRenderer.invoke('ssh:purge-all'),
     onStatus: (cb: (data: TransportStatusEvent) => void) => {
       const wrapper = (_e: Electron.IpcRendererEvent, data: TransportStatusEvent) => cb(data)
       ipcRenderer.on('transport:status', wrapper)

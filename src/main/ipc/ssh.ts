@@ -22,6 +22,8 @@ import { loadSshConfig } from '../transport/ssh/config'
 import { isSshTransportEnabled, getStore } from '../services/store'
 import { createSshTransport } from '../transport/ssh'
 import { getActiveTransport } from '../transport/resolve'
+import { removeHostKey } from '../transport/ssh/hostKeyDb'
+import { dispose as disposeTransport } from '../transport/pool'
 
 const S_IFMT = 0o170000
 const S_IFDIR = 0o040000
@@ -53,8 +55,8 @@ function mimeFromExt(ext: string): string {
 
 export function registerSshIpcHandlers(): void {
   ipcMain.handle('ssh:respond-host-key', async (_event, raw: unknown) => {
-    const { nonce, trust } = parseSshRespondHostKeyInput(raw)
-    resolveHostKeyPrompt(nonce, trust)
+    const { nonce, trust, persistence } = parseSshRespondHostKeyInput(raw)
+    resolveHostKeyPrompt(nonce, trust, persistence)
   })
 
   // Follow-up FS5 — ~/.ssh/config 호스트 목록 반환. feature flag on 필수.
@@ -125,5 +127,22 @@ export function registerSshIpcHandlers(): void {
     } finally {
       await transport.dispose()
     }
+  })
+
+  // S5-7 — SSH 데이터 전체 삭제. Settings experimental OFF + purge 체크 시 호출.
+  ipcMain.handle('ssh:purge-all', async () => {
+    const store = await getStore()
+    // 모든 SSH 워크스페이스 제거 + host key 삭제
+    const workspaces = store.get('workspaces')
+    const sshWorkspaces = workspaces.filter((w) => w.transport?.type === 'ssh')
+    for (const ws of sshWorkspaces) {
+      await removeHostKey(ws.id).catch(() => undefined)
+      await disposeTransport(ws.id).catch(() => undefined)
+    }
+    const remaining = workspaces.filter((w) => !w.transport || w.transport.type !== 'ssh')
+    store.set('workspaces', remaining)
+    // sshKnownHosts 전체 초기화
+    store.set('sshKnownHosts', {})
+    return { removed: sshWorkspaces.length }
   })
 }

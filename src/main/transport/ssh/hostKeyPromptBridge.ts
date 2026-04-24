@@ -14,13 +14,15 @@ import { randomUUID } from 'node:crypto'
 import type { WebContents } from 'electron'
 import type { HostKeyInfo } from './types'
 import type { HostKeyPromptPayload } from '../../../preload/types'
-import { verifyHostKey, type VerifyResult } from './hostKeyDb'
+import { verifyHostKey, trustSessionOnly, type VerifyResult } from './hostKeyDb'
 
 const DEFAULT_PROMPT_TIMEOUT_MS = 20_000
 
 interface Pending {
   resolve: (trust: boolean) => void
   timer: ReturnType<typeof setTimeout>
+  /** 세션 신뢰 처리를 위한 호스트 정보 */
+  info: Pick<HostKeyInfo, 'host' | 'port' | 'sha256' | 'algorithm'>
 }
 
 const pending = new Map<string, Pending>()
@@ -83,7 +85,7 @@ export async function requestHostKeyTrust(
         entry.resolve(false) // 타임아웃 → reject (DC-4)
       }
     }, timeoutMs)
-    pending.set(nonce, { resolve, timer })
+    pending.set(nonce, { resolve, timer, info })
 
     try {
       activeWebContents?.send('ssh:host-key-prompt', payload)
@@ -99,12 +101,17 @@ export async function requestHostKeyTrust(
 /**
  * Renderer 가 'ssh:respond-host-key' IPC 로 응답하면 호출.
  * nonce 로 pending Promise 찾아 resolve. nonce 없으면 silent drop (지연 도착·중복 응답).
+ * persistence='session' 이면 세션-only 신뢰로 등록 (영구 저장 없음).
  */
-export function resolveHostKeyPrompt(nonce: string, trust: boolean): void {
+export function resolveHostKeyPrompt(nonce: string, trust: boolean, persistence?: 'session' | 'permanent'): void {
   const entry = pending.get(nonce)
   if (!entry) return
   pending.delete(nonce)
   clearTimeout(entry.timer)
+  // 세션-only 신뢰: trustSessionOnly 등록. 영구 신뢰는 requestHostKeyTrust 호출부(index.ts)에서 setHostKey.
+  if (trust && persistence === 'session') {
+    trustSessionOnly(entry.info as Pick<HostKeyInfo, 'host' | 'port' | 'sha256' | 'algorithm'>)
+  }
   entry.resolve(trust === true)
 }
 

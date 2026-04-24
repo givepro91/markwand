@@ -162,7 +162,11 @@
     "experimentalSection": "Beta features",
     "sshTransport": "Remote SSH server",
     "sshTransportHint": "Browse markdown on remote servers (read-only). <1>Restart the app</1> after changing.",
-    "sshTransportTitle": "Enables read-only remote SSH workspaces. Restart the app after changing."
+    "sshTransportTitle": "Enables read-only remote SSH workspaces. Restart the app after changing.",
+    "ssh": {
+      "purgeOption": "Also delete SSH data (host keys & SSH workspaces)",
+      "purgeConfirm": "Delete SSH data? This cannot be undone."
+    }
   },
 
   "manage": {
@@ -171,7 +175,9 @@
     "removeAria": "Remove {{name}}",
     "remove": "Remove",
     "removing": "Removing…",
-    "confirm": "Remove this workspace?"
+    "confirm": "Remove this workspace?",
+    "undoRemove": "Undo",
+    "removeSshDataHint": "Saved host key will be removed"
   },
 
   "project": {
@@ -414,6 +420,11 @@
       "rootBrowseAria": "Browse remote folders",
       "rootHint": "Point to the folder containing markdown documents. You may type it or use <1>Browse</1>.",
       "modeNote": "The selected folder will be registered as one project. Only one remote folder can be added per entry.",
+      "step1Title": "Server details",
+      "step2Title": "Auth & folder",
+      "next": "Next",
+      "prev": "Back",
+      "stepIndicator": "{{step}} / {{total}}",
       "submit": "Connect & add",
       "submitting": "Connecting…",
       "picker": {
@@ -444,6 +455,8 @@
       "noticeMismatch": "If the server was reinstalled: remove it from workspace management and re-add it to trust the new fingerprint.",
       "abort": "Abort",
       "reject": "Don't trust",
+      "trustSession": "Trust this session only",
+      "trustPermanent": "Trust permanently",
       "trust": "Trust & remember",
       "fingerprintAria": "SHA256 fingerprint {{value}}. Verify visually with your server administrator.",
       "fingerprintAriaStored": "Stored SHA256 fingerprint {{value}}",
@@ -481,5 +494,10 @@
     "retry": "Try again",
     "restart": "Restart app",
     "support": "Support"
+  },
+
+  "composer": {
+    "pathWarning": "Absolute paths included — be cautious when sharing externally",
+    "costEstimate": "≈ ${{cost}}"
   }
 }

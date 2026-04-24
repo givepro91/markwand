@@ -9,3 +9,12 @@ export function estimateTokens(bytes: number): number {
 // Claude 200k 기준 경고. 1M 이상은 위험 구간.
 export const TOKEN_WARN = 200_000
 export const TOKEN_CRIT = 1_000_000
+
+// S5-5 — 비용 추정. Claude Sonnet $3 per 1M input tokens 기준 (보수적 표시만, 청구 근거 아님).
+const COST_PER_1M_TOKENS = 3.0
+export function estimateCost(tokens: number): string {
+  if (tokens <= 0) return '0.00'
+  const cost = (tokens / 1_000_000) * COST_PER_1M_TOKENS
+  if (cost < 0.01) return '<0.01'
+  return cost.toFixed(2)
+}

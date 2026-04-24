@@ -12,7 +12,7 @@ export interface UseSshHostKeyPromptResult {
   /** 현재 활성 prompt (없으면 null). */
   current: HostKeyPromptPayload | null
   /** 활성 prompt 에 응답. 큐 첫 항목을 제거 후 main IPC 호출. */
-  respond: (trust: boolean) => Promise<void>
+  respond: (trust: boolean, persistence?: 'session' | 'permanent') => Promise<void>
   /** 대기 큐 길이 (디버깅·e2e 용). */
   queueSize: number
 }
@@ -32,11 +32,11 @@ export function useSshHostKeyPrompt(): UseSshHostKeyPromptResult {
   }, [])
 
   const respond = useCallback(
-    async (trust: boolean) => {
+    async (trust: boolean, persistence?: 'session' | 'permanent') => {
       const head = queue[0]
       if (!head) return
       try {
-        await window.api.ssh.respondHostKey(head.nonce, trust)
+        await window.api.ssh.respondHostKey(head.nonce, trust, persistence)
       } finally {
         setQueue((q) => q.slice(1))
       }

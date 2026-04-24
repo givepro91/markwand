@@ -117,7 +117,7 @@ describe('verifyHostKey — DC-4 bypass 0', () => {
     // 대칭 방어선: info.algorithm="unknown" 허용은 algorithm 비교만. sha256 주 방어선 유지.
     await setHostKey(WS_ID, { ...INFO, algorithm: 'ssh-ed25519' })
     expect(
-      await verifyHostKey(WS_ID, { sha256: 'ATTACKER_HASH', algorithm: 'unknown' }),
+      await verifyHostKey(WS_ID, { host: INFO.host, port: INFO.port, sha256: 'ATTACKER_HASH', algorithm: 'unknown' }),
     ).toBe('mismatch')
   })
 })
