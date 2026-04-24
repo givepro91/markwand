@@ -119,7 +119,10 @@ function ToastItem({ toast: t, onDismiss }: { toast: Toast; onDismiss: () => voi
           cursor: 'pointer',
           fontSize: 'var(--fs-md)',
           lineHeight: 1,
-          padding: '0 4px',
+          // v0.4 H5 — WCAG 2.5.8 터치 타겟 28×28px.
+          padding: 'var(--sp-1) var(--sp-2)',
+          minWidth: '28px',
+          minHeight: '28px',
           opacity: 0.6,
         }}
       >

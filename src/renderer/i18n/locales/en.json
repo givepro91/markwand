@@ -193,6 +193,12 @@
     "composerSelectAria": "Select {{name}} for Composer"
   },
 
+  "filterBar": {
+    "filterToggle": "Toggle filter panel",
+    "filterLabel": "Filters",
+    "activeCount": "{{count}} active filter(s)"
+  },
+
   "filter": {
     "toolbarAria": "Document filters",
     "rangeSection": "Period",

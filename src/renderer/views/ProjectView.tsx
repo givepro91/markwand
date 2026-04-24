@@ -100,8 +100,9 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
 
   // 사이드바 폭 (리사이즈 가능). 180~600 clamp, 기본 260.
   // 긴 파일명(날짜 prefix + 제목)이 잘리지 않도록 사용자가 드래그해 조절.
-  // a11y 제약: 현재 키보드 리사이즈·aria-valuenow/min/max 미지원 (Known Gap).
   const [sidebarWidth, setSidebarWidth] = useState(260)
+  // 키보드 리사이즈 prefs 저장 debounce ref (pointerDown 의 prefs.set 경로와 동일하게 처리)
+  const kbResizeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const resizeStateRef = useRef<{ startX: number; startWidth: number; latest: number } | null>(null)
   const rafRef = useRef<number | null>(null)
   // 언마운트 플래그 — 드래그 중 프로젝트 전환(ProjectView key remount)으로 인한
@@ -195,7 +196,50 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
   useEffect(() => {
     return () => {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
+      if (kbResizeDebounceRef.current != null) clearTimeout(kbResizeDebounceRef.current)
     }
+  }, [])
+
+  // 키보드 사이드바 리사이즈 핸들러 (WCAG 2.1.1 / 2.5.7)
+  // Evaluator S2 M-2: Arrow 키는 `stopPropagation` 으로 separator 에 소비 격리
+  // (상위 RecentDocsPanel 탭 전환 등 Arrow 기반 핸들러와 충돌 방지).
+  const handleSidebarResizeKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    let delta = 0
+    if (e.key === 'ArrowLeft')  delta = e.shiftKey ? -50 : -10
+    else if (e.key === 'ArrowRight') delta = e.shiftKey ? 50 : 10
+    else if (e.key === 'Home') {
+      e.preventDefault()
+      e.stopPropagation()
+      const next = 180
+      setSidebarWidth(next)
+      if (kbResizeDebounceRef.current) clearTimeout(kbResizeDebounceRef.current)
+      kbResizeDebounceRef.current = setTimeout(() => {
+        window.api.prefs.set('sidebarWidth', next).catch(() => {})
+      }, 200)
+      return
+    } else if (e.key === 'End') {
+      e.preventDefault()
+      e.stopPropagation()
+      const next = 600
+      setSidebarWidth(next)
+      if (kbResizeDebounceRef.current) clearTimeout(kbResizeDebounceRef.current)
+      kbResizeDebounceRef.current = setTimeout(() => {
+        window.api.prefs.set('sidebarWidth', next).catch(() => {})
+      }, 200)
+      return
+    } else {
+      return
+    }
+    e.preventDefault()
+    e.stopPropagation()
+    setSidebarWidth((prev) => {
+      const next = Math.max(180, Math.min(600, prev + delta))
+      if (kbResizeDebounceRef.current) clearTimeout(kbResizeDebounceRef.current)
+      kbResizeDebounceRef.current = setTimeout(() => {
+        window.api.prefs.set('sidebarWidth', next).catch(() => {})
+      }, 200)
+      return next
+    })
   }, [])
 
   const loadDoc = useCallback(async (doc: Doc) => {
@@ -495,7 +539,12 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
             }}
           />
           {findResult && (
-            <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+            <span
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}
+            >
               {findResult.total > 0 ? `${findResult.active} / ${findResult.total}` : t('projectView.findNoResults')}
             </span>
           )}
@@ -605,7 +654,12 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
           role="separator"
           aria-orientation="vertical"
           aria-label={t('projectView.sidebarResize')}
+          aria-valuenow={sidebarWidth}
+          aria-valuemin={180}
+          aria-valuemax={600}
+          tabIndex={0}
           onPointerDown={handleSidebarResizeStart}
+          onKeyDown={handleSidebarResizeKeyDown}
           style={{
             width: '6px',
             flexShrink: 0,

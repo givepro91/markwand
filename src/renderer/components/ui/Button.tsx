@@ -31,17 +31,21 @@ const variantStyles: Record<NonNullable<ButtonProps['variant']>, CSSProperties> 
 }
 
 const sizeStyles: Record<NonNullable<ButtonProps['size']>, CSSProperties> = {
+  // v0.4 H5 — WCAG 2.5.8 터치 타겟 최소 24×24px 권장, 실질 28×28px 확보.
+  // minHeight 명시로 flex 부모에서 shrink 되는 경우도 방어.
   sm: {
     padding: 'var(--sp-1) var(--sp-3)',
     fontSize: 'var(--fs-sm)',
-    height: '24px',
-    minWidth: '24px',
+    height: '28px',
+    minWidth: '28px',
+    minHeight: '28px',
   },
   md: {
     padding: 'var(--sp-2) var(--sp-4)',
     fontSize: 'var(--fs-md)',
     height: '32px',
     minWidth: '32px',
+    minHeight: '32px',
   },
 }
 

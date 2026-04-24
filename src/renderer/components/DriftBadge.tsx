@@ -54,7 +54,12 @@ export const DriftBadge = memo(function DriftBadge({ report, compact = false }: 
   }
 
   return (
-    <span aria-label={t('drift.badgeAria')} style={{ display: 'inline-flex', gap: '4px', flexShrink: 0 }}>
+    <span
+      role="status"
+      aria-live="polite"
+      aria-label={t('drift.badgeAria')}
+      style={{ display: 'inline-flex', gap: '4px', flexShrink: 0 }}
+    >
       {parts.map((p, i) => (
         <span
           key={i}

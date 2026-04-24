@@ -1,4 +1,4 @@
-import { useMemo, CSSProperties } from 'react'
+import { useMemo, useState, useEffect, CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppStore, type MetaFilter, type UpdatedRange } from '../state/store'
 import type { Doc } from '../../../src/preload/types'
@@ -135,6 +135,17 @@ export function FilterBar({ docs }: FilterBarProps) {
   const metaFilter = useAppStore((s) => s.metaFilter)
   const setMetaFilter = useAppStore((s) => s.setMetaFilter)
 
+  // 접기 상태 — prefs 에서 복원. undefined(첫 실행)이면 기본 접힘.
+  const [collapsed, setCollapsed] = useState(true)
+  const [prefsLoaded, setPrefsLoaded] = useState(false)
+  useEffect(() => {
+    window.api.prefs.get('filterBarCollapsed').then((v) => {
+      // 명시적으로 false 가 저장된 경우만 펼침. undefined/null/true → 접힘.
+      if (v === false) setCollapsed(false)
+      setPrefsLoaded(true)
+    })
+  }, [])
+
   const { allStatuses, allSources } = useMemo(() => {
     const statuses = new Set<string>()
     const sources = new Set<string>()
@@ -157,6 +168,12 @@ export function FilterBar({ docs }: FilterBarProps) {
     return null
   }
 
+  // 활성 칩 count (기간 + 상태 + 출처)
+  const activeCount =
+    (metaFilter.updatedRange !== 'all' ? 1 : 0) +
+    metaFilter.statuses.length +
+    metaFilter.sources.length
+
   function setRange(r: UpdatedRange) {
     setMetaFilter({ ...metaFilter, updatedRange: r })
   }
@@ -167,6 +184,12 @@ export function FilterBar({ docs }: FilterBarProps) {
 
   function setSources(sources: string[]) {
     setMetaFilter({ ...metaFilter, sources })
+  }
+
+  function toggleCollapsed() {
+    const next = !collapsed
+    setCollapsed(next)
+    window.api.prefs.set('filterBarCollapsed', next).catch(() => {})
   }
 
   const containerStyle: CSSProperties = {
@@ -188,8 +211,121 @@ export function FilterBar({ docs }: FilterBarProps) {
     flexShrink: 0,
   }
 
+  const toggleBtnStyle: CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 'var(--sp-1)',
+    padding: '2px var(--sp-2)',
+    fontSize: 'var(--fs-xs)',
+    fontWeight: isActive
+      ? ('var(--fw-semibold)' as CSSProperties['fontWeight'])
+      : ('var(--fw-normal)' as CSSProperties['fontWeight']),
+    lineHeight: 'var(--lh-tight)',
+    borderRadius: 'var(--r-pill)',
+    border: isActive ? '1.5px solid var(--accent)' : '1.5px solid var(--border)',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap' as CSSProperties['whiteSpace'],
+    background: isActive ? 'var(--accent)' : 'var(--bg-elev)',
+    color: isActive ? 'var(--accent-contrast, #fff)' : 'var(--text-muted)',
+    outline: 'none',
+    flexShrink: 0,
+  }
+
+  const badgeStyle: CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '16px',
+    height: '16px',
+    padding: '0 4px',
+    fontSize: '10px',
+    fontWeight: 'var(--fw-semibold)' as CSSProperties['fontWeight'],
+    lineHeight: 1,
+    borderRadius: '8px',
+    background: 'var(--accent)',
+    color: 'var(--accent-contrast, #fff)',
+  }
+
+  // prefs 로드 전 기본 접힘 렌더 (flash 방지 — state 초기값이 true 이므로 일치)
+  const isCollapsed = !prefsLoaded ? true : collapsed
+
+  if (isCollapsed) {
+    return (
+      <div style={containerStyle} role="toolbar" aria-label={t('filter.toolbarAria')}>
+        {/* 접힘 상태: 토글 버튼 + 배지 + 리셋 */}
+        <button
+          onClick={toggleCollapsed}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              toggleCollapsed()
+            }
+          }}
+          style={toggleBtnStyle}
+          aria-expanded={false}
+          aria-label={t('filterBar.filterToggle')}
+          data-testid="filter-toggle-btn"
+        >
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
+            <path d="M1 2.5h10M3 6h6M5 9.5h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+          </svg>
+          {t('filterBar.filterLabel')}
+          {activeCount > 0 && (
+            <span style={badgeStyle} aria-label={t('filterBar.activeCount', { count: activeCount })}>
+              {activeCount}
+            </span>
+          )}
+        </button>
+        {isActive && (
+          <>
+            <div style={divider} />
+            <button
+              onClick={() => setMetaFilter(DEFAULT_FILTER)}
+              style={{
+                ...chipBase(false),
+                color: 'var(--color-danger)',
+                borderColor: 'var(--color-danger)',
+                flexShrink: 0,
+              }}
+              aria-label={t('filter.resetAria')}
+            >
+              {t('filter.reset')}
+            </button>
+          </>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div style={containerStyle} role="toolbar" aria-label={t('filter.toolbarAria')}>
+      {/* 펼침 상태: 접기 토글 버튼 + 기존 전체 UI */}
+      <button
+        onClick={toggleCollapsed}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            toggleCollapsed()
+          }
+        }}
+        style={toggleBtnStyle}
+        aria-expanded={true}
+        aria-label={t('filterBar.filterToggle')}
+        data-testid="filter-toggle-btn"
+      >
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
+          <path d="M1 2.5h10M3 6h6M5 9.5h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+        </svg>
+        {t('filterBar.filterLabel')}
+        {activeCount > 0 && (
+          <span style={badgeStyle} aria-label={t('filterBar.activeCount', { count: activeCount })}>
+            {activeCount}
+          </span>
+        )}
+      </button>
+
+      <div style={divider} />
+
       {/* Updated range */}
       <span style={sectionLabel}>{t('filter.rangeSection')}</span>
       <div

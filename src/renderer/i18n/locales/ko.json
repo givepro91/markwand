@@ -193,6 +193,12 @@
     "composerSelectAria": "{{name}} Composer 선택"
   },
 
+  "filterBar": {
+    "filterToggle": "필터 패널 토글",
+    "filterLabel": "필터",
+    "activeCount": "활성 필터 {{count}}개"
+  },
+
   "filter": {
     "toolbarAria": "문서 필터",
     "rangeSection": "기간",

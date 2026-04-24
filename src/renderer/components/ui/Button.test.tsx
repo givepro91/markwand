@@ -30,11 +30,11 @@ describe('Button (S0 smoke)', () => {
     expect(onClick).not.toHaveBeenCalled()
   })
 
-  it('sm size 의 height 는 현재 24px (v0.4 S2 에서 28px 로 상향 예정)', () => {
+  it('sm size 의 height 는 28px (WCAG 2.5.8 터치 타겟)', () => {
     renderWithProviders(<Button size="sm">작음</Button>)
     const btn = screen.getByRole('button')
-    // S0 에서는 현재 baseline 캡처만. S2 에서 28px 로 변경 후 이 테스트는 업데이트.
-    expect(btn).toHaveStyle({ height: '24px' })
+    expect(btn).toHaveStyle({ height: '28px' })
+    expect(btn).toHaveStyle({ minWidth: '28px' })
   })
 
   it('aria-label 이 전달된다', () => {
