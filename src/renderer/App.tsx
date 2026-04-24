@@ -350,6 +350,8 @@ export default function App() {
           />
         </main>
         <CommandPalette />
+        {/* Empty-state 에서도 SSH 첫 접속 시 TOFU 모달이 필요 — 폴더 탐색/워크스페이스 추가 단계에서 host key prompt 수신. */}
+        <SshHostKeyPrompt />
         <SshWorkspaceAddModal
           open={sshModalOpen}
           onClose={() => setSshModalOpen(false)}
