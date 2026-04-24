@@ -1,10 +1,10 @@
-# macOS Installation Guide — v0.3.0-beta.7
+# macOS Installation Guide — v0.4.0-beta.1
 
 > [English](./install-macos.en.md) · [한국어](./install-macos.md)
 
 Markwand is currently distributed as a **beta DMG without Apple code-signing or notarization**. Builds are **ad-hoc signed**, so you can open them without touching the terminal.
 
-> Release notes: [release-notes/v0.3.0-beta.7.md](./release-notes/v0.3.0-beta.7.md)
+> Release notes: [release-notes/v0.4.0-beta.1.md](./release-notes/v0.4.0-beta.1.md)
 
 ---
 
@@ -12,24 +12,24 @@ Markwand is currently distributed as a **beta DMG without Apple code-signing or 
 
 Grab the file that matches your Mac:
 
-- **Apple Silicon (M1 / M2 / M3 / M4)**: `Markwand-0.3.0-beta.7-arm64.dmg`
-- **Intel Mac**: `Markwand-0.3.0-beta.7.dmg`
+- **Apple Silicon (M1 / M2 / M3 / M4)**: `Markwand-0.4.0-beta.1-arm64.dmg`
+- **Intel Mac**: `Markwand-0.4.0-beta.1.dmg`
 
 Latest release → https://github.com/givepro91/markwand/releases
 
 ## 2. Verify SHA-256 (optional but recommended)
 
 ```bash
-shasum -a 256 ~/Downloads/Markwand-0.3.0-beta.7-arm64.dmg
+shasum -a 256 ~/Downloads/Markwand-0.4.0-beta.1-arm64.dmg
 # or
-shasum -a 256 ~/Downloads/Markwand-0.3.0-beta.7.dmg
+shasum -a 256 ~/Downloads/Markwand-0.4.0-beta.1.dmg
 ```
 
-Expected hashes (2026-04-22 build):
+Expected hashes (2026-04-24 build):
 
 ```
-463b2420d6d5c28e77f75222d3ab6458423baa05d02cc35a58f39a186260f49a  Markwand-0.3.0-beta.7-arm64.dmg
-345a85928bf00ac990f864a854abd9111e48ed94a6783fcca513bfbde4bcefd4  Markwand-0.3.0-beta.7.dmg
+c019e5ab89089a4755d6d13819cb143f0b7bfdb50bf7aed9144fa6cc5ef4de2b  Markwand-0.4.0-beta.1-arm64.dmg
+b126823e9a770c42505707af0328a2def1ee9d8b20b4d27d8276084937a66b5c  Markwand-0.4.0-beta.1.dmg
 ```
 
 ## 3. Mount the DMG and drag into Applications
@@ -85,7 +85,7 @@ open /Applications/Markwand.app
 ### The DMG itself won't open
 
 ```bash
-xattr -dr com.apple.quarantine ~/Downloads/Markwand-0.3.0-beta.7*.dmg
+xattr -dr com.apple.quarantine ~/Downloads/Markwand-0.4.0-beta.1*.dmg
 ```
 
 Then double-click again to mount.
