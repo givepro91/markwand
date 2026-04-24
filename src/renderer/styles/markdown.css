@@ -189,3 +189,20 @@
   margin-left: calc(var(--sp-6) * -1);
   padding-left: var(--sp-6);
 }
+
+/* Mermaid diagram — foreignObject 텍스트가 SVG viewport 에 clip 되지 않도록 overflow visible.
+   컨테이너는 긴 diagram 을 가로 스크롤로 허용. */
+.mermaid-block {
+  overflow-x: auto;
+}
+
+.mermaid-block svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.mermaid-block svg foreignObject {
+  overflow: visible;
+}

@@ -1,11 +1,35 @@
 let mermaidModule: typeof import('mermaid').default | null = null
 let currentTheme: 'default' | 'dark' = 'default'
 
+// Mermaid 11.x — 옵션 미지정 시 노드 텍스트 측정과 실제 렌더 폭이 불일치해 text 가 노드 밖으로 잘림.
+// 루트 `htmlLabels: true`(v11.12.3+ 에서 flowchart 하위 옵션이 deprecated) + 앱 CSS 와 일치하는
+// fontFamily/fontSize 로 deterministic 측정. flowchart.padding 상향 + useMaxWidth 유지.
+function buildConfig(theme: 'default' | 'dark') {
+  return {
+    startOnLoad: false,
+    theme,
+    htmlLabels: true,
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    themeVariables: {
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      fontSize: '14px',
+    },
+    flowchart: {
+      htmlLabels: true,
+      useMaxWidth: true,
+      padding: 16,
+      nodeSpacing: 50,
+      rankSpacing: 60,
+      diagramPadding: 12,
+    },
+  } as const
+}
+
 async function getMermaid() {
   if (!mermaidModule) {
     const mod = await import('mermaid')
     mermaidModule = mod.default
-    mermaidModule.initialize({ startOnLoad: false, theme: currentTheme })
+    mermaidModule.initialize(buildConfig(currentTheme))
   }
   return mermaidModule
 }
@@ -37,6 +61,6 @@ export async function setMermaidTheme(isDark: boolean): Promise<void> {
   currentTheme = theme
 
   const m = await getMermaid()
-  m.initialize({ startOnLoad: false, theme })
+  m.initialize(buildConfig(theme))
   listeners.forEach((fn) => fn())
 }
