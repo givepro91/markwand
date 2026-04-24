@@ -12,8 +12,17 @@ type ChangeType = FsChangeEvent['type']
 let watcher: FSWatcher | null = null
 const debounceTimers: Map<string, ReturnType<typeof setTimeout>> = new Map()
 let activeWebContents: WebContents | null = null
+// 프로젝트 목록 자동 싱크용 — 감시 중인 workspace root 목록.
+// addDir/unlinkDir 이벤트의 depth 를 계산하려면 어느 root 하위인지 알아야 함.
+// 가장 긴 prefix 매칭으로 소속 root 를 찾아 depth 판정.
+const watchedRoots: Set<string> = new Set()
+// 프로젝트 레벨 디렉토리 변화 debounce — watcher storm(100개 디렉토리 동시 생성) 시
+// 단발성 이벤트로 수렴시켜 renderer 가 불필요한 rescan 을 반복 트리거하지 않게 함.
+let projectChangeTimer: ReturnType<typeof setTimeout> | null = null
+const PROJECT_CHANGE_DEBOUNCE_MS = 500
 
 const DEBOUNCE_MS = 150
+const PROJECT_DEPTH_MAX = 2 // workspace root 기준 depth ≤ 2 의 디렉토리 변화만 프로젝트 목록에 반영
 
 // 디렉토리 자체를 watch에서 통째로 제외해야 한다.
 // chokidar의 ignored가 .md 필터만 하면 node_modules 같은 큰 디렉토리도
@@ -46,6 +55,36 @@ function hasIgnoredSegment(filePath: string): boolean {
     if (IGNORE_DIR_NAMES.has(seg)) return true
   }
   return false
+}
+
+/**
+ * 디렉토리 경로가 watchedRoots 중 하나의 depth ≤ PROJECT_DEPTH_MAX 범위에 속하면 true.
+ * 프로젝트 목록에 반영해야 할 디렉토리만 통과시키기 위한 가드.
+ * depth 0 = root 자체, 1 = root/a, 2 = root/a/b.
+ */
+function isProjectLevelDir(dirPath: string): boolean {
+  for (const root of watchedRoots) {
+    if (!dirPath.startsWith(root)) continue
+    const rel = path.relative(root, dirPath)
+    if (rel === '') continue // root 자체는 프로젝트가 아님
+    const depth = rel.split(path.sep).length
+    if (depth > 0 && depth <= PROJECT_DEPTH_MAX) return true
+  }
+  return false
+}
+
+/**
+ * 프로젝트 레벨 디렉토리 add/unlink 이벤트를 debounce 로 하나의 project-change IPC 로 수렴.
+ * watcher storm (예: git clone 으로 수백 디렉토리 동시 생성) 에서도 단 1회만 renderer 에 전달.
+ */
+function scheduleProjectChange(): void {
+  if (!activeWebContents || activeWebContents.isDestroyed()) return
+  if (projectChangeTimer) clearTimeout(projectChangeTimer)
+  projectChangeTimer = setTimeout(() => {
+    projectChangeTimer = null
+    if (!activeWebContents || activeWebContents.isDestroyed()) return
+    activeWebContents.send('fs:project-change')
+  }, PROJECT_CHANGE_DEBOUNCE_MS)
 }
 
 function sendChange(type: ChangeType, filePath: string): void {
@@ -95,6 +134,7 @@ function sendChange(type: ChangeType, filePath: string): void {
 
 export function startWatcher(roots: string[], webContents: WebContents): void {
   activeWebContents = webContents
+  for (const r of roots) watchedRoots.add(r)
 
   if (watcher) {
     watcher.add(roots)
@@ -127,6 +167,16 @@ export function startWatcher(roots: string[], webContents: WebContents): void {
     .on('add', (p: string) => sendChange('add', p))
     .on('change', (p: string) => sendChange('change', p))
     .on('unlink', (p: string) => sendChange('unlink', p))
+    // 프로젝트 레벨 디렉토리(depth ≤ 2) 생성/삭제 → renderer 가 프로젝트 목록 자동 갱신.
+    // 파일 이벤트와 분리된 'fs:project-change' IPC 로 전달. debounce 500ms 로 storm 방어.
+    .on('addDir', (p: string) => {
+      if (hasIgnoredSegment(p)) return
+      if (isProjectLevelDir(p)) scheduleProjectChange()
+    })
+    .on('unlinkDir', (p: string) => {
+      if (hasIgnoredSegment(p)) return
+      if (isProjectLevelDir(p)) scheduleProjectChange()
+    })
     .on('error', (err: unknown) => {
       // EMFILE/ENOSPC는 fail-soft. 이미 등록된 watch는 유지된다.
       const msg = err instanceof Error ? err.message : String(err)
@@ -136,6 +186,7 @@ export function startWatcher(roots: string[], webContents: WebContents): void {
 }
 
 export function addWatchRoots(roots: string[], webContents?: WebContents): void {
+  for (const r of roots) watchedRoots.add(r)
   if (!watcher) {
     if (webContents) {
       startWatcher(roots, webContents)
@@ -146,6 +197,7 @@ export function addWatchRoots(roots: string[], webContents?: WebContents): void 
 }
 
 export function removeWatchRoot(root: string): void {
+  watchedRoots.delete(root)
   watcher?.unwatch(root)
 }
 
@@ -154,6 +206,11 @@ export async function stopWatcher(): Promise<void> {
     clearTimeout(timer)
   }
   debounceTimers.clear()
+  if (projectChangeTimer) {
+    clearTimeout(projectChangeTimer)
+    projectChangeTimer = null
+  }
+  watchedRoots.clear()
 
   if (watcher) {
     await watcher.close()

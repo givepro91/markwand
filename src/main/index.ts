@@ -15,6 +15,7 @@ import { registerDriftHandlers } from './ipc/drift'
 import { registerSshIpcHandlers } from './ipc/ssh'
 import { setActiveWebContents as setSshActiveWebContents } from './transport/ssh/hostKeyPromptBridge'
 import { getStore } from './services/store'
+import { startWatcher, stopWatcher } from './services/watcher'
 import { parseShellShowItemInput } from './security/validators'
 
 // app:// 프로토콜을 privileged로 등록해야 한다 (보안 정책상 secure 처리)
@@ -97,12 +98,16 @@ async function initializeApp(): Promise<void> {
   const roots = getLocalWorkspaceRoots(workspaces)
   setProtocolWorkspaceRoots(roots)
 
-  await createWindow()
+  const win = await createWindow()
 
-  // v0.1: chokidar 자동 watch는 disable.
-  // ~/develop 같은 큰 워크스페이스를 watch 시작하면 메인 스레드 점유 + IPC 폭발로 UI freeze 유발.
-  // 새 파일 감지는 v0.2의 명시적 새로고침 버튼 또는 좁은 watch 범위로 재도입.
-  void roots
+  // v0.3.0-beta.9 — chokidar watch 활성화.
+  // v0.1 disable 사유("~/develop IPC 폭발")는 현재 watcher.ts 의 방어 장치(IGNORE_DIR_NAMES
+  // node_modules/.git/dist 등 + isViewable .md·이미지만 통과 + ignoreInitial true + 150ms
+  // debounce)로 완화됨. 프로젝트 레벨 디렉토리(depth ≤ 2) 변화도 별도 500ms 수렴 채널로 전달.
+  // 파일 이벤트는 useDocs, 디렉토리 이벤트는 App.tsx 의 onProjectChange 가 소비.
+  if (roots.length > 0 && win) {
+    startWatcher(roots, win.webContents)
+  }
 }
 
 let mainWindow: BrowserWindow | null = null
@@ -144,14 +149,14 @@ app.on('window-all-closed', () => {
   }
 })
 
-// M3 S3 — 앱 종료 시 SSH transport pool 전체 정리 (dispose 역순).
+// M3 S3 — 앱 종료 시 SSH transport pool 전체 정리 (dispose 역순) + local watcher 종료.
 app.on('before-quit', async (event) => {
   const { disposeAll } = await import('./transport/pool')
   try {
     event.preventDefault()
-    await disposeAll()
+    await Promise.all([disposeAll(), stopWatcher()])
   } catch (err) {
-    process.stderr.write(`[main] transport pool disposeAll error: ${String(err)}\n`)
+    process.stderr.write(`[main] before-quit cleanup error: ${String(err)}\n`)
   } finally {
     app.exit(0)
   }

@@ -46,6 +46,13 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.on('fs:change', wrapper)
       return () => ipcRenderer.off('fs:change', wrapper)
     },
+    // S2 — 프로젝트 레벨 디렉토리(workspace root depth ≤ 2) 변화 알림.
+    // main 이 500ms debounce 로 수렴한 단일 이벤트. payload 없음 — 수신 시 프로젝트 목록 재스캔 트리거.
+    onProjectChange: (cb: () => void) => {
+      const wrapper = () => cb()
+      ipcRenderer.on('fs:project-change', wrapper)
+      return () => ipcRenderer.off('fs:project-change', wrapper)
+    },
   },
 
   drift: {

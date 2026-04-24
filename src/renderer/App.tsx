@@ -242,6 +242,28 @@ export default function App() {
     }
   }, [activeWorkspaceId, refreshKey])
 
+  // S2 — 프로젝트 레벨 디렉토리 변화(로컬 watcher)를 받아 자동으로 목록 재스캔 트리거.
+  // main 에서 이미 500ms debounce 수렴한 이벤트. 추가로 renderer 측 2s 쓰로틀은
+  // 사용자가 연속으로 여러 폴더를 조작할 때(복수 git clone 등) 무한 rescan 방어.
+  // SSH 워크스페이스는 SshPoller 주기로 별도 동작 — 본 핸들러는 모든 워크스페이스에 안전.
+  const bumpRefreshKey = useAppStore((s) => s.bumpRefreshKey)
+  useEffect(() => {
+    const api = window.api?.fs?.onProjectChange
+    if (!api) return
+    let throttleTimer: ReturnType<typeof setTimeout> | null = null
+    const unsubscribe = api(() => {
+      if (throttleTimer) return
+      throttleTimer = setTimeout(() => {
+        throttleTimer = null
+        bumpRefreshKey()
+      }, 2000)
+    })
+    return () => {
+      if (throttleTimer) clearTimeout(throttleTimer)
+      unsubscribe()
+    }
+  }, [bumpRefreshKey])
+
   const handleOpenProject = useCallback(
     (project: Project) => {
       setActiveProjectId(project.id)

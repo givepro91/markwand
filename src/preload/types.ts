@@ -217,6 +217,7 @@ export interface WindowApi {
   fs: {
     readDoc: (path: string) => Promise<ReadDocResult>
     onChange: (cb: (data: FsChangeEvent) => void) => () => void
+    onProjectChange: (cb: () => void) => () => void
   }
   drift: {
     verify: (docPath: string, projectRoot: string) => Promise<DriftReport>

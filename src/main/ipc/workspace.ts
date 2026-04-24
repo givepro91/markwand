@@ -8,6 +8,7 @@ import { localTransport } from '../transport/local'
 import type { Transport, FileStat } from '../transport/types'
 import { VIEWABLE_GLOB, classifyAsset } from '../../lib/viewable'
 import { setProtocolWorkspaceRoots } from '../security/protocol'
+import { addWatchRoots, removeWatchRoot } from '../services/watcher'
 import {
   parseScanInput,
   parseScanDocsInput,
@@ -387,9 +388,9 @@ export function registerWorkspaceHandlers(): void {
     // 프로토콜 allowlist 갱신
     setProtocolWorkspaceRoots(getWorkspaceRoots(updated))
 
-    // v0.1: chokidar 자동 watch는 disable (메인 스레드 점유로 freeze 유발).
-    // workspace.add 후 watch는 v0.2의 명시적 새로고침 버튼에서 재도입.
-    void event
+    // v0.3.0-beta.9 — 신규 로컬 워크스페이스 root 를 watcher 에 동적 등록.
+    // watcher 가 아직 기동 전이면 webContents 를 넘겨 startWatcher 가 내부 기동.
+    addWatchRoots([root], event.sender)
 
     return workspace
   })
@@ -457,7 +458,10 @@ export function registerWorkspaceHandlers(): void {
     store.set('workspaces', updated)
 
     setProtocolWorkspaceRoots(getWorkspaceRoots(updated))
-    // chokidar disable이라 removeWatchRoot 불필요
+    // v0.3.0-beta.9 — 로컬 워크스페이스만 watcher 에서 해제 (SSH 는 watcher 대상 아님).
+    if (!target.transport || target.transport.type === 'local') {
+      removeWatchRoot(target.root)
+    }
     invalidateProjectsCache()  // 전체 캐시 무효화 (단일 id 한정 시 stale 위험)
   })
 
