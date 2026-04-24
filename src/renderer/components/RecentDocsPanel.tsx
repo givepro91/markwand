@@ -56,13 +56,19 @@ function formatAbsoluteDate(mtime: number, locale: string): string {
 }
 
 const LIST_ID = 'markwand-recent-docs-list'
+const TAB_DOCS_ID = 'markwand-recent-tab-docs'
+const TAB_IMAGES_ID = 'markwand-recent-tab-images'
+
+type RecentTab = 'docs' | 'images'
 
 export function RecentDocsPanel({ docs, selectedPath, onSelect }: RecentDocsPanelProps) {
   const { t, i18n } = useTranslation()
-  // null = 아직 prefs 응답 전(hydration 미완료). 첫 IPC 응답 후 boolean 으로 확정 →
+  // null = 아직 prefs 응답 전(hydration 미완료). 첫 IPC 응답 후 확정 →
   // "펼쳐진 채 잠깐 보이다가 접히는 flash" 또는 그 반대 모두 방지하기 위해
   // hydration 전에는 패널 자체를 렌더하지 않는다 (아래 if (collapsed === null) return null).
   const [collapsed, setCollapsed] = useState<boolean | null>(null)
+  // S3 — 마지막 선택 탭 prefs 복원. null 동안은 렌더 보류 → 탭 flash 방지.
+  const [activeTab, setActiveTab] = useState<RecentTab | null>(null)
   const [now, setNow] = useState(() => Date.now())
 
   // 분 단위로 now 갱신 — 자정 경계에서 "오늘/어제" 라벨 자동 갱신.
@@ -71,29 +77,43 @@ export function RecentDocsPanel({ docs, selectedPath, onSelect }: RecentDocsPane
     return () => clearInterval(id)
   }, [])
 
-  // 접힘 상태 prefs 복원 (1회). 응답이 없거나 실패하면 기본값(false=펼침) 으로 확정.
+  // 접힘 상태 + 활성 탭 prefs 복원 (병렬). 응답 실패/미설정 시 기본값(펼침, 'docs').
   useEffect(() => {
     let alive = true
-    window.api.prefs.get('recentDocsCollapsed')
-      .then((v) => {
-        if (!alive) return
-        setCollapsed(typeof v === 'boolean' ? v : false)
-      })
-      .catch(() => {
-        if (alive) setCollapsed(false)
-      })
+    Promise.all([
+      window.api.prefs.get('recentDocsCollapsed').catch(() => undefined),
+      window.api.prefs.get('recentDocsTab').catch(() => undefined),
+    ]).then(([c, tab]) => {
+      if (!alive) return
+      setCollapsed(typeof c === 'boolean' ? c : false)
+      setActiveTab(tab === 'images' ? 'images' : 'docs')
+    })
     return () => { alive = false }
   }, [])
 
-  const recent = useMemo(() => {
+  const { recentDocs, recentImages } = useMemo(() => {
     const cutoff = now - SEVEN_DAYS_MS
-    return docs
-      .filter((d) => d.mtime >= cutoff && classifyAsset(d.path) === 'md')
-      .sort((a, b) => b.mtime - a.mtime)
+    const rd: Doc[] = []
+    const ri: Doc[] = []
+    for (const d of docs) {
+      if (d.mtime < cutoff) continue
+      const kind = classifyAsset(d.path)
+      if (kind === 'md') rd.push(d)
+      else if (kind === 'image') ri.push(d)
+    }
+    rd.sort((a, b) => b.mtime - a.mtime)
+    ri.sort((a, b) => b.mtime - a.mtime)
+    return { recentDocs: rd, recentImages: ri }
   }, [docs, now])
 
-  const visible = recent.slice(0, MAX_ITEMS)
-  const overflow = recent.length - visible.length
+  const currentList = activeTab === 'images' ? recentImages : recentDocs
+  const visible = currentList.slice(0, MAX_ITEMS)
+  const overflow = currentList.length - visible.length
+
+  const selectTab = useCallback((tab: RecentTab) => {
+    setActiveTab(tab)
+    window.api.prefs.set('recentDocsTab', tab).catch(() => undefined)
+  }, [])
 
   const toggle = useCallback(() => {
     setCollapsed((prev) => {
@@ -104,9 +124,9 @@ export function RecentDocsPanel({ docs, selectedPath, onSelect }: RecentDocsPane
   }, [])
 
   // hydration 미완료 — flash 방지를 위해 prefs 응답 전엔 아예 렌더하지 않는다.
-  if (collapsed === null) return null
-  // 빈 상태일 때는 섹션 자체를 숨겨 시각 노이즈를 줄인다.
-  if (recent.length === 0) return null
+  if (collapsed === null || activeTab === null) return null
+  // 양 탭 모두 비어있을 때만 섹션 자체를 숨긴다. 한쪽만 있으면 탭 전환으로 탐색 가능.
+  if (recentDocs.length === 0 && recentImages.length === 0) return null
 
   return (
     <div
@@ -153,23 +173,101 @@ export function RecentDocsPanel({ docs, selectedPath, onSelect }: RecentDocsPane
             border: '1px solid var(--border)',
           }}
         >
-          {recent.length}
+          {recentDocs.length + recentImages.length}
         </span>
       </button>
 
       {!collapsed && (
-        <ul
-          id={LIST_ID}
-          role="list"
-          style={{
-            listStyle: 'none',
-            margin: 0,
-            padding: '0 0 var(--sp-2) 0',
-            maxHeight: '40vh',
-            overflowY: 'auto',
-          }}
-        >
-          {visible.map((doc) => {
+        <>
+          <div
+            role="tablist"
+            aria-label={t('projectView.recentDocs.tablistAria')}
+            style={{
+              display: 'flex',
+              gap: '2px',
+              padding: '0 var(--sp-3) var(--sp-1) var(--sp-3)',
+            }}
+          >
+            {([
+              { id: 'docs' as RecentTab, labelKey: 'projectView.recentDocs.tabDocs', count: recentDocs.length, panelId: LIST_ID, tabId: TAB_DOCS_ID },
+              { id: 'images' as RecentTab, labelKey: 'projectView.recentDocs.tabImages', count: recentImages.length, panelId: LIST_ID, tabId: TAB_IMAGES_ID },
+            ]).map((tab) => {
+              const isActive = activeTab === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  id={tab.tabId}
+                  role="tab"
+                  type="button"
+                  aria-selected={isActive}
+                  aria-controls={tab.panelId}
+                  tabIndex={isActive ? 0 : -1}
+                  onClick={() => selectTab(tab.id)}
+                  onKeyDown={(e) => {
+                    // WAI-ARIA Tabs 키보드 패턴 — ArrowLeft/Right 로 탭 전환 + 포커스 이동.
+                    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                      e.preventDefault()
+                      const next: RecentTab = activeTab === 'docs' ? 'images' : 'docs'
+                      selectTab(next)
+                      const nextId = next === 'docs' ? TAB_DOCS_ID : TAB_IMAGES_ID
+                      document.getElementById(nextId)?.focus()
+                    }
+                  }}
+                  style={{
+                    padding: 'var(--sp-1) var(--sp-2)',
+                    border: 'none',
+                    borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+                    background: 'transparent',
+                    color: isActive ? 'var(--text)' : 'var(--text-muted)',
+                    fontSize: 'var(--fs-xs)',
+                    fontWeight: isActive ? 'var(--fw-semibold)' : 'var(--fw-normal)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--sp-1)',
+                  }}
+                >
+                  <span>{t(tab.labelKey)}</span>
+                  <span
+                    style={{
+                      fontSize: '10px',
+                      color: 'var(--text-muted)',
+                      background: isActive ? 'var(--bg-elev)' : 'transparent',
+                      padding: '0 4px',
+                      borderRadius: 'var(--r-sm)',
+                    }}
+                  >
+                    {tab.count}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          <ul
+            id={LIST_ID}
+            role="tabpanel"
+            aria-labelledby={activeTab === 'images' ? TAB_IMAGES_ID : TAB_DOCS_ID}
+            style={{
+              listStyle: 'none',
+              margin: 0,
+              padding: '0 0 var(--sp-2) 0',
+              maxHeight: '40vh',
+              overflowY: 'auto',
+            }}
+          >
+            {visible.length === 0 && (
+              <li
+                style={{
+                  padding: 'var(--sp-2) var(--sp-3)',
+                  fontSize: 'var(--fs-xs)',
+                  color: 'var(--text-muted)',
+                  fontStyle: 'italic',
+                }}
+              >
+                {t(activeTab === 'images' ? 'projectView.recentDocs.emptyImages' : 'projectView.recentDocs.emptyDocs')}
+              </li>
+            )}
+            {visible.map((doc) => {
             const isActive = doc.path === selectedPath
             const relative = formatRelativeDay(doc.mtime, now, t)
             const absolute = formatAbsoluteDate(doc.mtime, i18n.language)
@@ -224,19 +322,20 @@ export function RecentDocsPanel({ docs, selectedPath, onSelect }: RecentDocsPane
               </li>
             )
           })}
-          {overflow > 0 && (
-            <li
-              style={{
-                padding: 'var(--sp-1) var(--sp-3)',
-                fontSize: 'var(--fs-xs)',
-                color: 'var(--text-muted)',
-                fontStyle: 'italic',
-              }}
-            >
-              {t('projectView.recentDocs.moreCount', { count: overflow })}
-            </li>
-          )}
-        </ul>
+            {overflow > 0 && (
+              <li
+                style={{
+                  padding: 'var(--sp-1) var(--sp-3)',
+                  fontSize: 'var(--fs-xs)',
+                  color: 'var(--text-muted)',
+                  fontStyle: 'italic',
+                }}
+              >
+                {t('projectView.recentDocs.moreCount', { count: overflow })}
+              </li>
+            )}
+          </ul>
+        </>
       )}
     </div>
   )
