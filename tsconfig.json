@@ -16,7 +16,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/renderer/*"]
-    }
+    },
+    "types": ["vite/client", "@testing-library/jest-dom"]
   },
   "include": ["src/renderer", "src/preload/types.ts"]
 }
