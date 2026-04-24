@@ -191,9 +191,16 @@
 }
 
 /* Mermaid diagram — foreignObject 텍스트가 SVG viewport 에 clip 되지 않도록 overflow visible.
-   컨테이너는 긴 diagram 을 가로 스크롤로 허용. */
+   컨테이너는 긴 diagram 을 가로 스크롤로 허용.
+   v0.4 H9 — IntersectionObserver 렌더 전 min-height 로 CLS 완화 (Plan S1 §markdown.css).
+   svg 렌더 완료 후엔 `:has(svg)` 로 min-height 제거 — 짧은 diagram 아래 과도한
+   공백 노출 방지 (Evaluator S1 mn-2 반영). Chromium 130 에서 `:has()` 지원. */
 .mermaid-block {
   overflow-x: auto;
+  min-height: 240px;
+}
+.mermaid-block:has(svg) {
+  min-height: 0;
 }
 
 .mermaid-block svg {

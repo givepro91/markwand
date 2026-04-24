@@ -18,6 +18,10 @@
   --r-xl: 12px;
   --r-pill: 999px;
 
+  /* v0.4 — accent 배경 위 고대비 텍스트 색 (selection / primary button / chip).
+     light/dark 모두 흰색이 일관적으로 accent 와 ≥4.5:1 확보. */
+  --accent-contrast: #ffffff;
+
   /* typography */
   --fs-xs: 11px;
   --fs-sm: 12px;

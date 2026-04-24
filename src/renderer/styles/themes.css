@@ -40,8 +40,11 @@
   --text-muted:    #7d8590;
   --border:        #30363d;
   --border-muted:  #21262d;
-  --accent:        #388bfd;
-  --accent-hover:  #58a6ff;
+  /* v0.4 C6 — white text (fs-sm 12-14px) on --accent 대비 4.5:1 확보.
+     before: #388bfd on white = 3.41:1 FAIL
+     after:  #1f6feb on white = 5.05:1 PASS */
+  --accent:        #1f6feb;
+  --accent-hover:  #388bfd;
   --code-bg:       #161b22;
   --badge-bg:      #388bfd1a;
   --badge-text:    #79c0ff;

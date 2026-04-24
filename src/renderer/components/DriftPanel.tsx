@@ -194,7 +194,7 @@ export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProp
       style={{
         border: '1px solid var(--border)',
         borderRadius: 'var(--r-md)',
-        background: hasIssues ? 'var(--bg-elev, #fafaf9)' : 'transparent',
+        background: hasIssues ? 'var(--bg-elev)' : 'transparent',
         marginBottom: 'var(--sp-4)',
         overflow: 'hidden',
       }}
@@ -271,8 +271,8 @@ export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProp
               style={{
                 fontSize: 'var(--fs-xs)',
                 padding: '1px 6px',
-                borderRadius: '10px',
-                background: 'var(--bg-elev-2, #f5f5f4)',
+                borderRadius: 'var(--r-pill)',
+                background: 'var(--bg-elev)',
                 color: 'var(--text-muted)',
               }}
             >
@@ -336,7 +336,7 @@ export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProp
               style={{
                 fontSize: 'var(--fs-xs)',
                 color: 'var(--text-muted)',
-                background: 'var(--bg-elev, #fafaf9)',
+                background: 'var(--bg-elev)',
                 padding: 'var(--sp-2) var(--sp-3)',
                 borderRadius: 'var(--r-sm)',
                 marginBottom: 'var(--sp-2)',
@@ -490,9 +490,9 @@ function DriftRefRow({ ref_, projectRoot, ignored, onToggleIgnore, onJump }: Dri
             flexShrink: 0,
             fontSize: 'var(--fs-xs)',
             color: 'var(--text-muted)',
-            background: 'var(--bg-elev, #fafaf9)',
+            background: 'var(--bg-elev)',
             padding: '1px 6px',
-            borderRadius: '8px',
+            borderRadius: 'var(--r-lg)',
           }}
         >
           {t('drift.folderLabel')}
@@ -529,7 +529,7 @@ function DriftRefRow({ ref_, projectRoot, ignored, onToggleIgnore, onJump }: Dri
       <button
         type="button"
         onClick={onToggleIgnore}
-        style={{ ...actionBtn, background: ignored ? 'var(--bg-elev, #fafaf9)' : 'transparent' }}
+        style={{ ...actionBtn, background: ignored ? 'var(--bg-elev)' : 'transparent' }}
         aria-pressed={ignored}
       >
         {ignored ? t('drift.unignore') : t('drift.ignore')}

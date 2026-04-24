@@ -10,8 +10,8 @@
 html, body {
   height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: var(--fs-md);
+  line-height: var(--lh-normal);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -48,10 +48,13 @@ body {
 /* 텍스트 선택 */
 ::selection {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-contrast);
 }
 
-/* 문서 내 검색 하이라이트 (CSS Custom Highlight API) */
+/* 문서 내 검색 하이라이트 (CSS Custom Highlight API).
+   주의: CSS Custom Highlight API 는 var(--token) 해석을 지원하지 않아
+   리터럴을 사용한다. v0.5 다크 대비 개선 필요 시 JS 생성 stylesheet
+   (`lib/highlightTheme.ts`) 로 전환 예정. */
 ::highlight(markwand-find-match) {
   background-color: #ffd54f;
   color: #000;

@@ -96,6 +96,14 @@ const MermaidBlock = memo(function MermaidBlock({ code }: { code: string }) {
 })
 
 // 외부 배지(private repo 404) 등 로드 실패 이미지를 깨진 아이콘 대신 alt 뱃지로 표시
+// v0.4 H9 — 이미지 로드 전 `aspect-ratio: 16/9` placeholder 로 CLS 완화.
+// onLoad 직후 naturalWidth/Height 로 실제 비율 swap. CSS `attr()` advanced
+// syntax 는 Chromium 130 (Electron 33) 미지원 → JS 경로 단일 적용 (Plan S1).
+function swapAspectRatioOnLoad(img: HTMLImageElement | null) {
+  if (!img || !img.naturalWidth || !img.naturalHeight) return
+  img.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`
+}
+
 const SafeImage = memo(function SafeImage({
   src,
   alt,
@@ -107,6 +115,8 @@ const SafeImage = memo(function SafeImage({
 }) {
   const { t } = useTranslation()
   const [failed, setFailed] = useState(false)
+  const safeImgRef = useRef<HTMLImageElement>(null)
+  const handleSafeImageLoad = useCallback(() => swapAspectRatioOnLoad(safeImgRef.current), [])
   if (failed) {
     return (
       <span
@@ -127,10 +137,12 @@ const SafeImage = memo(function SafeImage({
   }
   return (
     <img
+      ref={safeImgRef}
       src={src}
       alt={alt}
       {...extraProps}
-      style={{ maxWidth: '100%' }}
+      style={{ maxWidth: '100%', width: '100%', height: 'auto', aspectRatio: '16 / 9' }}
+      onLoad={handleSafeImageLoad}
       onError={() => setFailed(true)}
     />
   )
@@ -152,6 +164,8 @@ const SshImage = memo(function SshImage({
   const { t } = useTranslation()
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
+  const sshImgRef = useRef<HTMLImageElement>(null)
+  const handleSshImageLoad = useCallback(() => swapAspectRatioOnLoad(sshImgRef.current), [])
 
   useEffect(() => {
     let cancelled = false
@@ -202,10 +216,12 @@ const SshImage = memo(function SshImage({
   }
   return (
     <img
+      ref={sshImgRef}
       src={blobUrl}
       alt={alt}
       {...extraProps}
-      style={{ maxWidth: '100%' }}
+      style={{ maxWidth: '100%', width: '100%', height: 'auto', aspectRatio: '16 / 9' }}
+      onLoad={handleSshImageLoad}
       onError={() => setFailed(true)}
     />
   )

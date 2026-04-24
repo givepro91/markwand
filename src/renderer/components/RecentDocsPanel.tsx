@@ -71,10 +71,24 @@ export function RecentDocsPanel({ docs, selectedPath, onSelect }: RecentDocsPane
   const [activeTab, setActiveTab] = useState<RecentTab | null>(null)
   const [now, setNow] = useState(() => Date.now())
 
-  // 분 단위로 now 갱신 — 자정 경계에서 "오늘/어제" 라벨 자동 갱신.
+  // v0.4 M9 — 60s setInterval 대신 **다음 자정까지 단일 setTimeout + 재귀 스케줄**.
+  // "오늘/어제" 라벨은 자정에만 바뀌므로 매 분 useMemo 재실행 불필요. 전체 docs
+  // for-loop × 60 회/시간 부담 제거. 페이지 복귀 시 drift 방지를 위해 마진 100ms.
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000)
-    return () => clearInterval(id)
+    let timeout: ReturnType<typeof setTimeout> | undefined
+    const scheduleNextMidnight = () => {
+      const next = new Date()
+      next.setHours(24, 0, 0, 0)
+      const delay = Math.max(1000, next.getTime() - Date.now() + 100)
+      timeout = setTimeout(() => {
+        setNow(Date.now())
+        scheduleNextMidnight()
+      }, delay)
+    }
+    scheduleNextMidnight()
+    return () => {
+      if (timeout) clearTimeout(timeout)
+    }
   }, [])
 
   // 접힘 상태 + 활성 탭 prefs 복원 (병렬). 응답 실패/미설정 시 기본값(펼침, 'docs').
@@ -314,6 +328,9 @@ export function RecentDocsPanel({ docs, selectedPath, onSelect }: RecentDocsPane
                       fontSize: 'var(--fs-xs)',
                       color: 'var(--text-muted)',
                       whiteSpace: 'nowrap',
+                      // v0.4 M9 — 상대일 라벨("오늘/어제/N일 전") 가변 폭으로 인한 좌측 레이아웃 CLS 차단.
+                      minWidth: '5ch',
+                      textAlign: 'right',
                     }}
                   >
                     {relative}
