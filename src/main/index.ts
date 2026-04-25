@@ -60,6 +60,9 @@ async function createWindow(): Promise<BrowserWindow> {
     win.webContents.openDevTools({ mode: 'detach' })
   }
   win.webContents.on('console-message', (_event, level, message, line, source) => {
+    // DevTools UI 자체에서 발생한 노이즈(Autofill CDP 미구현 · VE language-mismatch 등) 는 무시.
+    // source 가 `devtools://...` 인 경우는 우리 앱이 아닌 Chromium DevTools UI 내부 에러.
+    if (source.startsWith('devtools://')) return
     const lvl = ['VERBOSE', 'INFO', 'WARN', 'ERROR'][level] ?? 'LOG'
     process.stderr.write(`[renderer ${lvl}] ${message} (${source}:${line})\n`)
   })
@@ -101,12 +104,14 @@ async function initializeApp(): Promise<void> {
   const win = await createWindow()
 
   // v0.3.0-beta.9 — chokidar watch 활성화.
-  // v0.1 disable 사유("~/develop IPC 폭발")는 현재 watcher.ts 의 방어 장치(IGNORE_DIR_NAMES
-  // node_modules/.git/dist 등 + isViewable .md·이미지만 통과 + ignoreInitial true + 150ms
-  // debounce)로 완화됨. 프로젝트 레벨 디렉토리(depth ≤ 2) 변화도 별도 500ms 수렴 채널로 전달.
-  // 파일 이벤트는 useDocs, 디렉토리 이벤트는 App.tsx 의 onProjectChange 가 소비.
+  // 2026-04-25 회귀 fix: chokidar 초기 walk 가 libuv 스레드풀(4) 을 점거해 첫
+  // workspace:scan 의 fs.access 가 4500배 느려지던 문제(swk 15k 디렉토리에서 131s 측정).
+  // startWatcher 호출을 첫 IPC 스캔이 끝날 때까지 defer — 5s 마진은 거의 모든 워크스페이스
+  // 첫 스캔 완료를 커버. 그 동안의 변경은 사용자가 새로고침으로 동기화.
   if (roots.length > 0 && win) {
-    startWatcher(roots, win.webContents)
+    setTimeout(() => {
+      if (!win.isDestroyed()) startWatcher(roots, win.webContents)
+    }, 5_000).unref()
   }
 }
 

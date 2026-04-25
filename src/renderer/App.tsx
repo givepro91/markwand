@@ -2,7 +2,8 @@ import { useEffect, useCallback, useState, useRef, lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { loadLanguageFromPrefs } from './i18n'
 import { Sidebar } from './components/Sidebar'
-import { EmptyState, StatusMessage, ToastHost, toast } from './components/ui'
+import { Button, EmptyState, StatusMessage, ToastHost, toast } from './components/ui'
+import { humanizeError } from './lib/humanizeError'
 import { ComposerTray } from './components/ComposerTray'
 import { ComposerOnboarding } from './components/ComposerOnboarding'
 import { CommandPalette } from './components/CommandPalette'
@@ -203,11 +204,34 @@ export default function App() {
     const scanCall = refreshKey > 0
       ? window.api.workspace.refresh(activeWorkspaceId)
       : window.api.workspace.scan(activeWorkspaceId)
+    // 렌더러 안전망 — main 측 readyTimeout 20s 가 삼켜지는 엣지(pool/SFTP stuck) 대비.
+    // SSH 만 적용: 로컬 스캔은 chokidar 초기 walk 와 경쟁해 합법적으로 분 단위로 걸릴 수 있음
+    // (실측: swk 128s). 로컬은 "오래 걸림" 이지 "hang" 이 아니므로 타임아웃 불요 — 대신
+    // Sidebar 로 언제든 탈출 가능(오버레이가 main 내부로 옮겨져 항상 조작 가능).
+    const isSshWorkspace = activeWorkspaceId.startsWith('ssh:')
+    const SCAN_TIMEOUT_MS = 30_000
+    let timeoutId: ReturnType<typeof setTimeout> | null = isSshWorkspace
+      ? setTimeout(() => {
+          if (cancelled) return
+          timeoutId = null
+          useAppStore.getState().setProjectsError('SCAN_TIMEOUT')
+          useAppStore.getState().setProjectsLoading(false)
+        }, SCAN_TIMEOUT_MS)
+      : null
+    const clearScanTimeout = () => {
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId)
+        timeoutId = null
+      }
+    }
     scanCall
       .then(async (scanned) => {
+        clearScanTimeout()
         if (cancelled) return
         useAppStore.getState().setProjects(scanned)
         useAppStore.getState().setProjectsLoading(false)
+        // 타임아웃 뒤 뒤늦게 성공한 경우 에러 오버레이 자동 해제.
+        useAppStore.getState().setProjectsError(null)
         useAppStore.getState().setDocCountProgress({ done: 0, total: scanned.length })
 
         // docCount는 throttled로 채운다 (동시성 3, 매 호출 사이 16ms idle로 메인 스레드 양보).
@@ -240,7 +264,10 @@ export default function App() {
         await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()))
       })
       .catch((err) => {
+        clearScanTimeout()
         if (cancelled) return
+        // 타임아웃이 먼저 발동해 projectsError 가 세팅된 경우(여기가 늦게 도착) 덮어쓰지 않음.
+        if (useAppStore.getState().projectsError) return
         useAppStore.getState().setProjectsError(
           err instanceof Error ? err.message : String(err)
         )
@@ -248,6 +275,7 @@ export default function App() {
       })
     return () => {
       cancelled = true
+      clearScanTimeout()
     }
   }, [activeWorkspaceId, refreshKey])
 
@@ -339,6 +367,7 @@ export default function App() {
   )
 
   const projectsLoading = useAppStore((s) => s.projectsLoading)
+  const projectsError = useAppStore((s) => s.projectsError)
   const docCountProgress = useAppStore((s) => s.docCountProgress)
 
   // 인덱싱 완료 감지 → ⌘K 힌트 토스트 1회 노출
@@ -359,12 +388,26 @@ export default function App() {
     }
   }, [docCountProgress, cmdkHintSeen, setCmdkHintSeen])
   const isDocCounting = docCountProgress.total > 0 && docCountProgress.done < docCountProgress.total
-  // 풀스크린 오버레이 — 워크스페이스 분석부터 docCount 진행률 100% 도달까지 유지.
-  // 진행률(%)을 사용자가 명확히 볼 수 있도록 docCount 단계도 포함.
+  // 메인 영역 한정 오버레이 — 워크스페이스 분석부터 docCount 진행률 100% 도달까지 유지.
+  // 풀스크린이 아니므로 Sidebar 는 오버레이 아래에서 상시 조작 가능(다른 워크스페이스 전환 탈출구).
   const showInitialOverlay = !!activeWorkspaceId && (projectsLoading || isDocCounting)
+  // 스캔 에러 / 타임아웃 오버레이 — 재설치·업그레이드로 persist 된 워크스페이스가
+  // 현재 환경에서 동작 안 하는 경우 사용자에게 재시도/제거 출구 제공.
+  const showScanErrorOverlay = !!activeWorkspaceId && !projectsLoading && !!projectsError
   const docPct = docCountProgress.total > 0
     ? Math.round((docCountProgress.done / docCountProgress.total) * 100)
     : 0
+
+  const handleRetryScan = useCallback(() => {
+    useAppStore.getState().setProjectsError(null)
+    useAppStore.getState().bumpRefreshKey()
+  }, [])
+
+  const handleRemoveActiveWorkspace = useCallback(async () => {
+    if (!activeWorkspaceId) return
+    await removeWorkspace(activeWorkspaceId)
+    useAppStore.getState().setProjectsError(null)
+  }, [activeWorkspaceId, removeWorkspace])
 
   const activeProject = activeProjectId
     ? projects.find((p) => p.id === activeProjectId) ?? null
@@ -418,29 +461,6 @@ export default function App() {
         onClose={() => setSshModalOpen(false)}
         onSubmit={handleSshSubmit}
       />
-      {showInitialOverlay && (
-        <div className="app-loading-overlay" role="status" aria-live="polite">
-          <span className="ui-spinner lg" aria-hidden="true" />
-          <div className="app-loading-overlay__title">
-            {projectsLoading
-              ? t('loading.workspaceAnalyzing')
-              : t('loading.projectAnalyzing', { total: docCountProgress.total, pct: docPct })}
-          </div>
-          <div className="app-loading-overlay__detail">
-            {projectsLoading
-              ? t('loading.workspaceDetail')
-              : t('loading.projectDetail', { done: docCountProgress.done, total: docCountProgress.total })}
-          </div>
-          {isDocCounting && (
-            <div className="app-loading-overlay__progress" aria-label={t('loading.progressAria', { pct: docPct })}>
-              <div
-                className="app-loading-overlay__progress-bar"
-                style={{ width: `${docPct}%` }}
-              />
-            </div>
-          )}
-        </div>
-      )}
       <Sidebar
         workspaces={workspaces}
         activeWorkspaceId={activeWorkspaceId}
@@ -453,7 +473,54 @@ export default function App() {
         onViewModeChange={setViewMode}
       />
 
-      <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' }}>
+        {showInitialOverlay && (
+          <div className="app-loading-overlay" role="status" aria-live="polite">
+            <span className="ui-spinner lg" aria-hidden="true" />
+            <div className="app-loading-overlay__title">
+              {projectsLoading
+                ? t('loading.workspaceAnalyzing')
+                : t('loading.projectAnalyzing', { total: docCountProgress.total, pct: docPct })}
+            </div>
+            <div className="app-loading-overlay__detail">
+              {projectsLoading
+                ? t('loading.workspaceDetail')
+                : t('loading.projectDetail', { done: docCountProgress.done, total: docCountProgress.total })}
+            </div>
+            {isDocCounting && (
+              <div className="app-loading-overlay__progress" aria-label={t('loading.progressAria', { pct: docPct })}>
+                <div
+                  className="app-loading-overlay__progress-bar"
+                  style={{ width: `${docPct}%` }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+        {showScanErrorOverlay && (
+          <div className="app-loading-overlay" role="alert" aria-live="assertive">
+            <div className="app-loading-overlay__icon" aria-hidden="true">⚠️</div>
+            <div className="app-loading-overlay__title">
+              {projectsError === 'SCAN_TIMEOUT'
+                ? t('loading.timeoutTitle')
+                : t('loading.errorTitle')}
+            </div>
+            <div className="app-loading-overlay__detail">
+              {projectsError === 'SCAN_TIMEOUT'
+                ? t('loading.timeoutDetail')
+                : humanizeError(t, projectsError ?? '')}
+            </div>
+            <div className="app-loading-overlay__actions">
+              <Button variant="primary" onClick={handleRetryScan}>
+                {t('loading.retry')}
+              </Button>
+              <Button variant="ghost" onClick={handleRemoveActiveWorkspace}>
+                {t('loading.removeWorkspace')}
+              </Button>
+            </div>
+            <div className="app-loading-overlay__hint">{t('loading.switchHint')}</div>
+          </div>
+        )}
         {showOnboarding && <ComposerOnboarding onDismiss={handleDismissOnboarding} />}
         <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
           <ErrorBoundary resetKey={`${viewMode}:${activeProject?.id ?? ''}`}>

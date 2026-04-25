@@ -160,7 +160,13 @@ export function startWatcher(roots: string[], webContents: WebContents): void {
       stabilityThreshold: DEBOUNCE_MS,
       pollInterval: 50,
     },
-    depth: 10,
+    // depth 10 은 ~/develop 같은 큰 트리(swk: 15k 디렉토리)에서 chokidar 초기 walk 가
+    // libuv 스레드풀을 점거해 첫 scanProjects 가 4000배 느려지는 회귀(2026-04-25 사용자 보고).
+    // 프로젝트 변경 감지(addDir on isProjectLevelDir) 는 depth ≤ 2 면 충분하고,
+    // 파일 단위 변경(.md / 이미지)은 보통 project_root → src → subdir → file 까지로
+    // depth 4 면 99% 커버. 깊은 docs/.../subdir/.../file.md 케이스는 워크스페이스
+    // 단위 refresh 으로 fallback.
+    depth: 4,
   })
 
   watcher

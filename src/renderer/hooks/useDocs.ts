@@ -4,8 +4,12 @@ import type { Doc, FsChangeEvent } from '../../preload/types'
 import { isViewable } from '../../lib/viewable'
 
 // B: O(1) per-project selector (Map lookup)
+// 빈 경로 fallback 은 모듈 상수로 고정 — `?? []` 같이 매 호출 새 배열을 만들면
+// Zustand 가 참조 불일치로 강제 re-render 해 무한 루프 위험.
+// freeze 로 외부 push/splice 오염 방어 (Evaluator 2026-04-25 m-1).
+const EMPTY_DOCS: Doc[] = Object.freeze([]) as Doc[]
 export function useDocsOf(projectId: string): Doc[] {
-  return useAppStore((s) => s.docsByProject.get(projectId) ?? [])
+  return useAppStore((s) => s.docsByProject.get(projectId) ?? EMPTY_DOCS)
 }
 
 // B: flat all-docs accessor (cachedFlat 참조)
@@ -14,11 +18,19 @@ export function useAllDocsFlat(): Doc[] {
 }
 
 // B: frontmatter 인덱스 → Array (Set → sorted array)
+// Selector 가 매 호출 새 객체/배열을 반환하면 Zustand 가 참조 불일치로 매 store 변경마다
+// 강제 re-render → React 18 "getSnapshot should be cached" 감지 → Maximum update depth.
+// 원시 Set 참조를 구독하고, 파생 Array 는 useMemo 로 캐시한다.
 export function useFrontmatterIndex(): { statuses: string[]; sources: string[] } {
-  return useAppStore((s) => ({
-    statuses: [...s.frontmatterIndex.statuses].sort(),
-    sources: [...s.frontmatterIndex.sources].sort(),
-  }))
+  const statusesSet = useAppStore((s) => s.frontmatterIndex.statuses)
+  const sourcesSet = useAppStore((s) => s.frontmatterIndex.sources)
+  return useMemo(
+    () => ({
+      statuses: [...statusesSet].sort(),
+      sources: [...sourcesSet].sort(),
+    }),
+    [statusesSet, sourcesSet],
+  )
 }
 
 export function useDocs(projectId: string | null) {

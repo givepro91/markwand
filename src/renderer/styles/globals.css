@@ -167,9 +167,11 @@ a:hover {
   margin-right: 0;
 }
 
-/* ── 풀스크린 로딩 오버레이 (워크스페이스 첫 스캔용) ── */
+/* ── 메인 영역 로딩 오버레이 (워크스페이스 첫 스캔용) ── */
+/* position:absolute 로 main 내부에 한정 — Sidebar 는 항상 조작 가능. 스캔이 오래 걸리거나
+   stuck 나도 사용자는 언제든 다른 워크스페이스로 전환/이 워크스페이스 제거 가능. */
 .app-loading-overlay {
-  position: fixed;
+  position: absolute;
   inset: 0;
   background: var(--bg);
   display: flex;
@@ -177,7 +179,12 @@ a:hover {
   align-items: center;
   justify-content: center;
   gap: var(--sp-4);
-  z-index: var(--z-modal);
+  z-index: 10;
+  padding: var(--sp-6);
+}
+.app-loading-overlay__icon {
+  font-size: 32px;
+  line-height: 1;
 }
 .app-loading-overlay__title {
   font-size: var(--fs-lg);
@@ -202,6 +209,17 @@ a:hover {
   background: var(--accent);
   border-radius: var(--r-pill);
   transition: width var(--duration-normal) var(--ease-standard);
+}
+.app-loading-overlay__actions {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+.app-loading-overlay__hint {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  text-align: center;
+  max-width: 480px;
 }
 
 /* Composer — Toast 등장 애니메이션 */

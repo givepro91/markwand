@@ -40,7 +40,13 @@
     "projectDetail": "각 프로젝트의 문서 수를 계산 중입니다. ({{done}}/{{total}})",
     "progressAria": "{{pct}}% 완료",
     "filesLoading": "파일 목록 불러오는 중…",
-    "filesLoadingRemote": "원격 서버는 잠시 시간이 걸릴 수 있습니다."
+    "filesLoadingRemote": "원격 서버는 잠시 시간이 걸릴 수 있습니다.",
+    "timeoutTitle": "워크스페이스를 불러오지 못했습니다",
+    "timeoutDetail": "응답이 없어 25초 후 중단했습니다. 네트워크가 바뀌었거나 원격 서버에 접근할 수 없을 수 있어요. 재시도하거나 다른 워크스페이스를 선택해주세요.",
+    "errorTitle": "워크스페이스 스캔에 실패했습니다",
+    "retry": "재시도",
+    "removeWorkspace": "이 워크스페이스 제거",
+    "switchHint": "상단 메뉴에서 다른 워크스페이스로 전환할 수도 있어요."
   },
 
   "theme": {

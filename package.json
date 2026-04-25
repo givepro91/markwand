@@ -1,13 +1,14 @@
 {
   "name": "markwand",
-  "version": "0.4.0-beta.1",
+  "version": "0.4.0-beta.2",
   "description": "An AI-output curator for your desktop — discover, read, and re-enter the markdown docs scattered across your AI-driven projects.",
   "main": "./out/main/index.js",
   "author": "jay@spacewalk.tech",
   "license": "MIT",
   "private": true,
   "scripts": {
-    "dev": "electron-vite dev",
+    "dev": "node scripts/dev.mjs",
+    "dev:raw": "electron-vite dev",
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
     "lint": "eslint src --ext .ts,.tsx",

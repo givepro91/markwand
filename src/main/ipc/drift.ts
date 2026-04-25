@@ -6,7 +6,7 @@ import { contentHash } from '../../lib/drift/hash'
 import { getStore } from '../services/store'
 import { assertInWorkspace } from '../security/validators'
 import { classifyAsset } from '../../lib/viewable'
-import { localTransport } from '../transport/local'
+import { resolveTransportForPath } from './fs'
 
 // extract + stat 을 메인 스레드에서 수행하므로 상한 필수.
 // 2MB 초과 시 다수의 AI 산출물(보통 수십 KB)이 아닌 비정상 파일로 간주.
@@ -37,11 +37,20 @@ export function registerDriftHandlers(): void {
     const { docPath, projectRoot } = parseVerifyInput(raw)
 
     const store = await getStore()
-    const roots = store.get('workspaces').map((w) => w.root)
-    assertInWorkspace(docPath, roots)
-    assertInWorkspace(projectRoot, roots)
+    const workspaces = store.get('workspaces')
 
-    const docStat = await localTransport.fs.stat(docPath)
+    // 2026-04-25 — SSH 워크스페이스 ENOENT 도배 fix. 기존엔 localTransport 하드코딩으로
+    // SSH 경로를 로컬 fs.lstat 호출 → ENOENT throw → IPC 핸들러 에러 반복 출력.
+    // fs:read-doc 와 동일하게 resolveTransportForPath 로 transport 역매핑.
+    const resolved = await resolveTransportForPath(docPath, workspaces)
+    if (!resolved) throw new Error('PATH_OUT_OF_WORKSPACE')
+    const { transport, ws } = resolved
+    const isSsh = ws.transport?.type === 'ssh'
+
+    assertInWorkspace(docPath, [ws.root], { posix: isSsh })
+    assertInWorkspace(projectRoot, [ws.root], { posix: isSsh })
+
+    const docStat = await transport.fs.stat(docPath)
     if (docStat.size > MAX_DRIFT_FILE_BYTES) {
       // 거대 파일은 drift 검증 스킵 — 빈 리포트로 응답해 UI는 ok 취급.
       return emptyReport(docPath, docStat.mtimeMs, projectRoot)
@@ -53,8 +62,8 @@ export function registerDriftHandlers(): void {
       return emptyReport(docPath, docStat.mtimeMs, projectRoot)
     }
 
-    // LocalTransport 위임 — readFile 이 maxBytes(기본 2MB) 자체 방어.
-    const buf = await localTransport.fs.readFile(docPath, { maxBytes: MAX_DRIFT_FILE_BYTES })
+    // Transport 위임 — readFile 이 maxBytes(기본 2MB) 자체 방어.
+    const buf = await transport.fs.readFile(docPath, { maxBytes: MAX_DRIFT_FILE_BYTES })
     const content = buf.toString('utf-8')
     // docPath 전달: inline/hint 는 문서 디렉토리 기준으로 상대 경로를 resolve 한다.
     const refs = extractReferences(content, projectRoot, docPath)
@@ -70,12 +79,12 @@ export function registerDriftHandlers(): void {
       ref: Reference
     ): Promise<{ path: string; mtimeMs: number; size: number; isDirectory: boolean } | null> {
       try {
-        const s = await localTransport.fs.stat(ref.resolvedPath)
+        const s = await transport.fs.stat(ref.resolvedPath)
         return { path: ref.resolvedPath, mtimeMs: s.mtimeMs, size: s.size, isDirectory: s.isDirectory }
       } catch {}
       if (ref.fallbackPath) {
         try {
-          const s = await localTransport.fs.stat(ref.fallbackPath)
+          const s = await transport.fs.stat(ref.fallbackPath)
           return { path: ref.fallbackPath, mtimeMs: s.mtimeMs, size: s.size, isDirectory: s.isDirectory }
         } catch {}
       }
@@ -97,7 +106,7 @@ export function registerDriftHandlers(): void {
         let hashAtCheck: string | undefined
         if (!hit.isDirectory && hit.size <= MAX_DRIFT_FILE_BYTES) {
           try {
-            hashAtCheck = await contentHash(localTransport.fs, hit.path, {
+            hashAtCheck = await contentHash(transport.fs, hit.path, {
               mtimeMs: hit.mtimeMs,
               size: hit.size,
             })

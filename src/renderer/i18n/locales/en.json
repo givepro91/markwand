@@ -40,7 +40,13 @@
     "projectDetail": "Counting documents in each project. ({{done}}/{{total}})",
     "progressAria": "{{pct}}% complete",
     "filesLoading": "Loading file list…",
-    "filesLoadingRemote": "Remote servers may take a moment."
+    "filesLoadingRemote": "Remote servers may take a moment.",
+    "timeoutTitle": "Couldn't load the workspace",
+    "timeoutDetail": "No response after 25 seconds. The network may have changed, or the remote server is unreachable. Retry or switch to another workspace.",
+    "errorTitle": "Workspace scan failed",
+    "retry": "Retry",
+    "removeWorkspace": "Remove this workspace",
+    "switchHint": "You can also switch to another workspace from the menu above."
   },
 
   "theme": {
