@@ -7,7 +7,7 @@ import { isViewable } from '../../lib/viewable'
 // 빈 경로 fallback 은 모듈 상수로 고정 — `?? []` 같이 매 호출 새 배열을 만들면
 // Zustand 가 참조 불일치로 강제 re-render 해 무한 루프 위험.
 // freeze 로 외부 push/splice 오염 방어 (Evaluator 2026-04-25 m-1).
-const EMPTY_DOCS: Doc[] = Object.freeze([]) as Doc[]
+const EMPTY_DOCS: Doc[] = Object.freeze([]) as unknown as Doc[]
 export function useDocsOf(projectId: string): Doc[] {
   return useAppStore((s) => s.docsByProject.get(projectId) ?? EMPTY_DOCS)
 }

@@ -8,6 +8,8 @@ import 'highlight.js/styles/github-dark.css'
 import { renderMermaid, onMermaidThemeChange } from '../lib/mermaid'
 import { slugify, extractHeadings } from './TableOfContents'
 import type { Heading } from './TableOfContents'
+import { useAnnotations } from '../hooks/useAnnotations'
+import { AnnotationToolbar } from './AnnotationToolbar'
 // 브라우저 환경용 경량 path 유틸 (Node path 미사용)
 const pathUtil = {
   dirname(p: string): string {
@@ -34,6 +36,9 @@ interface MarkdownViewerProps {
   /** FS9-B — 현재 문서가 속한 workspace id. SSH(ssh:…) 면 이미지는 IPC 스트리밍 경유. */
   workspaceId?: string | null
 }
+
+// v0.4 S7 — 활성 annotation 의 노란색 하이라이트는 globals.css `::highlight(markwand-annotation-highlight)`.
+// 이 컴포넌트는 docPath 키로 useAnnotations 훅을 띄워 selection / click toolbar 를 관리한다.
 
 let mermaidCounter = 0
 
@@ -260,6 +265,12 @@ function makeHeadingComponent(level: 1 | 2 | 3 | 4 | 5 | 6, slugCounter: Map<str
 
 function MarkdownViewerInner({ content, basePath, onDocNavigate, onHeadings, workspaceId }: MarkdownViewerProps) {
   const isSshContext = workspaceId?.startsWith('ssh:') ?? false
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // v0.4 S7 — basePath 가 곧 docPath. SSH 컨텍스트는 useAnnotations 가 disabled 처리.
+  const { toolbar, handleHighlight, handleRemove, dismissToolbar, disabled, orphanCount } =
+    useAnnotations(basePath, isSshContext, containerRef, content)
+  const { t: tAnno } = useTranslation()
 
   // H8: rehype-highlight dynamic import — 로딩 전(첫 렌더)엔 plain text, import 완료 후 highlight 적용.
   // rehype-highlight + highlight.js core는 ~1MB이므로 bundle chunk 분리 효과.
@@ -382,7 +393,29 @@ function MarkdownViewerInner({ content, basePath, onDocNavigate, onHeadings, wor
   }, [content, resolveRelativePath, onDocNavigate, isSshContext, workspaceId])
 
   return (
-    <div className="markdown-viewer">
+    <div className="markdown-viewer" ref={containerRef} style={{ position: 'relative' }}>
+      {orphanCount > 0 && !disabled && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: 'sticky',
+            top: 'var(--sp-2)',
+            float: 'right',
+            marginLeft: 'var(--sp-2)',
+            marginBottom: 'var(--sp-2)',
+            padding: '2px 8px',
+            fontSize: 'var(--fs-xs)',
+            color: 'var(--text)',
+            background: 'rgba(255, 213, 79, 0.25)',
+            border: '1px solid rgba(255, 213, 79, 0.6)',
+            borderRadius: 'var(--r-pill)',
+            zIndex: 5,
+          }}
+        >
+          {tAnno('annotation.orphanBadge', { count: orphanCount })}
+        </div>
+      )}
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkBreaks]}
         rehypePlugins={[
@@ -393,6 +426,13 @@ function MarkdownViewerInner({ content, basePath, onDocNavigate, onHeadings, wor
       >
         {content}
       </ReactMarkdown>
+      <AnnotationToolbar
+        state={toolbar}
+        disabled={disabled}
+        onHighlight={handleHighlight}
+        onRemove={handleRemove}
+        onDismiss={dismissToolbar}
+      />
     </div>
   )
 }

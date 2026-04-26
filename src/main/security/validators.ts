@@ -107,6 +107,46 @@ export function parseShellShowItemInput(raw: unknown): { path: string } {
   return z.object({ path: PathInput }).parse(raw)
 }
 
+// v0.4 S7 — Annotation IPC ─────────────────────────────────────────
+// sidecar 파일은 <docPath>.anno.json. path 는 .md 원본 경로를 받는다.
+const AnnotationSelectorSchema = z.object({
+  type: z.literal('TextQuote'),
+  exact: z.string().min(1).max(2000),
+  prefix: z.string().max(2000).optional(),
+  suffix: z.string().max(2000).optional(),
+})
+
+const AnnotationSchema = z.object({
+  id: z.string().min(1).max(64),
+  selector: AnnotationSelectorSchema,
+  positionFallback: z
+    .object({ start: z.number().int().nonnegative(), end: z.number().int().nonnegative() })
+    .optional(),
+  color: z.literal('yellow'),
+  createdAt: z.string().min(1).max(64),
+})
+
+export const AnnotationFileSchema = z.object({
+  version: z.literal(1),
+  annotations: z.array(AnnotationSchema).max(2000),
+})
+
+export function parseAnnotationLoadInput(raw: unknown): { path: string } {
+  return z.object({ path: PathInput }).parse(raw)
+}
+
+export function parseAnnotationSaveInput(raw: unknown): {
+  path: string
+  data: z.infer<typeof AnnotationFileSchema>
+} {
+  return z
+    .object({
+      path: PathInput,
+      data: AnnotationFileSchema,
+    })
+    .parse(raw)
+}
+
 // M3 S2 — SSH IPC ─────────────────────────────────────────────
 // ssh:respond-host-key. nonce 는 crypto.randomUUID() (36자 UUID).
 const NonceInput = z.string().uuid()

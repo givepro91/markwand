@@ -491,6 +491,10 @@
     "drift": {
       "revalidateFailed": "참조 재검증에 실패했습니다.",
       "fileTooLarge": "파일이 너무 커서 참조 검증을 건너뛰었습니다 (2MB 초과)."
+    },
+    "annotation": {
+      "sshUnsupported": "원격 문서의 하이라이트는 아직 지원되지 않습니다. 다음 버전(v0.5)에서 추가될 예정입니다.",
+      "fileTooLarge": "하이라이트 데이터가 너무 큽니다 (2MB 초과). 일부 하이라이트를 제거한 뒤 다시 시도해주세요."
     }
   },
 
@@ -505,5 +509,17 @@
   "composer": {
     "pathWarning": "절대 경로가 포함됩니다 — 외부 공유 시 주의",
     "costEstimate": "약 ${{cost}}"
+  },
+
+  "annotation": {
+    "highlight": "하이라이트",
+    "highlightAria": "선택한 텍스트 하이라이트",
+    "remove": "제거",
+    "removeAria": "이 하이라이트 제거",
+    "toolbarLabel": "하이라이트 도구 모음",
+    "disabledTooltip": "원격 문서에서는 사용할 수 없어요 (v0.5 지원 예정)",
+    "saveFailed": "하이라이트 저장에 실패했어요. 다시 시도해주세요.",
+    "tooLong": "선택이 너무 길어요 (2000자 이내).",
+    "orphanBadge": "위치를 찾지 못한 하이라이트 {{count}}개"
   }
 }

@@ -18,5 +18,7 @@ export function humanizeError(t: TFn, message: string): string {
   if (message === 'NOT_A_TEXT_DOC') return t('error.fs.notTextDoc')
   if (message.includes('DRIFT_REVALIDATE_FAILED')) return t('error.drift.revalidateFailed')
   if (message.includes('DRIFT_FILE_TOO_LARGE')) return t('error.drift.fileTooLarge')
+  if (message === 'ANNOTATION_SSH_UNSUPPORTED') return t('error.annotation.sshUnsupported')
+  if (message === 'ANNOTATION_FILE_TOO_LARGE') return t('error.annotation.fileTooLarge')
   return t('error.generic', { message })
 }

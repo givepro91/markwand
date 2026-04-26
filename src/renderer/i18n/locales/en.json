@@ -491,6 +491,10 @@
     "drift": {
       "revalidateFailed": "Reference revalidation failed.",
       "fileTooLarge": "File too large to validate references (>2MB)."
+    },
+    "annotation": {
+      "sshUnsupported": "Highlights on remote documents aren't supported yet. Coming in v0.5.",
+      "fileTooLarge": "Highlight data is too large (>2MB). Remove some highlights and try again."
     }
   },
 
@@ -505,5 +509,17 @@
   "composer": {
     "pathWarning": "Absolute paths included — be cautious when sharing externally",
     "costEstimate": "≈ ${{cost}}"
+  },
+
+  "annotation": {
+    "highlight": "Highlight",
+    "highlightAria": "Highlight selected text",
+    "remove": "Remove",
+    "removeAria": "Remove this highlight",
+    "toolbarLabel": "Highlight toolbar",
+    "disabledTooltip": "Not available on remote documents (v0.5)",
+    "saveFailed": "Couldn't save the highlight. Please try again.",
+    "tooLong": "Selection too long (max 2000 chars).",
+    "orphanBadge": "{{count}} highlight(s) couldn't be located"
   }
 }

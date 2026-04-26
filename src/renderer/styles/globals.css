@@ -64,6 +64,14 @@ body {
   color: #000;
 }
 
+/* v0.4 S7 — annotation 하이라이트 (단일 노란색 MVP). CSS Custom Highlight API 가 var() 미지원이라 리터럴 사용.
+   라이트/다크 모드 단일 규칙: alpha 0.8 + 진한 글자색으로 양쪽에서 충분한 대비 확보
+   (white bg → ~14:1, dark bg → ~6:1, both ≥ WCAG AA). v0.5 다색 팔레트 도입 시 JS 생성 stylesheet 로 전환. */
+::highlight(markwand-annotation-highlight) {
+  background-color: rgba(255, 213, 79, 0.8);
+  color: #1f2328;
+}
+
 /* 버튼 기본 초기화 */
 button {
   font-family: inherit;

@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  dom-anchor-text-position: ^5.0.0
+
 importers:
 
   .:
@@ -11,6 +14,12 @@ importers:
       chokidar:
         specifier: ^4.0.0
         version: 4.0.3
+      dom-anchor-text-position:
+        specifier: ^5.0.0
+        version: 5.0.0
+      dom-anchor-text-quote:
+        specifier: ^4.0.2
+        version: 4.0.2
       electron-store:
         specifier: ^10.0.0
         version: 10.1.0
@@ -1546,6 +1555,9 @@ packages:
   devlop@1.1.0:
     resolution: {integrity: sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA==}
 
+  diff-match-patch@1.0.5:
+    resolution: {integrity: sha512-IayShXAgj/QMXgB0IWmKx+rOPuGMhqm5w6jvFxmVenXKIzRqTAAsbBPT3kWQeGANj3jGgvcvv4yK6SxqYmikgw==}
+
   dir-compare@4.2.0:
     resolution: {integrity: sha512-2xMCmOoMrdQIPHdsTawECdNPwlVFB9zGcz3kuhmBO6U3oU+UQjsue0i8ayLKpgBcm+hcXPMVSGUN9d+pvJ6+VQ==}
 
@@ -1566,6 +1578,15 @@ packages:
 
   dom-accessibility-api@0.6.3:
     resolution: {integrity: sha512-7ZgogeTnjuHbo+ct10G9Ffp0mif17idi0IyWNVA/wcwcm7NPOD/WEHVP3n7n3MhXqxoIYm8d6MuZohYWIZ4T3w==}
+
+  dom-anchor-text-position@5.0.0:
+    resolution: {integrity: sha512-2Z5p3jBfcxh5PUdxg68GBRbt4kZ6PsxoHp/rhSmZNoWKJfI14ScPMAxJySVWI8EIf+4dMhVskjRXsCxGGe4zJA==}
+
+  dom-anchor-text-quote@4.0.2:
+    resolution: {integrity: sha512-yM1Z/PYgh8hEnfijmTA14Z1XWvlN8P9wD6srBvRaTSktmtI+z5f2zr0r9hqr7ZMpmokW71MeDyOHBRqbXu0VXA==}
+
+  dom-seek@5.1.1:
+    resolution: {integrity: sha512-1strSwd201Gfhfkfsk77SX9xyJGzu12gqUo5Q0W3Njtj2QxcfQTwCDOynZ6npZ4ASUFRQq0asjYDRlFxYPKwTA==}
 
   dompurify@3.4.0:
     resolution: {integrity: sha512-nolgK9JcaUXMSmW+j1yaSvaEaoXYHwWyGJlkoCTghc97KgGDDSnpoU/PlEnw63Ah+TGKFOyY+X5LnxaWbCSfXg==}
@@ -4991,6 +5012,8 @@ snapshots:
     dependencies:
       dequal: 2.0.3
 
+  diff-match-patch@1.0.5: {}
+
   dir-compare@4.2.0:
     dependencies:
       minimatch: 3.1.5
@@ -5032,6 +5055,17 @@ snapshots:
   dom-accessibility-api@0.5.16: {}
 
   dom-accessibility-api@0.6.3: {}
+
+  dom-anchor-text-position@5.0.0:
+    dependencies:
+      dom-seek: 5.1.1
+
+  dom-anchor-text-quote@4.0.2:
+    dependencies:
+      diff-match-patch: 1.0.5
+      dom-anchor-text-position: 5.0.0
+
+  dom-seek@5.1.1: {}
 
   dompurify@3.4.0:
     optionalDependencies:

@@ -6,6 +6,7 @@ import type {
   FsChangeEvent,
   HostKeyPromptPayload,
   TransportStatusEvent,
+  AnnotationFilePayload,
 } from './types'
 
 // ipcRenderer 객체를 직접 노출하지 않는다.
@@ -83,6 +84,13 @@ contextBridge.exposeInMainWorld('api', {
   prefs: {
     get: (key: string) => ipcRenderer.invoke('prefs:get', { key }),
     set: (key: string, value: unknown) => ipcRenderer.invoke('prefs:set', { key, value }),
+  },
+
+  // v0.4 S7 — annotation sidecar JSON IPC. 로컬 md only.
+  annotation: {
+    load: (path: string) => ipcRenderer.invoke('annotation:load', { path }),
+    save: (path: string, data: AnnotationFilePayload) =>
+      ipcRenderer.invoke('annotation:save', { path, data }),
   },
 
   // M3 S2 — SSH Transport UI 채널. feature flag off 사용자도 API 표면은 존재하나 호출 안 함.

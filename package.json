@@ -21,6 +21,8 @@
   },
   "dependencies": {
     "chokidar": "^4.0.0",
+    "dom-anchor-text-position": "^5.0.0",
+    "dom-anchor-text-quote": "^4.0.2",
     "electron-store": "^10.0.0",
     "execa": "^9.0.0",
     "fast-glob": "^3.3.0",
@@ -126,6 +128,9 @@
       "electron",
       "electron-winstaller",
       "esbuild"
-    ]
+    ],
+    "overrides": {
+      "dom-anchor-text-position": "^5.0.0"
+    }
   }
 }

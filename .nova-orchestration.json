@@ -311,5 +311,69 @@
     ],
     "createdAt": "2026-04-21T14:11:37.203Z",
     "updatedAt": "2026-04-21T14:19:23.764Z"
+  },
+  "orch-modojfd3-fdrr": {
+    "id": "orch-modojfd3-fdrr",
+    "task": "v0.4 S7 Annotation MVP — dom-anchor-text-quote + CSS Custom Highlight + sidecar JSON, 노랑 1색, 로컬 md only. Plan §S7 그대로. 릴리스 금지.",
+    "complexity": "complex",
+    "status": "running",
+    "phases": [
+      {
+        "name": "Explorer",
+        "role": "Explorer",
+        "status": "completed",
+        "result": "MarkdownViewer(402L)/preload index+types/store(351L)/markdown.ts(40L)/main index+ipc/fs 전수 확인. Plan §S7이 Design 수준 상세해 별도 design 스킵. 11파일 신규/수정 예정: anchor.ts, sidecar.ts, main/ipc/annotation.ts, annotationStore.ts, useAnnotations.ts, AnnotationToolbar.tsx, MarkdownViewer 통합, globals.css, preload index+types, i18n keys, package.json deps.",
+        "completedAt": "2026-04-25T01:48:59.382Z"
+      },
+      {
+        "name": "S7.1 Infra+Data",
+        "role": "Generator",
+        "status": "completed",
+        "startedAt": "2026-04-25T01:49:00.199Z",
+        "result": "11파일 신규/수정 + 1 baseline fix(useDocs.ts EMPTY_DOCS). dom-anchor 두 패키지 설치. typecheck PASS.",
+        "completedAt": "2026-04-26T11:56:53.932Z"
+      },
+      {
+        "name": "S7.1 Evaluator",
+        "role": "Evaluator",
+        "status": "completed",
+        "result": "nova:senior-dev CONDITIONAL PASS → M-1(toRange hint 시그니처)/M-2(readFile 후 length 재가드)/m-1(EMPTY_ANNOTATIONS) 즉시 반영. m-2 humanizeError 키 + m-3 exact length 가드는 S7.2 에서 처리.",
+        "completedAt": "2026-04-26T11:56:57.448Z"
+      },
+      {
+        "name": "S7.2 UI+Integration",
+        "role": "Generator",
+        "status": "completed",
+        "startedAt": "2026-04-26T11:56:58.169Z",
+        "result": "useAnnotations 훅(load+selection+highlight) · AnnotationToolbar floating · MarkdownViewer ref 통합 · globals.css ::highlight · humanizeError 2키 · ko/en annotation 블록 12 키. typecheck PASS.",
+        "completedAt": "2026-04-26T12:04:12.658Z"
+      },
+      {
+        "name": "S7.2 Evaluator",
+        "role": "Evaluator",
+        "status": "completed",
+        "result": "nova:qa-engineer CONDITIONAL → C-1(라이트 시인성 0.5→0.8+#1f2328)/M-1(saveFailed→toast.error)/M-2(orphan 뱃지 sticky bar)/M-3(autoFocus+ESC dismissToolbar)/M-4(rAF throttle)/m-2(effect2 cleanup)/m-3(tooLong toast.info) 전부 반영. Known Gap v0.5: m-1 SSH disabled 시각, m-4 scroll 시 toolbar 위치 갱신.",
+        "completedAt": "2026-04-26T12:15:39.884Z"
+      },
+      {
+        "name": "S7.3 Test+Build+Typecheck",
+        "role": "Evaluator",
+        "status": "completed",
+        "result": "anchor.test.ts 15 케이스(9 DOM + 2 fuzzy + 3 isRangeWithin + 1 빈) PASS. 발견: dom-anchor-text-quote 4.0.2 가 dom-anchor-text-position 4.0.0 의존 → jsdom 25 Range API 비호환. pnpm overrides 로 5.0.0 강제. typecheck PASS · vitest 277/287 (회귀 0, 10 fail 모두 pre-existing drift/scanner).",
+        "completedAt": "2026-04-26T12:04:15.931Z"
+      },
+      {
+        "name": "S7.4 Manual GUI Test",
+        "role": "Integrator",
+        "status": "pending"
+      },
+      {
+        "name": "State Update+Commit",
+        "role": "Orchestrator",
+        "status": "pending"
+      }
+    ],
+    "createdAt": "2026-04-25T01:47:43.623Z",
+    "updatedAt": "2026-04-26T12:15:39.884Z"
   }
 }

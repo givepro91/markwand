@@ -176,6 +176,30 @@ export interface SshBrowseFolderResult {
   entries: { name: string; isDirectory: boolean }[]
 }
 
+/**
+ * v0.4 S7 — Annotation sidecar JSON payload.
+ * renderer 의 AnnotationFile 과 동일 shape (zod 스키마는 main/security/validators.ts).
+ */
+export interface AnnotationTextQuoteSelectorPayload {
+  type: 'TextQuote'
+  exact: string
+  prefix?: string
+  suffix?: string
+}
+
+export interface AnnotationPayload {
+  id: string
+  selector: AnnotationTextQuoteSelectorPayload
+  positionFallback?: { start: number; end: number }
+  color: 'yellow'
+  createdAt: string
+}
+
+export interface AnnotationFilePayload {
+  version: 1
+  annotations: AnnotationPayload[]
+}
+
 /** M3 S2 — transport:status 이벤트 payload */
 export interface TransportStatusEvent {
   workspaceId: string
@@ -239,6 +263,11 @@ export interface WindowApi {
   prefs: {
     get: (key: string) => Promise<unknown>
     set: (key: string, value: unknown) => Promise<void>
+  }
+  /** v0.4 S7 — annotation sidecar JSON. 로컬 .md only. SSH 경로는 main 에서 ANNOTATION_SSH_UNSUPPORTED throw. */
+  annotation: {
+    load: (path: string) => Promise<AnnotationFilePayload | null>
+    save: (path: string, data: AnnotationFilePayload) => Promise<void>
   }
   /** M3 S2 — SSH Transport UI 연동 채널. feature flag off 시 호출 경로 없음. */
   ssh: {
