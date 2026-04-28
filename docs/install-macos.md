@@ -28,8 +28,8 @@ shasum -a 256 ~/Downloads/Markwand-0.4.0-beta.3.dmg
 예상 해시 (2026-04-28 빌드):
 
 ```
-__SHA256_ARM64__  Markwand-0.4.0-beta.3-arm64.dmg
-__SHA256_X64__  Markwand-0.4.0-beta.3.dmg
+b73cbb3d1d6d69c2c1eab3d2d8d31639867eb016c96f8d5b1f157b3f6a4e7d53  Markwand-0.4.0-beta.3-arm64.dmg
+ca85b1b8d89131939693f09820c6ec88bbf699d92bd97c69e7baa0fc057e0cb0  Markwand-0.4.0-beta.3.dmg
 ```
 
 ## 3. DMG 마운트 + Applications 로 드래그
