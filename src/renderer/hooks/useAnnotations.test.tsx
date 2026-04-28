@@ -7,7 +7,6 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
-import { useRef } from 'react'
 import { useAnnotations } from './useAnnotations'
 
 // window.api mock — preload 가 없는 jsdom 환경.
