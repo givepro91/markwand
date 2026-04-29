@@ -28,8 +28,8 @@ shasum -a 256 ~/Downloads/Markwand-0.4.0-beta.4.dmg
 Expected hashes (2026-04-29 build):
 
 ```
-__SHA256_ARM64__  Markwand-0.4.0-beta.4-arm64.dmg
-__SHA256_X64__  Markwand-0.4.0-beta.4.dmg
+a657927ac82bf2e41fc7d32dcb315750f9d5545dbca9cf920413270ca909955e  Markwand-0.4.0-beta.4-arm64.dmg
+b5d4bdec2c91deb2314c37e12ae5306958fe4572d6075e66db957bd851025bd4  Markwand-0.4.0-beta.4.dmg
 ```
 
 ## 3. Mount the DMG and drag into Applications
