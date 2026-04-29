@@ -15,6 +15,8 @@ import { useWorkspace } from './hooks/useWorkspace'
 import { useViewMode } from './hooks/useViewMode'
 import { useDrift } from './hooks/useDrift'
 import { useTransportStatusSubscription } from './hooks/useTransportStatus'
+import { useGlobalHotkey } from './hooks/useGlobalHotkey'
+import { shouldShowInitialOverlay } from './lib/loadingOverlay'
 import { useAppStore } from './state/store'
 import { classifyAsset } from '../lib/viewable'
 import type { Doc, Project } from '../../src/preload/types'
@@ -309,6 +311,12 @@ export default function App() {
     [setActiveProjectId, setViewMode]
   )
 
+  // RecentDocsPanel 의 "+N개 더" → InboxView 로 이동.
+  // 인박스가 모든 최근 docs+images 를 그룹화해서 보여주므로 별도 풀 리스트 화면 불필요.
+  const handleSeeMoreRecent = useCallback(() => {
+    setViewMode('inbox')
+  }, [setViewMode])
+
   const setPendingDocOpen = useAppStore((s) => s.setPendingDocOpen)
 
   const handleOpenDocFromInbox = useCallback(
@@ -322,6 +330,7 @@ export default function App() {
 
   const handleWorkspaceSelect = useCallback(
     async (id: string) => {
+      // store 의 setActiveWorkspaceId 가 id 변경 시 projects 를 자동으로 비운다.
       setActiveWorkspaceId(id)
       await window.api.prefs.set('activeWorkspaceId', id)
       // 워크스페이스 전환 시 project 뷰가 아니면 all로 이동
@@ -388,9 +397,16 @@ export default function App() {
     }
   }, [docCountProgress, cmdkHintSeen, setCmdkHintSeen])
   const isDocCounting = docCountProgress.total > 0 && docCountProgress.done < docCountProgress.total
-  // 메인 영역 한정 오버레이 — 워크스페이스 분석부터 docCount 진행률 100% 도달까지 유지.
+  // 메인 영역 한정 오버레이 — 첫 진입 + 워크스페이스 전환에서만 등장.
+  // 명시 새로고침(이미 projects 데이터를 보고 있는 상태) 에는 띄우지 않음 — 깜빡임 방지.
+  // 진행 신호는 Sidebar 새로고침 버튼 회전 + AllProjectsView 헤더 inline 진행률로 대체.
   // 풀스크린이 아니므로 Sidebar 는 오버레이 아래에서 상시 조작 가능(다른 워크스페이스 전환 탈출구).
-  const showInitialOverlay = !!activeWorkspaceId && (projectsLoading || isDocCounting)
+  const showInitialOverlay = shouldShowInitialOverlay({
+    activeWorkspaceId,
+    projectsCount: projects.length,
+    projectsLoading,
+    isDocCounting,
+  })
   // 스캔 에러 / 타임아웃 오버레이 — 재설치·업그레이드로 persist 된 워크스페이스가
   // 현재 환경에서 동작 안 하는 경우 사용자에게 재시도/제거 출구 제공.
   const showScanErrorOverlay = !!activeWorkspaceId && !projectsLoading && !!projectsError
@@ -402,6 +418,19 @@ export default function App() {
     useAppStore.getState().setProjectsError(null)
     useAppStore.getState().bumpRefreshKey()
   }, [])
+
+  // 글로벌 새로고침 — Sidebar 버튼 + ⌘R 단축키 공통 진입점.
+  // 워크스페이스 미선택 시는 스캔 트리거 의미 없음 — 버튼은 disabled, hotkey 는 no-op.
+  const handleGlobalRefresh = useCallback(() => {
+    if (!activeWorkspaceId) return
+    useAppStore.getState().setProjectsError(null)
+    useAppStore.getState().bumpRefreshKey()
+  }, [activeWorkspaceId])
+  // ⌘R — Mail/Slack/Activity Monitor 등 macOS 표준 새로고침 단축키.
+  // useGlobalHotkey 가 preventDefault 하므로 Electron default 메뉴의 reload 가로채는 효과.
+  useGlobalHotkey('r', handleGlobalRefresh, { meta: true })
+
+  const isGlobalRefreshing = !!activeWorkspaceId && (projectsLoading || isDocCounting)
 
   const handleRemoveActiveWorkspace = useCallback(async () => {
     if (!activeWorkspaceId) return
@@ -429,6 +458,8 @@ export default function App() {
           experimentalSsh={experimentalSsh}
           onWorkspaceRemove={removeWorkspace}
           onViewModeChange={setViewMode}
+          onRefresh={handleGlobalRefresh}
+          isRefreshing={isGlobalRefreshing}
         />
         <main style={{ flex: 1, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <EmptyState
@@ -471,6 +502,8 @@ export default function App() {
         experimentalSsh={experimentalSsh}
         onWorkspaceRemove={removeWorkspace}
         onViewModeChange={setViewMode}
+        onRefresh={handleGlobalRefresh}
+        isRefreshing={isGlobalRefreshing}
       />
 
       <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' }}>
@@ -543,6 +576,7 @@ export default function App() {
                   projectId={activeProject.id}
                   projectRoot={activeProject.root}
                   projectName={activeProject.name}
+                  onSeeMoreRecent={handleSeeMoreRecent}
                 />
               )}
             </Suspense>

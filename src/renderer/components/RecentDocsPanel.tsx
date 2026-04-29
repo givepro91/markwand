@@ -7,6 +7,8 @@ interface RecentDocsPanelProps {
   docs: Doc[]
   selectedPath: string | null
   onSelect: (doc: Doc) => void
+  /** "+N개 더" 클릭 시 인박스로 라우팅. 미지정이면 정적 텍스트로 fallback. */
+  onSeeMore?: () => void
 }
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
@@ -61,7 +63,7 @@ const TAB_IMAGES_ID = 'markwand-recent-tab-images'
 
 type RecentTab = 'docs' | 'images'
 
-export function RecentDocsPanel({ docs, selectedPath, onSelect }: RecentDocsPanelProps) {
+export function RecentDocsPanel({ docs, selectedPath, onSelect, onSeeMore }: RecentDocsPanelProps) {
   const { t, i18n } = useTranslation()
   // null = 아직 prefs 응답 전(hydration 미완료). 첫 IPC 응답 후 확정 →
   // "펼쳐진 채 잠깐 보이다가 접히는 flash" 또는 그 반대 모두 방지하기 위해
@@ -340,15 +342,51 @@ export function RecentDocsPanel({ docs, selectedPath, onSelect }: RecentDocsPane
             )
           })}
             {overflow > 0 && (
-              <li
-                style={{
-                  padding: 'var(--sp-1) var(--sp-3)',
-                  fontSize: 'var(--fs-xs)',
-                  color: 'var(--text-muted)',
-                  fontStyle: 'italic',
-                }}
-              >
-                {t('projectView.recentDocs.moreCount', { count: overflow })}
+              <li style={{ padding: 0 }}>
+                {onSeeMore ? (
+                  <button
+                    type="button"
+                    onClick={onSeeMore}
+                    aria-label={t('projectView.recentDocs.moreCountAria', { count: overflow })}
+                    title={t('projectView.recentDocs.moreCountTitle')}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: 'var(--sp-1) var(--sp-3)',
+                      fontSize: 'var(--fs-xs)',
+                      color: 'var(--text-muted)',
+                      background: 'transparent',
+                      border: 'none',
+                      borderRadius: 'var(--r-sm)',
+                      fontFamily: 'inherit',
+                      fontStyle: 'italic',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'var(--bg-hover)'
+                      e.currentTarget.style.color = 'var(--text)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent'
+                      e.currentTarget.style.color = 'var(--text-muted)'
+                    }}
+                  >
+                    {t('projectView.recentDocs.moreCount', { count: overflow })}
+                  </button>
+                ) : (
+                  <span
+                    style={{
+                      display: 'block',
+                      padding: 'var(--sp-1) var(--sp-3)',
+                      fontSize: 'var(--fs-xs)',
+                      color: 'var(--text-muted)',
+                      fontStyle: 'italic',
+                    }}
+                  >
+                    {t('projectView.recentDocs.moreCount', { count: overflow })}
+                  </span>
+                )}
               </li>
             )}
           </ul>

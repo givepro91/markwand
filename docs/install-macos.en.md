@@ -1,10 +1,10 @@
-# macOS Installation Guide — v0.4.0-beta.3
+# macOS Installation Guide — v0.4.0-beta.4
 
 > [English](./install-macos.en.md) · [한국어](./install-macos.md)
 
 Markwand is currently distributed as a **beta DMG without Apple code-signing or notarization**. Builds are **ad-hoc signed**, so you can open them without touching the terminal.
 
-> Release notes: [release-notes/v0.4.0-beta.3.md](./release-notes/v0.4.0-beta.3.md)
+> Release notes: [release-notes/v0.4.0-beta.4.md](./release-notes/v0.4.0-beta.4.md)
 
 ---
 
@@ -12,24 +12,24 @@ Markwand is currently distributed as a **beta DMG without Apple code-signing or 
 
 Grab the file that matches your Mac:
 
-- **Apple Silicon (M1 / M2 / M3 / M4)**: `Markwand-0.4.0-beta.3-arm64.dmg`
-- **Intel Mac**: `Markwand-0.4.0-beta.3.dmg`
+- **Apple Silicon (M1 / M2 / M3 / M4)**: `Markwand-0.4.0-beta.4-arm64.dmg`
+- **Intel Mac**: `Markwand-0.4.0-beta.4.dmg`
 
 Latest release → https://github.com/givepro91/markwand/releases
 
 ## 2. Verify SHA-256 (optional but recommended)
 
 ```bash
-shasum -a 256 ~/Downloads/Markwand-0.4.0-beta.3-arm64.dmg
+shasum -a 256 ~/Downloads/Markwand-0.4.0-beta.4-arm64.dmg
 # or
-shasum -a 256 ~/Downloads/Markwand-0.4.0-beta.3.dmg
+shasum -a 256 ~/Downloads/Markwand-0.4.0-beta.4.dmg
 ```
 
-Expected hashes (2026-04-28 build):
+Expected hashes (2026-04-29 build):
 
 ```
-b73cbb3d1d6d69c2c1eab3d2d8d31639867eb016c96f8d5b1f157b3f6a4e7d53  Markwand-0.4.0-beta.3-arm64.dmg
-ca85b1b8d89131939693f09820c6ec88bbf699d92bd97c69e7baa0fc057e0cb0  Markwand-0.4.0-beta.3.dmg
+__SHA256_ARM64__  Markwand-0.4.0-beta.4-arm64.dmg
+__SHA256_X64__  Markwand-0.4.0-beta.4.dmg
 ```
 
 ## 3. Mount the DMG and drag into Applications
@@ -85,7 +85,7 @@ open /Applications/Markwand.app
 ### The DMG itself won't open
 
 ```bash
-xattr -dr com.apple.quarantine ~/Downloads/Markwand-0.4.0-beta.3*.dmg
+xattr -dr com.apple.quarantine ~/Downloads/Markwand-0.4.0-beta.4*.dmg
 ```
 
 Then double-click again to mount.

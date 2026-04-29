@@ -9,6 +9,8 @@ interface IconButtonProps {
   onClick?: () => void
   disabled?: boolean
   type?: 'button' | 'submit'
+  /** Native HTML title — hover tooltip. aria-label 만으로는 마우스 사용자가 인지 어려운 IconButton 의 가시성 보강용. */
+  title?: string
 }
 
 const sizeMap: Record<NonNullable<IconButtonProps['size']>, string> = {
@@ -38,6 +40,7 @@ export function IconButton({
   onClick,
   disabled = false,
   type = 'button',
+  title,
 }: IconButtonProps) {
   const dimension = sizeMap[size]
 
@@ -67,6 +70,7 @@ export function IconButton({
       disabled={disabled}
       aria-label={ariaLabel}
       aria-pressed={ariaPressed}
+      title={title}
       onMouseEnter={(e) => {
         if (disabled) return
         const el = e.currentTarget

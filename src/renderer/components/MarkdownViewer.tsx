@@ -10,6 +10,8 @@ import { slugify, extractHeadings } from './TableOfContents'
 import type { Heading } from './TableOfContents'
 import { useAnnotations } from '../hooks/useAnnotations'
 import { AnnotationToolbar } from './AnnotationToolbar'
+import { useAppStore } from '../state/store'
+import { buildLocalImageSrc } from '../lib/imageSrc'
 // 브라우저 환경용 경량 path 유틸 (Node path 미사용)
 const pathUtil = {
   dirname(p: string): string {
@@ -155,16 +157,19 @@ const SafeImage = memo(function SafeImage({
 
 // FS9-B — 원격 SSH workspace 의 이미지. IPC 로 버퍼 받아 blob URL 생성 후 <img> 에 주입.
 // 실패 시 SafeImage 와 동일한 alt 배지 fallback.
+// refreshKey 가 변경되면 IPC 재요청 — 명시 새로고침 시 stale 한 원격 이미지 갱신.
 const SshImage = memo(function SshImage({
   workspaceId,
   path,
   alt,
   extraProps,
+  refreshKey,
 }: {
   workspaceId: string
   path: string
   alt?: string
   extraProps: React.ImgHTMLAttributes<HTMLImageElement>
+  refreshKey: number
 }) {
   const { t } = useTranslation()
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
@@ -199,7 +204,7 @@ const SshImage = memo(function SshImage({
       cancelled = true
       if (currentUrl) URL.revokeObjectURL(currentUrl)
     }
-  }, [workspaceId, path])
+  }, [workspaceId, path, refreshKey])
 
   if (failed || !blobUrl) {
     return (
@@ -266,6 +271,9 @@ function makeHeadingComponent(level: 1 | 2 | 3 | 4 | 5 | 6, slugCounter: Map<str
 function MarkdownViewerInner({ content, basePath, onDocNavigate, onHeadings, workspaceId }: MarkdownViewerProps) {
   const isSshContext = workspaceId?.startsWith('ssh:') ?? false
   const containerRef = useRef<HTMLDivElement>(null)
+  // 명시 새로고침 시 인라인 이미지의 Chromium cache 를 무효화하기 위한 토큰.
+  // 로컬은 ?r= 쿼리, SSH 는 useEffect deps 에 주입.
+  const refreshKey = useAppStore((s) => s.refreshKey)
 
   // v0.4 S7 — basePath 가 곧 docPath. SSH 컨텍스트는 useAnnotations 가 disabled 처리.
   const { toolbar, handleHighlight, handleRemove, dismissToolbar, disabled, orphanCount } =
@@ -359,15 +367,15 @@ function MarkdownViewerInner({ content, basePath, onDocNavigate, onHeadings, wor
     img({ src, alt, ...props }) {
       if (!src) return <img alt={alt} {...props} />
       if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('data:') || src.startsWith('blob:')) {
+        // 외부 URL / data / blob 은 cache busting 적용 X — 외부 서버에 의미 있는 쿼리일 수 있음.
         return <SafeImage src={src} alt={alt} extraProps={props} />
       }
       const abs = src.startsWith('app://') ? src.replace(/^app:\/\/(?:local)?/, '') : resolveRelativePath(src)
       // FS9-B — SSH workspace 의 이미지는 app:// 로컬 fallthrough 불가 → IPC 스트리밍.
       if (isSshContext && workspaceId) {
-        return <SshImage workspaceId={workspaceId} path={abs} alt={alt} extraProps={props} />
+        return <SshImage workspaceId={workspaceId} path={abs} alt={alt} extraProps={props} refreshKey={refreshKey} />
       }
-      const encoded = abs.split('/').map(encodeURIComponent).join('/')
-      const resolved = `app://local${encoded}`
+      const resolved = buildLocalImageSrc(abs, refreshKey)
       return <SafeImage src={resolved} alt={alt} extraProps={props} />
     },
 
@@ -390,7 +398,7 @@ function MarkdownViewerInner({ content, basePath, onDocNavigate, onHeadings, wor
       return <code className={className} {...props}>{children}</code>
     },
     }
-  }, [content, resolveRelativePath, onDocNavigate, isSshContext, workspaceId])
+  }, [content, resolveRelativePath, onDocNavigate, isSshContext, workspaceId, refreshKey])
 
   return (
     <div className="markdown-viewer" ref={containerRef} style={{ position: 'relative' }}>

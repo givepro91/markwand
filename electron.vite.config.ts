@@ -1,5 +1,10 @@
 import { resolve } from 'path'
+import { readFileSync } from 'fs'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
+
+const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf-8')) as {
+  version: string
+}
 
 export default defineConfig({
   main: {
@@ -20,6 +25,9 @@ export default defineConfig({
       alias: {
         '@': resolve('src/renderer')
       }
+    },
+    define: {
+      __APP_VERSION__: JSON.stringify(pkg.version)
     }
   }
 })

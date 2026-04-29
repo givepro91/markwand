@@ -129,7 +129,9 @@
       "dateYesterday": "Yesterday",
       "dateNDaysAgo": "{{n}}d ago",
       "openAria": "Open {{name}}, modified {{when}}",
-      "moreCount": "+{{count}} more"
+      "moreCount": "+{{count}} more",
+      "moreCountAria": "See {{count}} more — go to Inbox",
+      "moreCountTitle": "View all in Inbox"
     }
   },
 
@@ -142,7 +144,11 @@
       "inboxTitle": "Recently modified documents by date",
       "project": "Current project",
       "projectTitle": "File tree and documents for the selected project"
-    }
+    },
+    "refresh": "Refresh",
+    "refreshTooltip": "Refresh (⌘R)",
+    "refreshing": "Refreshing…",
+    "version": "Version {{version}}"
   },
 
   "picker": {

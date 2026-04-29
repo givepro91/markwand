@@ -53,22 +53,11 @@ export function useDocs(projectId: string | null) {
   // stale docs 만 제거하고 append 방식으로 누적. main 쪽 캐시(docsCache)가 hit 이면 chunk 하나로
   // 즉시 보내주므로 flicker 도 거의 없음.
   // FS9-B — isScanning 상태로 파일 트리 로딩 UI 제공.
+  // 새로고침 시 좌측 FileTree 스크롤 보존 — 기존 docs 를 비우지 않고 path-dedup 으로 점진 갱신.
+  // scan 완료 후(.then) 결과에 없는 stale path 만 일괄 제거. 그 사이 react-arborist <Tree> 는
+  // unmount 되지 않아 사용자 스크롤 위치가 유지된다. appendDocs 의 path-dedup 가 전제.
   const scanDocs = useCallback(
     (pid: string): (() => void) => {
-      // 현 프로젝트의 기존 docs 제거(중복 방지). 다른 프로젝트 docs 는 유지.
-      // C7: Map 기반 제거 — 해당 버킷만 삭제하고 cachedFlat 재계산
-      useAppStore.setState((state) => {
-        const map = new Map(state.docsByProject)
-        map.delete(pid)
-        const remaining: Doc[] = []
-        for (const bucket of map.values()) {
-          for (const doc of bucket) remaining.push(doc)
-        }
-        return {
-          docs: remaining,
-          docsByProject: map,
-        }
-      })
       setIsScanning(true)
 
       const unsub = window.api.project.onDocsChunk((chunk: Doc[]) => {
@@ -79,6 +68,21 @@ export function useDocs(projectId: string | null) {
       window.api.project
         .scanDocs(pid)
         .then((result) => {
+          // 스캔 결과(ground truth) 에 없는 path 는 stale — 일괄 제거.
+          // result 에는 다른 projectId 가 섞이지 않으므로 path Set 으로 충분.
+          const groundTruth = new Set(result.map((d) => d.path))
+          useAppStore.setState((state) => {
+            const map = new Map(state.docsByProject)
+            const bucket = map.get(pid)
+            if (!bucket) return state
+            const filtered = bucket.filter((d) => groundTruth.has(d.path))
+            if (filtered.length === bucket.length) return state
+            if (filtered.length > 0) map.set(pid, filtered)
+            else map.delete(pid)
+            const remaining: Doc[] = []
+            for (const b of map.values()) for (const d of b) remaining.push(d)
+            return { docs: remaining, docsByProject: map }
+          })
           console.log(`[useDocs] ${pid}: ${result.length} docs`)
         })
         .catch((err) => {
@@ -94,11 +98,15 @@ export function useDocs(projectId: string | null) {
     [appendDocs]
   )
 
+  // refreshKey 를 deps 에 포함시켜, 사용자 명시 새로고침(⌘R / Sidebar 버튼) 시
+  // 현재 프로젝트의 docs 도 재스캔되도록 한다. scanDocs 자체가 cleanup-aware 라
+  // 새 스캔 시작 전에 이전 onDocsChunk 구독이 정리됨.
+  const refreshKey = useAppStore((s) => s.refreshKey)
   useEffect(() => {
     if (!projectId) return
     const unsub = scanDocs(projectId)
     return unsub
-  }, [projectId, scanDocs])
+  }, [projectId, scanDocs, refreshKey])
 
   useEffect(() => {
     const unsubscribe = window.api.fs.onChange((data: FsChangeEvent) => {

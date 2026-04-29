@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getExt } from '../../lib/viewable'
+import { useAppStore } from '../state/store'
+import { buildLocalImageSrc } from '../lib/imageSrc'
 
 type FitMode = 'fit' | '100%' | 'fill'
 
@@ -38,12 +40,15 @@ function ImageViewerInner({ path, name, size, workspaceId }: ImageViewerProps) {
   // 각 radio 버튼 ref — arrow-key 이동 후 focus 전이에 사용.
   const radioRefs = useRef<Array<HTMLButtonElement | null>>([])
 
-  // URL 계약: app://local/<absolute-path>
+  // URL 계약: app://local/<absolute-path>?r=<refreshKey>
   // - `local`은 고정 host placeholder. path 세그먼트를 host에 두면 Chromium이
   //   host를 소문자로 정규화하면서 /Users → /users 가 되어 워크스페이스 경로
   //   비교(startsWith)가 실패한다. protocol.ts 주석 참고.
   // - 세그먼트별 encodeURIComponent로 `#`·`?`·공백·비ASCII 안전화. `/`는 보존.
-  const localSrc = `app://local${path.split('/').map(encodeURIComponent).join('/')}`
+  // - ?r 쿼리는 새로고침 시 cache busting 토큰. main protocol handler 는
+  //   url.pathname 만 사용하므로 파일 해석에는 영향 없음.
+  const refreshKey = useAppStore((s) => s.refreshKey)
+  const localSrc = buildLocalImageSrc(path, refreshKey)
   const src = isSsh ? (sshBlobUrl ?? '') : localSrc
 
   // path가 바뀌면 errored/dims/blob URL 리셋. memo된 컴포넌트라 state가 유지되는데,
@@ -56,6 +61,8 @@ function ImageViewerInner({ path, name, size, workspaceId }: ImageViewerProps) {
   }, [path])
 
   // FS9-B — SSH 분기. path 또는 workspaceId 변경 시 재요청. cleanup 에서 URL.revokeObjectURL.
+  // 명시 새로고침 시에도 IPC 재요청해 외부에서 변경된 원격 이미지를 가져오도록
+  // refreshKey 도 deps 에 포함. blob URL 은 매번 새로 생성되므로 Chromium cache 와 무관.
   useEffect(() => {
     if (!isSsh || !workspaceId) return
     let cancelled = false
@@ -81,7 +88,7 @@ function ImageViewerInner({ path, name, size, workspaceId }: ImageViewerProps) {
       cancelled = true
       if (currentUrl) URL.revokeObjectURL(currentUrl)
     }
-  }, [isSsh, workspaceId, path])
+  }, [isSsh, workspaceId, path, refreshKey])
 
   const handleLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget

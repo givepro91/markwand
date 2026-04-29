@@ -220,3 +220,128 @@ describe('T2: projectId 전환 레이스 — chunk 필터', () => {
     expect(setAllDocsCalls).toHaveLength(0)
   })
 })
+
+// ---------------------------------------------------------------------------
+// 새로고침 깜빡임 회귀 차단: setActiveWorkspaceId 가 ws 전환 시 projects 를 비워
+// loadingOverlay 의 'projectsCount === 0' 가드가 의도대로 동작해야 한다.
+// ---------------------------------------------------------------------------
+describe('setActiveWorkspaceId — 워크스페이스 전환 시 projects 자동 초기화', () => {
+  const sampleProject = (id: string) => ({
+    id,
+    name: id,
+    workspaceId: 'ws-A',
+    root: `/abs/${id}`,
+    markers: [] as string[],
+    docCount: 5,
+    lastModified: Date.now(),
+  })
+
+  it('다른 ws id 로 전환 시 이전 projects 가 비워진다 (깜빡임 방지 핵심)', () => {
+    useAppStore.setState({
+      activeWorkspaceId: 'ws-A',
+      projects: [sampleProject('p1'), sampleProject('p2')],
+      projectsError: 'stale-error',
+    })
+    useAppStore.getState().setActiveWorkspaceId('ws-B')
+    const s = useAppStore.getState()
+    expect(s.activeWorkspaceId).toBe('ws-B')
+    expect(s.projects).toEqual([])
+    expect(s.projectsError).toBeNull()
+  })
+
+  it('같은 id 재선택은 idempotent — projects 보존 (불필요한 재스캔 트리거 방지)', () => {
+    const projects = [sampleProject('p1')]
+    useAppStore.setState({
+      activeWorkspaceId: 'ws-A',
+      projects,
+    })
+    useAppStore.getState().setActiveWorkspaceId('ws-A')
+    expect(useAppStore.getState().projects).toBe(projects)
+  })
+
+  it('null 로 전환(워크스페이스 삭제 후 빈 상태) 도 projects 비움', () => {
+    useAppStore.setState({
+      activeWorkspaceId: 'ws-A',
+      projects: [sampleProject('p1')],
+    })
+    useAppStore.getState().setActiveWorkspaceId(null)
+    const s = useAppStore.getState()
+    expect(s.activeWorkspaceId).toBeNull()
+    expect(s.projects).toEqual([])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 새로고침 시 FileTree 스크롤 보존 회귀 차단:
+// appendDocs 가 path-dedup 해야 useDocs.scanDocs 가 기존 docs 를 비우지 않고
+// 점진 갱신 가능. 그래야 react-arborist <Tree> 가 unmount/remount 되지 않아 스크롤이 유지된다.
+// ---------------------------------------------------------------------------
+describe('appendDocs — path 기준 dedup (스크롤 보존 핵심)', () => {
+  beforeEach(() => {
+    useAppStore.setState({
+      docs: [],
+      docsByProject: new Map(),
+      frontmatterIndex: { statuses: new Set(), sources: new Set() },
+    })
+  })
+
+  const makeDoc = (path: string, mtime = 1000): {
+    path: string
+    projectId: string
+    name: string
+    mtime: number
+  } => ({
+    path,
+    projectId: 'p1',
+    name: path.split('/').pop()!,
+    mtime,
+  })
+
+  it('같은 path 의 doc 을 두 번 append 하면 한 항목으로 유지 (replace)', () => {
+    const v1 = makeDoc('/abs/a.md', 100)
+    const v2 = makeDoc('/abs/a.md', 200) // 같은 path, 새 mtime
+    useAppStore.getState().appendDocs([v1])
+    useAppStore.getState().appendDocs([v2])
+    const s = useAppStore.getState()
+    expect(s.docs).toHaveLength(1)
+    expect(s.docs[0].mtime).toBe(200)
+  })
+
+  it('새 path 는 추가, 기존 path 는 replace (혼합 chunk)', () => {
+    useAppStore.getState().appendDocs([
+      makeDoc('/abs/a.md', 100),
+      makeDoc('/abs/b.md', 100),
+    ])
+    useAppStore.getState().appendDocs([
+      makeDoc('/abs/a.md', 200), // replace
+      makeDoc('/abs/c.md', 200), // new
+    ])
+    const s = useAppStore.getState()
+    expect(s.docs).toHaveLength(3)
+    const byPath = new Map(s.docs.map((d) => [d.path, d]))
+    expect(byPath.get('/abs/a.md')?.mtime).toBe(200)
+    expect(byPath.get('/abs/b.md')?.mtime).toBe(100)
+    expect(byPath.get('/abs/c.md')?.mtime).toBe(200)
+  })
+
+  it('한 chunk 안에 같은 path 가 중복돼도 한 번만 저장 (defensive)', () => {
+    useAppStore.getState().appendDocs([
+      makeDoc('/abs/a.md', 100),
+      makeDoc('/abs/a.md', 200),
+    ])
+    const s = useAppStore.getState()
+    expect(s.docs).toHaveLength(1)
+    expect(s.docs[0].mtime).toBe(200)
+  })
+
+  it('다른 projectId 는 같은 path 와 무관하게 분리 저장 (워크스페이스 격리)', () => {
+    useAppStore.getState().appendDocs([
+      { path: '/abs/a.md', projectId: 'p1', name: 'a.md', mtime: 100 },
+      { path: '/abs/a.md', projectId: 'p2', name: 'a.md', mtime: 100 },
+    ])
+    const s = useAppStore.getState()
+    expect(s.docs).toHaveLength(2)
+    expect(s.docsByProject.get('p1')).toHaveLength(1)
+    expect(s.docsByProject.get('p2')).toHaveLength(1)
+  })
+})

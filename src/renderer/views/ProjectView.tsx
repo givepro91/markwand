@@ -11,6 +11,7 @@ import { I18nErrorBoundary } from '../components/ErrorBoundary'
 import { RecentDocsPanel } from '../components/RecentDocsPanel'
 import { EmptyState, IconButton } from '../components/ui'
 import { useDocs } from '../hooks/useDocs'
+import { useReloadOnRefresh } from '../hooks/useReloadOnRefresh'
 import { useAppStore } from '../state/store'
 import { createFindController, type FindController } from '../lib/findInContainer'
 import { classifyAsset } from '../../lib/viewable'
@@ -24,6 +25,8 @@ interface ProjectViewProps {
   projectRoot: string
   projectName: string
   initialDocPath?: string
+  /** RecentDocsPanel 의 "+N개 더" 클릭 시 호출. App 이 setViewMode('inbox') 처리. */
+  onSeeMoreRecent?: () => void
 }
 
 const TocIcon = () => (
@@ -50,7 +53,7 @@ const ChevronRightIcon = () => (
   </svg>
 )
 
-export function ProjectView({ projectId, projectRoot, projectName, initialDocPath }: ProjectViewProps) {
+export function ProjectView({ projectId, projectRoot, projectName, initialDocPath, onSeeMoreRecent }: ProjectViewProps) {
   const { t } = useTranslation()
   const { docs, isScanning } = useDocs(projectId)
   const metaFilter = useAppStore((s) => s.metaFilter)
@@ -297,6 +300,13 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
     if (doc) loadDoc(doc)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialDocPath, docs])
+
+  // 명시 새로고침(⌘R / Sidebar 버튼) 시 현재 열린 문서 content 도 디스크에서 다시 읽는다.
+  // useDocs 가 docs 목록은 이미 refreshKey 에 반응하지만, ProjectView 의 docContent
+  // state 는 selectedDoc 클릭 시점에만 set 되므로 별도 reload 가 필요.
+  useReloadOnRefresh(() => {
+    if (selectedDoc) void loadDoc(selectedDoc)
+  })
 
   // 커스텀 find controller — 스크롤 컨테이너 DOM 안에서 TreeWalker + CSS Highlight API로 검색.
   // docContent가 바뀌면 MarkdownViewer가 새 DOM을 렌더하므로 controller도 재생성한다.
@@ -610,6 +620,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
             docs={docs}
             selectedPath={selectedDoc?.path ?? null}
             onSelect={loadDoc}
+            onSeeMore={onSeeMoreRecent}
           />
           {/* F1: flex:1 + minHeight:0 — FileTree가 남은 공간 전체 사용 */}
           <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>

@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { WorkspacePicker } from './WorkspacePicker'
 import { ThemeToggle } from './ThemeToggle'
 import { Settings } from './Settings'
+import { IconButton } from './ui'
 import { useTheme } from '../hooks/useTheme'
 import type { Workspace, ViewMode } from '../../../src/preload/types'
 
@@ -16,6 +17,48 @@ interface SidebarProps {
   experimentalSsh?: boolean
   onWorkspaceRemove: (id: string) => Promise<void>
   onViewModeChange: (mode: ViewMode) => void
+  /** 글로벌 새로고침 — 모든 뷰에서 활성. activeWorkspaceId 가 null 이면 비활성. */
+  onRefresh: () => void
+  /** 진행 중 표시 — IconButton disabled + 회전 애니메이션. */
+  isRefreshing?: boolean
+}
+
+const RefreshIcon = ({ spinning }: { spinning?: boolean }) => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 16 16"
+    fill="currentColor"
+    aria-hidden="true"
+    style={{
+      animation: spinning ? 'sidebar-refresh-spin 700ms linear infinite' : undefined,
+    }}
+  >
+    <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z" />
+    <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z" />
+  </svg>
+)
+
+let spinStyleInjected = false
+function ensureSpinStyle() {
+  if (spinStyleInjected) return
+  if (typeof document === 'undefined') return
+  if (document.getElementById('sidebar-refresh-spin-style')) {
+    spinStyleInjected = true
+    return
+  }
+  const el = document.createElement('style')
+  el.id = 'sidebar-refresh-spin-style'
+  el.textContent = `
+    @keyframes sidebar-refresh-spin {
+      to { transform: rotate(360deg); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      [data-sidebar-refresh-spin] { animation: none !important; }
+    }
+  `
+  document.head.appendChild(el)
+  spinStyleInjected = true
 }
 
 const VIEW_TAB_KEYS: { value: ViewMode; labelKey: string; titleKey: string }[] = [
@@ -34,9 +77,13 @@ export function Sidebar({
   experimentalSsh,
   onWorkspaceRemove,
   onViewModeChange,
+  onRefresh,
+  isRefreshing = false,
 }: SidebarProps) {
   const { t } = useTranslation()
   const { theme, setTheme } = useTheme()
+  ensureSpinStyle()
+  const refreshDisabled = !activeWorkspaceId || isRefreshing
 
   return (
     <header
@@ -107,6 +154,29 @@ export function Sidebar({
       <div
         style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
+        <IconButton
+          aria-label={isRefreshing ? t('sidebar.refreshing') : t('sidebar.refresh')}
+          title={t('sidebar.refreshTooltip')}
+          size="sm"
+          variant="ghost"
+          onClick={onRefresh}
+          disabled={refreshDisabled}
+        >
+          <RefreshIcon spinning={isRefreshing} />
+        </IconButton>
+        <span
+          aria-label={t('sidebar.version', { version: __APP_VERSION__ })}
+          title={t('sidebar.version', { version: __APP_VERSION__ })}
+          style={{
+            fontSize: 'var(--fs-xs)',
+            color: 'var(--text-muted)',
+            fontVariantNumeric: 'tabular-nums',
+            userSelect: 'text',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          v{__APP_VERSION__}
+        </span>
         <ThemeToggle value={theme} onChange={setTheme} />
         <Settings />
       </div>

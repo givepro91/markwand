@@ -129,7 +129,9 @@
       "dateYesterday": "어제",
       "dateNDaysAgo": "{{n}}일 전",
       "openAria": "{{name}} 열기, 수정 {{when}}",
-      "moreCount": "+{{count}}개 더"
+      "moreCount": "+{{count}}개 더",
+      "moreCountAria": "{{count}}개 더 보기 — 인박스로 이동",
+      "moreCountTitle": "인박스에서 모두 보기"
     }
   },
 
@@ -142,7 +144,11 @@
       "inboxTitle": "최근 수정된 문서를 날짜별로 보기",
       "project": "현재 프로젝트",
       "projectTitle": "선택한 프로젝트의 파일 트리와 문서 보기"
-    }
+    },
+    "refresh": "새로고침",
+    "refreshTooltip": "새로고침 (⌘R)",
+    "refreshing": "새로고침 중…",
+    "version": "버전 {{version}}"
   },
 
   "picker": {

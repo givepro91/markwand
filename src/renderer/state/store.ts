@@ -183,7 +183,15 @@ export const useAppStore = create<AppState>((set) => ({
     set((state) => ({ workspaces: [...state.workspaces, workspace] })),
   removeWorkspace: (id) =>
     set((state) => ({ workspaces: state.workspaces.filter((w) => w.id !== id) })),
-  setActiveWorkspaceId: (id) => set({ activeWorkspaceId: id }),
+  // 워크스페이스 전환 시 이전 ws 의 projects 를 즉시 비워, 새로고침 깜빡임 방지 분기
+  // (loadingOverlay.shouldShowInitialOverlay 의 'projectsCount === 0' 가드) 가 의도대로
+  // 첫 진입과 동일하게 동작하도록 한다. 같은 id 재선택은 idempotent — projects 보존.
+  setActiveWorkspaceId: (id) =>
+    set((state) =>
+      state.activeWorkspaceId === id
+        ? { activeWorkspaceId: id }
+        : { activeWorkspaceId: id, projects: [], projectsError: null }
+    ),
   setActiveProjectId: (id) => set({ activeProjectId: id }),
   setProjects: (projects) => set({ projects }),
   setProjectsLoading: (projectsLoading) => set({ projectsLoading }),
@@ -208,13 +216,32 @@ export const useAppStore = create<AppState>((set) => ({
   },
   appendDocs: (newDocs) =>
     set((state) => {
-      // C7: Map 버킷에 append — O(chunk) 아닌 O(N) 재할당 제거
+      // C7: Map 버킷에 append. 새로고침 시 useDocs 가 기존 docs 를 비우지 않고
+      // 새 chunk 를 흘려보낼 수 있도록 path 기준 dedup — 같은 path 는 replace.
+      // FileTree(react-arborist) unmount/remount 를 막아 좌측 스크롤 위치 보존.
       const map = state.docsByProject
+      // projectId 별 보조 path→idx 인덱스. 같은 chunk 안에 중복이 있어도 안전.
+      const idxByProject = new Map<string, Map<string, number>>()
       for (const doc of newDocs) {
-        const bucket = map.get(doc.projectId)
-        if (bucket) bucket.push(doc)
-        else map.set(doc.projectId, [doc])
-        // frontmatterIndex 증분 add (감소는 removeDoc에서 재빌드)
+        let bucket = map.get(doc.projectId)
+        if (!bucket) {
+          bucket = []
+          map.set(doc.projectId, bucket)
+        }
+        let idx = idxByProject.get(doc.projectId)
+        if (!idx) {
+          idx = new Map<string, number>()
+          bucket.forEach((d, i) => idx!.set(d.path, i))
+          idxByProject.set(doc.projectId, idx)
+        }
+        const existing = idx.get(doc.path)
+        if (existing !== undefined) {
+          bucket[existing] = doc
+        } else {
+          idx.set(doc.path, bucket.length)
+          bucket.push(doc)
+        }
+        // frontmatterIndex 증분 add (감소는 removeDoc/reconcile 시 재빌드)
         if (doc.frontmatter?.status) state.frontmatterIndex.statuses.add(doc.frontmatter.status as string)
         if (doc.frontmatter?.source) state.frontmatterIndex.sources.add(doc.frontmatter.source as string)
       }

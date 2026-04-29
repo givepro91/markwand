@@ -254,10 +254,11 @@ export function AllProjectsView({ workspaceId, onOpenProject }: AllProjectsViewP
               </IconButton>
             </div>
           )}
-          {/* 새로고침 */}
+          {/* 새로고침 — IconButton 만으로는 마우스 사용자가 인지 어려워 title 툴팁(⌘R 단축키 안내) 동반 */}
           <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: 'var(--sp-2)' }}>
             <IconButton
               aria-label={t('allProjects.refresh')}
+              title={t('sidebar.refreshTooltip')}
               size="sm"
               variant="ghost"
               onClick={() => bumpRefreshKey()}
