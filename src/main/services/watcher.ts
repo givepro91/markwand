@@ -7,6 +7,29 @@ import { parseFrontmatter } from './scanner'
 import { localTransport } from '../transport/local'
 import { isViewable, classifyAsset } from '../../lib/viewable'
 
+// Follow-up FS-RT-1 — watcher → main docsCache 무효화 wiring.
+// circular import (workspace.ts ↔ watcher.ts) 회피용 setter 패턴.
+// registerWorkspaceHandlers 가 부팅 시 등록한다. 미등록 상태에서는 noop.
+//
+// resolveProjectId(filePath) → projectId | null:
+//   filePath 가 어느 프로젝트 root 하위인지 main 측 projectsCache 로 역추적.
+//   매칭 실패(워크스페이스 밖, 캐시 cold start 등)면 null — fs:change 페이로드의
+//   projectId 를 비워 보내 renderer 가 incremental add 를 안전 무시한다.
+// invalidateDocsCacheForProject(projectId):
+//   add/unlink 발생 시 호출되어 다음 project:scan-docs 가 fresh scan 하도록 강제.
+let projectIdResolver: ((filePath: string) => string | null) | null = null
+let docsCacheInvalidator: ((projectId: string) => void) | null = null
+export function setProjectIdResolver(
+  fn: ((filePath: string) => string | null) | null,
+): void {
+  projectIdResolver = fn
+}
+export function setDocsCacheInvalidator(
+  fn: ((projectId: string) => void) | null,
+): void {
+  docsCacheInvalidator = fn
+}
+
 type ChangeType = FsChangeEvent['type']
 
 let watcher: FSWatcher | null = null
@@ -98,33 +121,47 @@ function sendChange(type: ChangeType, filePath: string): void {
     debounceTimers.delete(key)
     if (!activeWebContents || activeWebContents.isDestroyed()) return
 
+    // add / unlink 는 docsCache 형태(파일 집합) 자체를 바꾸므로 main 캐시를 즉시 무효화.
+    // change 는 doc 자체의 mtime/size/frontmatter 만 바뀌어 incremental updateDoc 으로 충분.
+    if (type === 'add' || type === 'unlink') {
+      const pid = projectIdResolver?.(filePath) ?? null
+      if (pid && docsCacheInvalidator) docsCacheInvalidator(pid)
+    }
+
     if (type === 'unlink') {
-      activeWebContents.send('fs:change', { type, path: filePath } satisfies FsChangeEvent)
+      const payload: FsChangeEvent = { type, path: filePath }
+      const pid = projectIdResolver?.(filePath) ?? null
+      if (pid) payload.projectId = pid
+      payload.name = path.basename(filePath)
+      activeWebContents.send('fs:change', payload)
       return
     }
 
-    // add/change는 stat으로 size를 같이 실어 보낸다. Doc.size가 갱신되어야
-    // ImageViewer 푸터가 파일 편집 후에도 현재 byte 값을 반영한다.
-    // stat 실패(권한·경쟁 삭제)는 무해 — size는 optional이라 기존 값 유지.
+    // add/change는 stat으로 size+mtime을 같이 실어 보낸다. mtime 은 'add' incremental
+    // 반영 시 Doc.mtime 채움용. stat 실패(권한·경쟁 삭제)는 무해 — size/mtime 은 optional.
     void fsStat(filePath)
-      .then((st) => (st.isFile() ? st.size : undefined))
-      .catch(() => undefined)
-      .then(async (size) => {
+      .then((st) => (st.isFile() ? { size: st.size, mtime: st.mtimeMs } : null))
+      .catch(() => null)
+      .then(async (stat) => {
         if (!activeWebContents || activeWebContents.isDestroyed()) return
+
+        const pid = projectIdResolver?.(filePath) ?? null
+        const basePayload: FsChangeEvent = { type, path: filePath }
+        basePayload.name = path.basename(filePath)
+        if (pid) basePayload.projectId = pid
+        if (stat?.size !== undefined) basePayload.size = stat.size
+        if (stat?.mtime !== undefined) basePayload.mtime = stat.mtime
 
         // 이미지 등 non-md 자산은 frontmatter 파싱 스킵 (4KB 헤더 read 회피)
         if (classifyAsset(filePath) !== 'md') {
-          const payload: FsChangeEvent = { type, path: filePath }
-          if (size !== undefined) payload.size = size
-          activeWebContents.send('fs:change', payload)
+          activeWebContents.send('fs:change', basePayload)
           return
         }
 
         const frontmatter = await parseFrontmatter(localTransport.fs, filePath)
         if (!activeWebContents || activeWebContents.isDestroyed()) return
-        const payload: FsChangeEvent = { type, path: filePath }
+        const payload: FsChangeEvent = { ...basePayload }
         if (frontmatter !== undefined) payload.frontmatter = frontmatter
-        if (size !== undefined) payload.size = size
         activeWebContents.send('fs:change', payload)
       })
   }, DEBOUNCE_MS)

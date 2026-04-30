@@ -7,8 +7,9 @@ import { describe, it, expect } from 'vitest'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { composeDocsFromFileStats } from './workspace'
+import { composeDocsFromFileStats, findProjectIdByPathIn } from './workspace'
 import { localTransport } from '../transport/local'
+import type { Project } from '../../preload/types'
 
 async function collectAll<T>(gen: AsyncGenerator<T[]>): Promise<T[]> {
   const out: T[] = []
@@ -70,6 +71,41 @@ describe('composeDocsFromFileStats', () => {
     } finally {
       fs.rmSync(root, { recursive: true, force: true })
     }
+  })
+
+  it('findProjectIdByPathIn — Follow-up FS-RT-1 watcher path → projectId 역추적', () => {
+    function mkProject(id: string, root: string): Project {
+      return {
+        id,
+        workspaceId: 'ws-1',
+        name: path.basename(root),
+        root,
+        markers: [],
+        docCount: -1,
+        lastModified: 0,
+      }
+    }
+    const cache = new Map<string, Project[]>()
+    cache.set('ws-1', [
+      mkProject('p-outer', '/ws/outer'),
+      mkProject('p-inner', '/ws/outer/sub'),
+      mkProject('p-other', '/ws/other'),
+    ])
+
+    // 정확히 root 인 파일 → 그 root 매칭
+    expect(findProjectIdByPathIn(cache, '/ws/outer')).toBe('p-outer')
+    // root 하위 파일 → 매칭
+    expect(findProjectIdByPathIn(cache, '/ws/outer/note.md')).toBe('p-outer')
+    // 더 깊은 root 도 매칭 가능 → 가장 긴 prefix 우선 (container 케이스)
+    expect(findProjectIdByPathIn(cache, '/ws/outer/sub/deep/x.md')).toBe('p-inner')
+    // 다른 워크스페이스
+    expect(findProjectIdByPathIn(cache, '/ws/other/y.md')).toBe('p-other')
+    // 어느 root 에도 속하지 않음
+    expect(findProjectIdByPathIn(cache, '/elsewhere/z.md')).toBeNull()
+    // sibling (prefix 비매칭, '/ws/outer-sibling' 은 '/ws/outer/' 로 시작 안 함)
+    expect(findProjectIdByPathIn(cache, '/ws/outer-sibling/x.md')).toBeNull()
+    // 빈 캐시
+    expect(findProjectIdByPathIn(new Map(), '/ws/outer/x.md')).toBeNull()
   })
 
   it('ignore 패턴 준수 — node_modules/dist/__fixtures__ 안의 md 는 Doc composition 대상 아님 (LocalScannerDriver.scanDocs 경유)', async () => {

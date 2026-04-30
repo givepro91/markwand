@@ -67,6 +67,19 @@ export default function App() {
   const setActiveProjectId = useAppStore((s) => s.setActiveProjectId)
   const projects = useAppStore((s) => s.projects)
 
+  // FS-RT-2 — activeProjectId 변경 시 자동 prefs persist. 다음 부팅 / hot-reload 에서
+  // 복원되어 ProjectView mount 가 보존된다.
+  // null 클리어도 같이 저장 — 사용자가 "프로젝트 목록"으로 명시 빠져나간 의도 보존.
+  //
+  // race 가드: 부팅 직후 첫 render 시점은 store activeProjectId === null 이므로
+  // 그대로 persist 하면 prefs.get 으로 복원 시점 이전에 null 로 덮어써진다 (inject 값 유실).
+  // restoredRef 가 true 가 된 후(=boot restore 완료) 부터만 persist.
+  const projectPersistArmedRef = useRef(false)
+  useEffect(() => {
+    if (!projectPersistArmedRef.current) return
+    void window.api.prefs.set('activeProjectId', activeProjectId).catch(() => undefined)
+  }, [activeProjectId])
+
   // Composer — 전역 선택 상태 + 설정 prefs
   const docs = useAppStore((s) => s.docs)
   const pruneStaleDocSelection = useAppStore((s) => s.pruneStaleDocSelection)
@@ -84,6 +97,16 @@ export default function App() {
       if (stored === 'all' || stored === 'inbox' || stored === 'project') {
         useAppStore.getState().setViewMode(stored)
       }
+    })
+    // FS-RT-2 — activeProjectId 복원. 미복원 시 viewMode='project' 인데 activeProjectId=null
+    // 인 모순 상태가 되어 ProjectView 자체가 mount 안 되고 watcher 'add' 가 트리에 못 들어옴.
+    // 복원 완료 시 projectPersistArmedRef = true → 이후 변경부터 prefs.set 동작.
+    window.api.prefs.get('activeProjectId').then((stored) => {
+      if (typeof stored === 'string' && stored.length > 0) {
+        useAppStore.getState().setActiveProjectId(stored)
+      }
+    }).catch(() => undefined).finally(() => {
+      projectPersistArmedRef.current = true
     })
     window.api.prefs.get('composerOnboardingSeen').then((stored) => {
       if (stored === true) {

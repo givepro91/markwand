@@ -316,7 +316,7 @@
     "id": "orch-modojfd3-fdrr",
     "task": "v0.4 S7 Annotation MVP — dom-anchor-text-quote + CSS Custom Highlight + sidecar JSON, 노랑 1색, 로컬 md only. Plan §S7 그대로. 릴리스 금지.",
     "complexity": "complex",
-    "status": "running",
+    "status": "completed",
     "phases": [
       {
         "name": "Explorer",
@@ -365,15 +365,19 @@
       {
         "name": "S7.4 Manual GUI Test",
         "role": "Integrator",
-        "status": "pending"
+        "status": "completed",
+        "result": "사용자 dogfood 회귀 3건(드래그 중 toolbar 출현 · 제거 무동작 · doc 전환 잔존 highlight) 자가 분석 후 fix. isDraggingRef + mouseup 컴퓨트 + toolbar click 격리 + prevDocPathRef. 자가 검증 단위 테스트 6/6 추가. 사용자 \"오케이 잘됨\" 확인.",
+        "completedAt": "2026-04-26T12:54:46.858Z"
       },
       {
         "name": "State Update+Commit",
         "role": "Orchestrator",
-        "status": "pending"
+        "status": "completed",
+        "result": "cb871b6 (feat S7 Annotation MVP, 25 파일 +1769 -3) + 22ffb49 (review PASS Known Gap). NOVA-STATE.md Last Activity 추가. 릴리스 미수행(package.json 0.4.0-beta.2 유지).",
+        "completedAt": "2026-04-26T12:54:49.164Z"
       }
     ],
     "createdAt": "2026-04-25T01:47:43.623Z",
-    "updatedAt": "2026-04-26T12:15:39.884Z"
+    "updatedAt": "2026-04-26T12:54:49.164Z"
   }
 }

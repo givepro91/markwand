@@ -24,6 +24,8 @@ export interface ExperimentalFeatures {
 export interface StoreSchema {
   workspaces: Workspace[]
   activeWorkspaceId: string | null
+  /** FS-RT-2 — 마지막 활성 프로젝트 id. 부팅 / dev hot-reload 후 ProjectView mount 복원 용. */
+  activeProjectId: string | null
   viewMode: ViewMode
   theme: ThemeType
   readDocs: Record<string, number>
@@ -50,6 +52,7 @@ export async function getStore(): Promise<import('electron-store').default<Store
     defaults: {
       workspaces: [],
       activeWorkspaceId: null,
+      activeProjectId: null,
       viewMode: 'all',
       theme: 'system',
       readDocs: {},
@@ -93,6 +96,7 @@ export async function getStore(): Promise<import('electron-store').default<Store
         default: [],
       },
       activeWorkspaceId: { type: ['string', 'null'], default: null },
+      activeProjectId: { type: ['string', 'null'], default: null },
       viewMode: { type: 'string', enum: ['all', 'inbox', 'project'], default: 'all' },
       theme: { type: 'string', enum: ['light', 'dark', 'system'], default: 'system' },
       readDocs: { type: 'object', default: {} },

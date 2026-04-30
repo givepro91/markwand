@@ -8,7 +8,12 @@ import { localTransport } from '../transport/local'
 import type { Transport, FileStat } from '../transport/types'
 import { VIEWABLE_GLOB, classifyAsset } from '../../lib/viewable'
 import { setProtocolWorkspaceRoots } from '../security/protocol'
-import { addWatchRoots, removeWatchRoot } from '../services/watcher'
+import {
+  addWatchRoots,
+  removeWatchRoot,
+  setProjectIdResolver,
+  setDocsCacheInvalidator,
+} from '../services/watcher'
 import {
   parseScanInput,
   parseScanDocsInput,
@@ -158,6 +163,40 @@ function invalidateProjectsCache(workspaceId?: string): void {
 export function invalidateDocsCacheForProject(projectId: string): void {
   docsCache.delete(projectId)
   inflightDocScans.delete(projectId)
+}
+
+/**
+ * Follow-up FS-RT-1 — watcher 가 파일 경로로부터 projectId 를 역추적할 때 사용.
+ * 주어진 projectsCache 의 모든 프로젝트 root 를 순회하며 가장 긴 prefix 매칭을 반환한다.
+ * 캐시 cold start (워크스페이스 진입 전) 또는 워크스페이스 밖 파일이면 null.
+ *
+ * 가장 긴 매칭을 고르는 이유: container 워크스페이스에서 root/sub 가 같이 등록되면
+ * 더 깊은 경로의 파일이 두 후보 모두에 prefix 매칭되므로, 더 긴 root 를 우선해야
+ * 정확한 소속 project 를 찾는다.
+ *
+ * pure helper 로 export — 테스트가 주입한 Map 으로 검증 가능. 런타임 wrapper 는
+ * 모듈 private projectsCache 를 사용한다.
+ */
+export function findProjectIdByPathIn(
+  cache: Map<string, Project[]>,
+  filePath: string,
+): string | null {
+  let best: { id: string; rootLen: number } | null = null
+  for (const [, projects] of cache) {
+    for (const p of projects) {
+      const rootWithSep = p.root.endsWith(path.sep) ? p.root : p.root + path.sep
+      if (filePath === p.root || filePath.startsWith(rootWithSep)) {
+        if (!best || p.root.length > best.rootLen) {
+          best = { id: p.id, rootLen: p.root.length }
+        }
+      }
+    }
+  }
+  return best?.id ?? null
+}
+
+export function findProjectIdByPath(filePath: string): string | null {
+  return findProjectIdByPathIn(projectsCache, filePath)
 }
 
 async function getOrScanProjects(
@@ -315,6 +354,11 @@ function makeSshProject(
 }
 
 export function registerWorkspaceHandlers(): void {
+  // Follow-up FS-RT-1 — watcher 의 path → projectId 역추적 + docsCache 무효화 wiring.
+  // 부팅 시 1회 등록. circular import 회피 위해 setter 패턴.
+  setProjectIdResolver(findProjectIdByPath)
+  setDocsCacheInvalidator(invalidateDocsCacheForProject)
+
   ipcMain.handle('workspace:list', async () => {
     const store = await getStore()
     return store.get('workspaces')
@@ -519,7 +563,15 @@ export function registerWorkspaceHandlers(): void {
   })
 
   ipcMain.handle('project:scan-docs', async (event, raw: unknown) => {
-    const { projectId } = parseScanDocsInput(raw)
+    const { projectId, force } = parseScanDocsInput(raw)
+
+    // Follow-up FS-RT-1 — force=true (명시 / 자동 새로고침) 시 main docsCache 무효화 후 fresh scan.
+    // 기존: workspace:refresh 가 docs 캐시를 비웠으나 renderer effect 순서(child→parent) 때문에
+    // project:scan-docs 가 먼저 도착해 stale 데이터를 반환하던 race 차단.
+    if (force) {
+      docsCache.delete(projectId)
+      inflightDocScans.delete(projectId)
+    }
 
     // Follow-up FS7 — 캐시 hit: 기존 chunk 를 한 번에 전송 + 캐시 그대로 반환.
     // SSH 에서는 이 경로가 핵심 속도 향상 (수 초 → 즉시).

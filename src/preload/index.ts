@@ -30,7 +30,11 @@ contextBridge.exposeInMainWorld('api', {
   },
 
   project: {
-    scanDocs: (projectId: string) => ipcRenderer.invoke('project:scan-docs', { projectId }),
+    scanDocs: (projectId: string, opts?: { force?: boolean }) =>
+      ipcRenderer.invoke('project:scan-docs', {
+        projectId,
+        ...(opts?.force ? { force: true } : {}),
+      }),
     getDocCount: (projectId: string) => ipcRenderer.invoke('project:get-doc-count', { projectId }),
     // raw IpcRendererEvent 노출 차단 — data-only wrapper
     onDocsChunk: (cb: (data: Doc[]) => void) => {

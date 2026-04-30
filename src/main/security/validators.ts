@@ -20,6 +20,10 @@ export const ALLOWED_PREFS_KEYS = new Set([
   'terminal',
   'treeExpanded',
   'activeWorkspaceId',
+  // FS-RT-2 — activeProjectId 도 prefs persist. dev hot-reload / 재시작 후 마지막 본
+  // 프로젝트 자동 복원. 미복원 시 viewMode='project' 인데 activeProjectId=null 인 모순
+  // 상태가 발생해 좌측 트리/실시간 watcher 'add' 가 안 보이는 문제 (사용자 보고 — 1234.md 누락).
+  'activeProjectId',
   'readDocs',
   'viewLayout',
   'trackReadDocs',
@@ -63,8 +67,10 @@ export function parseScanInput(raw: unknown): { workspaceId: string } {
   return z.object({ workspaceId: WorkspaceIdInput }).parse(raw)
 }
 
-export function parseScanDocsInput(raw: unknown): { projectId: string } {
-  return z.object({ projectId: ProjectIdInput }).parse(raw)
+export function parseScanDocsInput(raw: unknown): { projectId: string; force?: boolean } {
+  return z
+    .object({ projectId: ProjectIdInput, force: z.boolean().optional() })
+    .parse(raw)
 }
 
 export function parseReadDocInput(raw: unknown): { path: string } {

@@ -56,8 +56,9 @@ export function useDocs(projectId: string | null) {
   // 새로고침 시 좌측 FileTree 스크롤 보존 — 기존 docs 를 비우지 않고 path-dedup 으로 점진 갱신.
   // scan 완료 후(.then) 결과에 없는 stale path 만 일괄 제거. 그 사이 react-arborist <Tree> 는
   // unmount 되지 않아 사용자 스크롤 위치가 유지된다. appendDocs 의 path-dedup 가 전제.
+  // FS-RT-1 — force=true 면 main docsCache 우회. 명시/자동 새로고침에서 신규 파일/폴더 누락 차단.
   const scanDocs = useCallback(
-    (pid: string): (() => void) => {
+    (pid: string, opts?: { force?: boolean }): (() => void) => {
       setIsScanning(true)
 
       const unsub = window.api.project.onDocsChunk((chunk: Doc[]) => {
@@ -66,7 +67,7 @@ export function useDocs(projectId: string | null) {
       })
 
       window.api.project
-        .scanDocs(pid)
+        .scanDocs(pid, opts?.force ? { force: true } : undefined)
         .then((result) => {
           // 스캔 결과(ground truth) 에 없는 path 는 stale — 일괄 제거.
           // result 에는 다른 projectId 가 섞이지 않으므로 path Set 으로 충분.
@@ -101,10 +102,12 @@ export function useDocs(projectId: string | null) {
   // refreshKey 를 deps 에 포함시켜, 사용자 명시 새로고침(⌘R / Sidebar 버튼) 시
   // 현재 프로젝트의 docs 도 재스캔되도록 한다. scanDocs 자체가 cleanup-aware 라
   // 새 스캔 시작 전에 이전 onDocsChunk 구독이 정리됨.
+  // FS-RT-1 — refreshKey > 0 (명시/자동 새로고침) 일 때만 force=true 전달해
+  // main docsCache hit 으로 인한 stale 결과 차단. 첫 진입은 cache hit OK.
   const refreshKey = useAppStore((s) => s.refreshKey)
   useEffect(() => {
     if (!projectId) return
-    const unsub = scanDocs(projectId)
+    const unsub = scanDocs(projectId, refreshKey > 0 ? { force: true } : undefined)
     return unsub
   }, [projectId, scanDocs, refreshKey])
 
@@ -118,13 +121,28 @@ export function useDocs(projectId: string | null) {
       } else if (data.type === 'change') {
         // watcher가 stat으로 size를 함께 보내는 경우 Doc.size도 갱신한다.
         // size가 undefined이면(stat 실패 등) 필드 자체를 빼 기존 값을 유지.
-        const patch: Partial<Doc> = { mtime: Date.now() }
+        const patch: Partial<Doc> = { mtime: data.mtime ?? Date.now() }
         if (data.size !== undefined) patch.size = data.size
         updateDoc(data.path, patch)
+      } else if (data.type === 'add') {
+        // FS-RT-1 — main 이 stat / projectId 매핑을 함께 실어 보낸다.
+        // projectId / mtime / name 중 하나라도 없으면 Doc 객체를 안전하게 조립할 수 없으므로 무시
+        // (다음 새로고침 또는 force scan 에서 정상 잡힘). main 이 invalidator 도 같이 발화하므로
+        // 캐시는 이미 비어 있어 다음 scanDocs 가 fresh.
+        if (!data.projectId || !data.name || data.mtime === undefined) return
+        const doc: Doc = {
+          path: data.path,
+          projectId: data.projectId,
+          name: data.name,
+          mtime: data.mtime,
+        }
+        if (data.size !== undefined) doc.size = data.size
+        if (data.frontmatter !== undefined) doc.frontmatter = data.frontmatter
+        appendDocs([doc])
       }
     })
     return unsubscribe
-  }, [updateDoc, removeDoc])
+  }, [updateDoc, removeDoc, appendDocs])
 
   return { docs: filteredDocs, scanDocs, isScanning }
 }

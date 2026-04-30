@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import path from 'node:path'
-import { assertInWorkspace, isValidSshRoot, parseWorkspaceAddSshInput } from './validators'
+import {
+  assertInWorkspace,
+  isValidSshRoot,
+  parseWorkspaceAddSshInput,
+  parsePrefsGetInput,
+  parsePrefsSetInput,
+} from './validators'
 
 // IPC 핸들러 보안 체크리스트 (Plan §M1.4 Critic G-Major).
 // 각 IPC 경계가 workspace 밖 경로를 받으면 PATH_OUT_OF_WORKSPACE 를 던지는지 계약 검증.
@@ -144,5 +150,31 @@ describe('parseWorkspaceAddSshInput — root 필수 + depth 검증', () => {
     expect(() =>
       parseWorkspaceAddSshInput({ ...baseInput, root: '/home/alice', mode: 'invalid' }),
     ).toThrow()
+  })
+})
+
+// FS-RT-2 — activeProjectId persist allowlist 회귀 차단.
+// 사용자 보고: dev hot-reload / 재시작 후 activeProjectId 풀려 ProjectView 가 mount 안 되고
+// 신규 파일이 좌측 트리에 안 들어옴. activeProjectId 가 ALLOWED_PREFS_KEYS 에 누락되면
+// 이 회귀가 즉시 재발하므로, prefs:get/set 양쪽에서 통과 여부를 명시 검증한다.
+describe('ALLOWED_PREFS_KEYS — activeProjectId 통과 (FS-RT-2)', () => {
+  it('parsePrefsGetInput — activeProjectId 키 통과', () => {
+    expect(() => parsePrefsGetInput({ key: 'activeProjectId' })).not.toThrow()
+  })
+
+  it('parsePrefsSetInput — activeProjectId 문자열 값 통과', () => {
+    const out = parsePrefsSetInput({ key: 'activeProjectId', value: 'abc1234567890def' })
+    expect(out.key).toBe('activeProjectId')
+    expect(out.value).toBe('abc1234567890def')
+  })
+
+  it('parsePrefsSetInput — activeProjectId null 값 통과 (사용자가 프로젝트 빠져나간 의도 보존)', () => {
+    const out = parsePrefsSetInput({ key: 'activeProjectId', value: null })
+    expect(out.key).toBe('activeProjectId')
+    expect(out.value).toBeNull()
+  })
+
+  it('parsePrefsGetInput — 알 수 없는 키 거부', () => {
+    expect(() => parsePrefsGetInput({ key: 'fakeKey__' })).toThrow('PREFS_KEY_NOT_ALLOWED')
   })
 })

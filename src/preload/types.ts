@@ -82,6 +82,12 @@ export interface FsChangeEvent {
   // 바이트 크기. add/change 시 watcher가 stat으로 채워 Doc.size 갱신에 사용.
   // unlink 또는 stat 실패 시 undefined.
   size?: number
+  // 'add' incremental 반영을 위한 부가 필드.
+  // renderer 가 fresh scan 없이 Doc 객체를 즉시 조립할 수 있도록 main 이 채운다.
+  // projectId 미해석(active workspace 밖 등) 시 undefined — renderer 는 이때 add 무시.
+  mtime?: number
+  name?: string
+  projectId?: string
 }
 
 // Drift Verifier — 단일 진실 공급원은 src/lib/drift/types.ts.
@@ -234,7 +240,12 @@ export interface WindowApi {
     refresh: (workspaceId: string) => Promise<Project[]>
   }
   project: {
-    scanDocs: (projectId: string) => Promise<Doc[]>
+    /**
+     * `opts.force === true` 면 main 의 docsCache 를 무시하고 fresh scan 을 강제한다.
+     * 명시 새로고침(⌘R / Sidebar 버튼) 또는 fs:project-change 자동 새로고침 시 사용.
+     * 첫 진입(refreshKey === 0) 은 force 미지정 → 기존 캐시 hit 유지.
+     */
+    scanDocs: (projectId: string, opts?: { force?: boolean }) => Promise<Doc[]>
     getDocCount: (projectId: string) => Promise<number>
     onDocsChunk: (cb: (data: Doc[]) => void) => () => void
   }
