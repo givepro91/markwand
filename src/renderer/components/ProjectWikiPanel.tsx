@@ -240,7 +240,16 @@ function ProjectPulseCard({
 
 function Section({ title, children, id }: { title: string; children: ReactNode; id?: string }) {
   return (
-    <section id={id} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', scrollMarginTop: 'var(--sp-6)' }}>
+    <section
+      id={id}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 'var(--sp-3)',
+        scrollMarginTop: 'var(--sp-6)',
+        minWidth: 0,
+      }}
+    >
       <h2
         style={{
           margin: 0,
@@ -289,6 +298,7 @@ function DocList({
               alignItems: 'center',
               gap: 'var(--sp-3)',
               width: '100%',
+              minWidth: 0,
               border: '1px solid var(--border)',
               borderRadius: 'var(--r-md)',
               background: 'var(--bg)',
@@ -302,7 +312,7 @@ function DocList({
             <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {item.name}
             </span>
-            {renderMeta?.(item)}
+            {renderMeta && <span style={{ flexShrink: 0 }}>{renderMeta(item)}</span>}
           </button>
         )
       })}
@@ -345,6 +355,7 @@ function RiskList({
               alignItems: 'center',
               gap: 'var(--sp-3)',
               width: '100%',
+              minWidth: 0,
               border: '1px solid var(--border)',
               borderRadius: 'var(--r-md)',
               background: 'var(--bg)',
@@ -358,7 +369,7 @@ function RiskList({
             <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {item.name}
             </span>
-            <span style={{ display: 'inline-flex', gap: 'var(--sp-1)', alignItems: 'center' }}>
+            <span style={{ display: 'inline-flex', gap: 'var(--sp-1)', alignItems: 'center', flexShrink: 0 }}>
               {item.missing > 0 && <Badge variant="danger" size="sm">{missingLabel} {item.missing}</Badge>}
               {item.stale > 0 && <Badge variant="default" size="sm">{staleLabel} {item.stale}</Badge>}
             </span>
@@ -477,15 +488,19 @@ function DocDebtRadar({
               display: 'flex',
               flexDirection: 'column',
               gap: 'var(--sp-2)',
+              width: '100%',
+              minWidth: 0,
             }}
           >
-            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--sp-2)' }}>
-              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--sp-2)', minWidth: 0 }}>
+              <span style={{ display: 'block', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {item.name}
               </span>
-              <Badge variant={item.score >= 50 ? 'danger' : 'default'} size="sm">
-                {t('projectWiki.docDebtScore', { score: item.score })}
-              </Badge>
+              <span style={{ flexShrink: 0 }}>
+                <Badge variant={item.score >= 50 ? 'danger' : 'default'} size="sm">
+                  {t('projectWiki.docDebtScore', { score: item.score })}
+                </Badge>
+              </span>
             </span>
             <span style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-1)' }}>
               {item.reasons.map((reason) => (
@@ -538,6 +553,7 @@ function DecisionTimeline({
               gridTemplateColumns: 'auto minmax(0, 1fr)',
               gap: 'var(--sp-3)',
               alignItems: 'stretch',
+              minWidth: 0,
             }}
           >
             <div
@@ -587,15 +603,18 @@ function DecisionTimeline({
                 flexDirection: 'column',
                 gap: 'var(--sp-2)',
                 minWidth: 0,
+                width: '100%',
               }}
             >
-              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--sp-2)' }}>
-                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--sp-2)', minWidth: 0 }}>
+                <span style={{ display: 'block', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {item.name}
                 </span>
-                <Badge variant={index === 0 ? 'marker' : 'default'} size="sm">
-                  {t(`projectWiki.decisionKind.${item.kind}`)}
-                </Badge>
+                <span style={{ flexShrink: 0 }}>
+                  <Badge variant={index === 0 ? 'marker' : 'default'} size="sm">
+                    {t(`projectWiki.decisionKind.${item.kind}`)}
+                  </Badge>
+                </span>
               </span>
               <span style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-1)', color: 'var(--text-muted)', fontSize: 'var(--fs-xs)' }}>
                 <Badge variant="default" size="sm">{t('projectWiki.decisionAge', { days: item.ageDays })}</Badge>
@@ -696,7 +715,7 @@ function RelationshipGraph({
                   minWidth: 0,
                 }}
               >
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hub.name}</span>
+                <span style={{ display: 'block', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hub.name}</span>
                 <span style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-1)' }}>
                   <Badge variant="default" size="sm">{t('projectWiki.linkGraphInbound', { count: hub.inbound })}</Badge>
                   <Badge variant="default" size="sm">{t('projectWiki.linkGraphOutbound', { count: hub.outbound })}</Badge>
@@ -735,11 +754,13 @@ function RelationshipGraph({
                   minWidth: 0,
                 }}
               >
-                <span style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--sp-2)', alignItems: 'center' }}>
-                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--sp-2)', alignItems: 'center', minWidth: 0 }}>
+                  <span style={{ display: 'block', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {link.sourceName} → {link.targetName}
                   </span>
-                  <Badge variant={statusVariant(link.status)} size="sm">{t(`projectWiki.linkGraphStatus.${link.status}`)}</Badge>
+                  <span style={{ flexShrink: 0 }}>
+                    <Badge variant={statusVariant(link.status)} size="sm">{t(`projectWiki.linkGraphStatus.${link.status}`)}</Badge>
+                  </span>
                 </span>
                 <span style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-xs)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {t('projectWiki.linkGraphLine', { line: link.line })} · {link.raw}
@@ -1203,9 +1224,10 @@ export function ProjectWikiPanel({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
           gap: 'var(--sp-6)',
           alignItems: 'start',
+          minWidth: 0,
         }}
       >
         <Section title={t('projectWiki.knowledgeTitle')}>

@@ -113,9 +113,11 @@ export function WorkspaceManageModal({ workspaces, onRemove, onAdd, onClose }: W
         inset: 0,
         background: 'rgba(0,0,0,0.5)',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'center',
-        zIndex: 'var(--z-modal)',
+        padding: 'calc(var(--sp-6) + env(safe-area-inset-top, 0px)) var(--sp-4) var(--sp-4)',
+        overflowY: 'auto',
+        zIndex: 'calc(var(--z-modal) + 20)',
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
@@ -131,8 +133,9 @@ export function WorkspaceManageModal({ workspaces, onRemove, onAdd, onClose }: W
           border: '1px solid var(--border)',
           borderRadius: 'var(--r-xl)',
           padding: 'var(--sp-6)',
-          width: '420px',
-          maxWidth: '90vw',
+          width: 'min(560px, calc(100vw - 32px))',
+          maxHeight: 'calc(100vh - 48px)',
+          overflowY: 'auto',
           boxShadow: 'var(--shadow-lg)',
         }}
       >
@@ -158,7 +161,17 @@ export function WorkspaceManageModal({ workspaces, onRemove, onAdd, onClose }: W
             {t('manage.empty')}
           </p>
         ) : (
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
+          <ul
+            style={{
+              listStyle: 'none',
+              margin: 0,
+              padding: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--sp-2)',
+              minWidth: 0,
+            }}
+          >
             {workspaces.map((w) => (
               <li key={w.id}>
                 <div
@@ -169,8 +182,8 @@ export function WorkspaceManageModal({ workspaces, onRemove, onAdd, onClose }: W
                     background: 'var(--bg)',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--sp-2)' }}>
-                    <div style={{ overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--sp-2)', minWidth: 0 }}>
+                    <div style={{ overflow: 'hidden', minWidth: 0, flex: 1 }}>
                       <div
                         style={{
                           fontSize: 'var(--fs-sm)',
@@ -197,14 +210,16 @@ export function WorkspaceManageModal({ workspaces, onRemove, onAdd, onClose }: W
                       </div>
                     </div>
                     {confirmId !== w.id && (
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => setConfirmId(w.id)}
-                        aria-label={t('manage.removeAria', { name: w.name })}
-                      >
-                        {t('manage.remove')}
-                      </Button>
+                      <span style={{ flexShrink: 0 }}>
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => setConfirmId(w.id)}
+                          aria-label={t('manage.removeAria', { name: w.name })}
+                        >
+                          {t('manage.remove')}
+                        </Button>
+                      </span>
                     )}
                   </div>
 
@@ -216,15 +231,16 @@ export function WorkspaceManageModal({ workspaces, onRemove, onAdd, onClose }: W
                         paddingTop: 'var(--sp-3)',
                         borderTop: '1px solid var(--border)',
                         display: 'flex',
-                        alignItems: 'center',
+                        alignItems: 'flex-start',
                         justifyContent: 'space-between',
                         gap: 'var(--sp-2)',
+                        flexWrap: 'wrap',
                       }}
                     >
                       <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
                         {t('manage.confirm')}
                       </span>
-                      <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+                      <div style={{ display: 'flex', gap: 'var(--sp-2)', flexShrink: 0 }}>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -267,14 +283,17 @@ export function WorkspaceManageModal({ workspaces, onRemove, onAdd, onClose }: W
               gap: 'var(--sp-2)',
               fontSize: 'var(--fs-sm)',
               color: 'var(--text-muted)',
+              minWidth: 0,
             }}
           >
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
               {undoBuffer.name} {undoBuffer.transport?.type === 'ssh' ? `— ${t('manage.removeSshDataHint')}` : ''}
             </span>
-            <Button variant="ghost" size="sm" onClick={handleUndo}>
-              {t('manage.undoRemove')}
-            </Button>
+            <span style={{ flexShrink: 0 }}>
+              <Button variant="ghost" size="sm" onClick={handleUndo}>
+                {t('manage.undoRemove')}
+              </Button>
+            </span>
           </div>
         )}
       </div>

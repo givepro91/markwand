@@ -225,6 +225,55 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
     expect(onOpenDoc).toHaveBeenCalledWith(doc)
   })
 
+  it('keeps dense wiki cards shrinkable when file names and badges are long', () => {
+    const longName = 'web/public/docs/designs/2026-04-30-extremely-long-product-decision-record-that-used-to-overflow.md'
+    const overflowSummary: ProjectWikiSummary = {
+      ...summary,
+      docDebt: [{
+        path: '/project/overflow.md',
+        name: longName,
+        score: 1667,
+        missing: 42,
+        stale: 7,
+        reasons: ['risk', 'missingMeta', 'unread'],
+        ageDays: 39,
+      }],
+      decisionTimeline: [{
+        path: '/project/overflow.md',
+        name: longName,
+        kind: 'design',
+        status: 'frontmatter-status-that-should-not-push-the-card-wide',
+        source: 'frontmatter-source-that-should-stay-contained',
+        ageDays: 0,
+        score: 1667,
+      }],
+    }
+
+    renderWithProviders(
+      <ProjectWikiPanel
+        projectName="markwand"
+        summary={overflowSummary}
+        brief={null}
+        briefLoading={false}
+        docsByPath={new Map([['/project/overflow.md', { ...doc, path: '/project/overflow.md', name: longName }]])}
+        onOpenDoc={vi.fn()}
+      />
+    )
+
+    const [debtTitle, timelineTitle] = screen.getAllByText(longName)
+    const docDebtSection = screen.getByText('projectWiki.docDebtTitle').closest('section')
+    const decisionSection = screen.getByText('projectWiki.decisionsTitle').closest('section')
+    const debtButton = debtTitle.closest('button')
+    const timelineButton = timelineTitle.closest('button')
+
+    expect(docDebtSection).toHaveStyle({ minWidth: '0' })
+    expect(decisionSection).toHaveStyle({ minWidth: '0' })
+    expect(debtButton).toHaveStyle({ minWidth: '0', width: '100%' })
+    expect(timelineButton).toHaveStyle({ minWidth: '0', width: '100%' })
+    expect(debtTitle).toHaveStyle({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })
+    expect(timelineTitle).toHaveStyle({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })
+  })
+
   it('jumps to wiki sections from the sticky section navigation', () => {
     renderWithProviders(
       <ProjectWikiPanel

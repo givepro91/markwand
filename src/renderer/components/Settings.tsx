@@ -113,9 +113,11 @@ export function Settings() {
             border: '1px solid var(--border)',
             borderRadius: 'var(--r-xl)',
             padding: 'var(--sp-4)',
-            width: '280px',
+            width: 'min(320px, calc(100vw - 32px))',
+            maxHeight: 'min(640px, calc(100vh - 96px))',
+            overflowY: 'auto',
             boxShadow: 'var(--shadow-lg)',
-            zIndex: 'var(--z-dropdown)',
+            zIndex: 'calc(var(--z-dropdown) + 20)',
           }}
         >
           <h3
