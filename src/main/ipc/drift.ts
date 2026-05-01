@@ -91,10 +91,13 @@ export function registerDriftHandlers(): void {
       return null
     }
 
-    const verified: VerifiedReference[] = await Promise.all(
-      refs.map(async (ref): Promise<VerifiedReference> => {
+    const maybeVerified: Array<VerifiedReference | null> = await Promise.all(
+      refs.map(async (ref): Promise<VerifiedReference | null> => {
         const hit = await statWithFallback(ref)
-        if (!hit) return { ...ref, status: 'missing' }
+        if (!hit) {
+          if (ref.reportMissing === false) return null
+          return { ...ref, status: 'missing' }
+        }
         const status: DriftStatus = hit.isDirectory
           ? 'ok'
           : hit.mtimeMs > docMtime
@@ -125,6 +128,7 @@ export function registerDriftHandlers(): void {
         }
       })
     )
+    const verified = maybeVerified.filter((ref): ref is VerifiedReference => ref != null)
 
     const counts = verified.reduce(
       (acc, v) => {

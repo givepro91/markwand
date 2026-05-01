@@ -45,16 +45,20 @@ async function verifyDoc(docPath: string, projectRoot: string): Promise<{
         try { return { path: p, stat: await fs.promises.stat(p) } } catch { return null }
       }
       const hit = (await tryStat(ref.resolvedPath)) ?? (ref.fallbackPath ? await tryStat(ref.fallbackPath) : null)
-      if (!hit) return { ...ref, status: 'missing' }
+      if (!hit) {
+        if (ref.reportMissing === false) return null
+        return { ...ref, status: 'missing' }
+      }
       const isDirectory = hit.stat.isDirectory()
       const status: DriftStatus = isDirectory ? 'ok' : (hit.stat.mtimeMs > docMtime ? 'stale' : 'ok')
       return { ...ref, resolvedPath: hit.path, status, targetMtime: hit.stat.mtimeMs, isDirectory }
     })
   )
+  const visible = verified.filter((ref): ref is VerifiedReference => ref != null)
 
   const counts: Record<DriftStatus, number> = { ok: 0, missing: 0, stale: 0 }
-  for (const v of verified) counts[v.status]++
-  return { references: verified, counts, empty: false }
+  for (const v of visible) counts[v.status]++
+  return { references: visible, counts, empty: false }
 }
 
 async function main() {
@@ -535,6 +539,29 @@ async function main() {
       name: '혼합 문서: 정상 @/src/index.ts 만 통과, 노이즈 전부 거부',
       verdict: pass ? 'PASS' : 'FAIL',
       detail: `refs=${references.length} raws=${JSON.stringify(references.map((r) => r.raw))}`,
+    })
+  }
+
+  // ── 시나리오 22: 확장자 없는 경로형 토큰은 없다고 missing 처리하지 않음 ─────
+  {
+    const root = path.join(tmp, 's22')
+    fs.mkdirSync(root, { recursive: true })
+    const docPath = path.join(root, 'doc.md')
+    fs.writeFileSync(
+      docPath,
+      [
+        'Branch: `origin/main`',
+        'Module name: `path/posix`',
+        'Readable metric: `naturalWidth/naturalHeight`',
+        '',
+      ].join('\n')
+    )
+    const { references, counts } = await verifyDoc(docPath, root)
+    const pass = references.length === 0 && counts.missing === 0
+    results.push({
+      name: '확장자 없는 경로형 토큰은 missing 으로 과장하지 않음',
+      verdict: pass ? 'PASS' : 'FAIL',
+      detail: `refs=${references.length} counts=${JSON.stringify(counts)}`,
     })
   }
 

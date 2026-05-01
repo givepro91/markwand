@@ -5,6 +5,9 @@ export interface Reference {
   resolvedPath: string
   // inline/hint 상대 경로는 docDir / projectRoot 둘 다 후보. resolvedPath 가 없으면 fallbackPath 도 시도.
   fallbackPath?: string
+  // false면 대상이 존재할 때만 관계로 인정하고, 없을 때는 missing으로 보고하지 않는다.
+  // 예: `origin/main`, `path/posix`, `docs/` 처럼 경로처럼 보이지만 실제 파일 참조인지 애매한 토큰.
+  reportMissing?: boolean
   kind: ReferenceKind
   line: number
   col: number

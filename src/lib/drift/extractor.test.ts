@@ -118,10 +118,15 @@ describe('extractReferences — code block hints (hint)', () => {
     expect(extractReferences(md, ROOT)).toHaveLength(0)
   })
 
-  it('absolute path hint kept as-is', () => {
+  it('absolute path hint outside projectRoot → not extracted', () => {
     const md = '```\n// /absolute/path/to/file.ts\n```'
+    expect(extractReferences(md, ROOT)).toHaveLength(0)
+  })
+
+  it('absolute path hint inside projectRoot kept as-is', () => {
+    const md = '```\n// /project/src/file.ts\n```'
     const refs = extractReferences(md, ROOT)
-    expect(refs[0].resolvedPath).toBe('/absolute/path/to/file.ts')
+    expect(refs[0].resolvedPath).toBe('/project/src/file.ts')
   })
 
   it('relative path hint resolved against projectRoot', () => {
@@ -208,9 +213,13 @@ describe('extractReferences — inline backtick (inline)', () => {
     expect(refs[0].resolvedPath).toBe('C:/Users/foo/bar.ts')
   })
 
-  it('absolute path in backtick kept as-is', () => {
-    const refs = extractReferences('`/absolute/path/to/file.ts`', ROOT)
-    expect(refs[0].resolvedPath).toBe('/absolute/path/to/file.ts')
+  it('absolute path in backtick outside projectRoot → not extracted', () => {
+    expect(extractReferences('`/absolute/path/to/file.ts`', ROOT)).toHaveLength(0)
+  })
+
+  it('absolute path in backtick inside projectRoot kept as-is', () => {
+    const refs = extractReferences('`/project/src/file.ts`', ROOT)
+    expect(refs[0].resolvedPath).toBe('/project/src/file.ts')
   })
 
   it('inline backtick inside code block → not extracted', () => {
@@ -332,5 +341,25 @@ describe('extractReferences — edge cases', () => {
     // at-ref 경로 중간에 `--token` 세그가 있으면 동일 거부 (토큰 표에 `@/...` 접두 예시 드문 경우 대비)
     const md = 'See @/docs/--theme-color/accent for details.'
     expect(extractReferences(md, ROOT)).toHaveLength(0)
+  })
+
+  it('npm scoped package subpath is not a document reference', () => {
+    expect(extractReferences('Use `@testing-library/jest-dom/vitest`.', ROOT)).toHaveLength(0)
+  })
+
+  it('placeholder @/path/to/... is not a document reference', () => {
+    expect(extractReferences('Copy @/path/to/file.md into the prompt.', ROOT)).toHaveLength(0)
+  })
+
+  it('extensionless inline tokens are low-confidence and do not report missing', () => {
+    const refs = extractReferences('Compare `origin/main` and `path/posix`.', ROOT)
+    expect(refs).toHaveLength(2)
+    expect(refs.every((ref) => ref.reportMissing === false)).toBe(true)
+  })
+
+  it('directory-like inline references are low-confidence and do not report missing', () => {
+    const refs = extractReferences('Review `docs/plans/` before release.', ROOT)
+    expect(refs).toHaveLength(1)
+    expect(refs[0].reportMissing).toBe(false)
   })
 })

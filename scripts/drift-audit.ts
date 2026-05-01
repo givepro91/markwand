@@ -95,6 +95,7 @@ async function main() {
       }
       const hit = (await tryStat(ref.resolvedPath)) ?? (ref.fallbackPath ? await tryStat(ref.fallbackPath) : null)
       if (!hit) {
+        if (ref.reportMissing === false) continue
         missingCount++
         if (missingSamples.length < 50) {
           missingSamples.push({

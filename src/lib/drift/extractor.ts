@@ -29,9 +29,9 @@ function isPathLike(s: string): boolean {
 // 한글 파일명은 이 regex 에서 제외됨 — 수식 false positive (`원`, `면적`) 를 거르기 위한 절충.
 const PATH_CHAR_RE = /^[\w\-./\\+@~#?]+$/
 
-// npm scoped 패키지 이름: `@scope/name` — 파일 경로가 아니므로 drift 추출에서 제외.
+// npm scoped 패키지 이름: `@scope/name[/subpath]` — 파일 경로가 아니므로 drift 추출에서 제외.
 // (프로젝트 루트 ref 인 `@/path` 는 항상 `@` 직후 `/` 이므로 구별 가능)
-const NPM_SCOPE_RE = /^@[a-z0-9][a-z0-9\-_.]*\/[a-z0-9][a-z0-9\-_.]*$/i
+const NPM_SCOPE_RE = /^@[a-z0-9][a-z0-9\-_.]*\/[a-z0-9][a-z0-9\-_.]*(?:\/[a-z0-9][a-z0-9\-_.]*)*$/i
 function isNpmScopePackage(s: string): boolean {
   return NPM_SCOPE_RE.test(s)
 }
@@ -39,7 +39,48 @@ function isNpmScopePackage(s: string): boolean {
 // glob 패턴 / 문서 placeholder 탐지 — 실제 파일 경로로 해석하면 항상 missing 오판.
 // 예: `@/apps/**`, `packages/<name>/src`, `**/*.test.ts`
 function isGlobOrPlaceholder(s: string): boolean {
-  return /[*<>{}]/.test(s) || s.includes('**')
+  const cleaned = stripPathExtras(s)
+  const segs = cleaned.replace(/^@?\//, '').split(/[/\\]/).filter(Boolean)
+  return /[*<>{}]/.test(cleaned) || cleaned.includes('**') || (
+    segs[0] === 'path' && segs[1] === 'to'
+  )
+}
+
+const FILE_EXTENSIONS = new Set([
+  'md', 'mdx', 'txt', 'json', 'jsonc', 'yaml', 'yml', 'toml', 'xml', 'html', 'css',
+  'js', 'jsx', 'ts', 'tsx', 'mjs', 'cjs', 'vue', 'svelte',
+  'py', 'rb', 'go', 'rs', 'java', 'kt', 'swift', 'c', 'h', 'cpp', 'hpp', 'cs',
+  'sh', 'bash', 'zsh', 'fish', 'sql', 'graphql', 'gql',
+  'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'pdf',
+])
+
+function getLastExtension(s: string): string | null {
+  const cleaned = stripPathExtras(s)
+  const segs = cleaned.split(/[/\\]/).filter(Boolean)
+  const lastSeg = segs[segs.length - 1]
+  const m = lastSeg?.match(/\.([a-z0-9]{1,8})$/i)
+  return m ? m[1].toLowerCase() : null
+}
+
+function hasKnownFileExtension(s: string): boolean {
+  const ext = getLastExtension(s)
+  return ext != null && FILE_EXTENSIONS.has(ext)
+}
+
+function isDirectoryLikePath(s: string): boolean {
+  return /[/\\]$/.test(stripPathExtras(s))
+}
+
+function shouldReportMissing(rawPath: string, kind: ReferenceKind): boolean {
+  if (kind === 'at') return true
+  if (isDirectoryLikePath(rawPath)) return false
+  return hasKnownFileExtension(rawPath)
+}
+
+function isInsideRoot(absPath: string, projectRoot: string): boolean {
+  const root = path.resolve(projectRoot)
+  const target = path.resolve(absPath)
+  return target === root || target.startsWith(root + path.sep)
 }
 
 // 의미 있는 경로 후보인지 검사 — path 표기 같아 보여도 실제로는 아닌 경우 거름.
@@ -94,7 +135,7 @@ function resolveRef(
   kind: ReferenceKind,
   projectRoot: string,
   docDir?: string
-): string {
+): string | null {
   const cleaned = stripPathExtras(rawPath)
 
   if (kind === 'at') {
@@ -109,7 +150,8 @@ function resolveRef(
   }
 
   if (path.isAbsolute(cleaned)) {
-    return path.normalize(cleaned)
+    const normalized = path.normalize(cleaned)
+    return isInsideRoot(normalized, projectRoot) ? normalized : null
   }
 
   // inline/hint 상대 경로: 문서 디렉토리 기준 resolve 가 자연스럽다.
@@ -178,9 +220,12 @@ export function extractReferences(
         const idx = m.index ?? 0
         if (isGlobOrPlaceholder(pathPart)) continue
         if (!isMeaningfulPathCandidate(pathPart)) continue
+        const resolvedPath = resolveRef(pathPart, 'at', projectRoot)
+        if (!resolvedPath) continue
         results.push({
           raw: rawMatch,
-          resolvedPath: resolveRef(pathPart, 'at', projectRoot),
+          resolvedPath,
+          reportMissing: shouldReportMissing(pathPart, 'at'),
           kind: 'at',
           line: lineNum,
           col: idx + 1,
@@ -197,11 +242,13 @@ export function extractReferences(
         if (!isMeaningfulPathCandidate(inner)) continue
         const col = (m.index ?? 0) + 1
         const primary = resolveRef(inner, 'inline', projectRoot, docDir)
+        if (!primary) continue
         const fallback = docDir ? resolveRef(inner, 'inline', projectRoot) : undefined
         results.push({
           raw: m[0],
           resolvedPath: primary,
           fallbackPath: fallback && fallback !== primary ? fallback : undefined,
+          reportMissing: shouldReportMissing(inner, 'inline'),
           kind: 'inline',
           line: lineNum,
           col,
@@ -227,11 +274,13 @@ export function extractReferences(
             isMeaningfulPathCandidate(hint.pathStr)
           ) {
             const primary = resolveRef(hint.pathStr, 'hint', projectRoot, docDir)
+            if (!primary) continue
             const fallback = docDir ? resolveRef(hint.pathStr, 'hint', projectRoot) : undefined
             results.push({
               raw: line.trim(),
               resolvedPath: primary,
               fallbackPath: fallback && fallback !== primary ? fallback : undefined,
+              reportMissing: shouldReportMissing(hint.pathStr, 'hint'),
               kind: 'hint',
               line: lineNum,
               col: hint.col,
