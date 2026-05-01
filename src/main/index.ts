@@ -18,6 +18,7 @@ import { setActiveWebContents as setSshActiveWebContents } from './transport/ssh
 import { getStore } from './services/store'
 import { startWatcher, stopWatcher } from './services/watcher'
 import { runQuitCleanup } from './services/quitCleanup'
+import { getDevRendererUrl, shouldAutoOpenDevTools } from './services/runtimeMode'
 import { parseShellShowItemInput } from './security/validators'
 
 // app:// 프로토콜을 privileged로 등록해야 한다 (보안 정책상 secure 처리)
@@ -51,14 +52,15 @@ async function createWindow(): Promise<BrowserWindow> {
     },
   })
 
-  if (process.env['ELECTRON_RENDERER_URL']) {
-    win.loadURL(process.env['ELECTRON_RENDERER_URL'])
+  const devRendererUrl = getDevRendererUrl(app.isPackaged, process.env)
+  if (devRendererUrl) {
+    win.loadURL(devRendererUrl)
   } else {
     win.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
   // 진단용: dev/디버그 모드에서 DevTools 자동 오픈 + console 캡처
-  if (process.env['ELECTRON_RENDERER_URL'] || process.env['MD_VIEWER_DEBUG']) {
+  if (shouldAutoOpenDevTools(app.isPackaged, process.env)) {
     win.webContents.openDevTools({ mode: 'detach' })
   }
   win.webContents.on('console-message', (_event, level, message, line, source) => {
