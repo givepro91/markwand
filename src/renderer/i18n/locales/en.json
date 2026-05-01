@@ -55,6 +55,47 @@
     "system": "System"
   },
 
+  "productGuide": {
+    "openAria": "Open Markwand guide",
+    "openTitle": "See Markwand's intent and core features",
+    "kicker": "Markwand Guide",
+    "title": "Markwand turns scattered docs into a project map",
+    "intro": "As AI-generated markdown grows, the hard part is no longer opening files. It is understanding context, trust, and the next useful action.",
+    "tipsTitle": "Try it fast",
+    "sections": {
+      "why": {
+        "title": "Why it exists",
+        "body": "Markwand gathers scattered AI output and project docs so humans and AI tools can find the right reading path and context quickly."
+      },
+      "wiki": {
+        "title": "Project Wiki",
+        "body": "The wiki reshapes document lists into a Knowledge Map, Project Brief, Decision Log, and Risk Board so the project flow is visible."
+      },
+      "search": {
+        "title": "⌘K search",
+        "body": "Search filenames, metadata, and document bodies. SSH workspaces use caches and strict read budgets so search stays lightweight."
+      },
+      "handoff": {
+        "title": "AI Handoff",
+        "body": "Project Pulse and task prompts turn the current project state into copy-ready context for Claude Code, Codex, Cursor, and similar tools."
+      },
+      "trust": {
+        "title": "Trust & Drift",
+        "body": "Broken links, stale references, and missing metadata are surfaced before you rely on a document for decisions."
+      },
+      "ssh": {
+        "title": "Read-only SSH",
+        "body": "Remote server docs can be read from the desktop app, but Markwand stays read-only and only reads what it needs."
+      }
+    },
+    "tips": {
+      "cmdk": "Press ⌘K to find documents across the projects currently loaded.",
+      "wiki": "Turn on the project wiki to see the reading path and risky docs together.",
+      "ssh": "Remote SSH docs can be slower; opening a project first warms the document cache and keeps search light.",
+      "handoff": "Copy the Wiki handoff or AI task prompt to pass sharper context into your next AI coding session."
+    }
+  },
+
   "inbox": {
     "sectionToday": "Today",
     "sectionYesterday": "Yesterday",

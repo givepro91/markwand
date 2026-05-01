@@ -111,3 +111,25 @@ describe('Sidebar — 버전 표시', () => {
     expect(versionEl).toBeInTheDocument()
   })
 })
+
+describe('Sidebar — Markwand 가이드', () => {
+  it('상단에 항상 보이는 가이드 버튼으로 제품 의도 설명 모달을 연다', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <Sidebar
+        {...baseProps}
+        activeWorkspaceId={null}
+        onRefresh={vi.fn()}
+      />
+    )
+
+    const guideButton = screen.getByRole('button', { name: 'productGuide.openAria' })
+    expect(guideButton).toHaveAttribute('title', 'productGuide.openTitle')
+
+    await user.click(guideButton)
+
+    expect(screen.getByRole('dialog', { name: 'productGuide.title' })).toBeInTheDocument()
+    expect(screen.getByText('productGuide.sections.wiki.title')).toBeInTheDocument()
+    expect(screen.getByText('productGuide.sections.search.title')).toBeInTheDocument()
+  })
+})

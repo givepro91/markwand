@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspacePicker } from './WorkspacePicker'
 import { ThemeToggle } from './ThemeToggle'
 import { Settings } from './Settings'
+import { ProductGuideModal } from './ProductGuideModal'
 import { IconButton } from './ui'
 import { useTheme } from '../hooks/useTheme'
 import type { Workspace, ViewMode } from '../../../src/preload/types'
@@ -36,6 +38,25 @@ const RefreshIcon = ({ spinning }: { spinning?: boolean }) => (
   >
     <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z" />
     <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z" />
+  </svg>
+)
+
+const GuideIcon = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.7"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M3.5 2.75h5.25A2.75 2.75 0 0 1 11.5 5.5v7.25H6.25A2.75 2.75 0 0 0 3.5 10V2.75Z" />
+    <path d="M11.5 4.25h1A1.5 1.5 0 0 1 14 5.75v7H8.75" />
+    <path d="M5.5 5.25h3" />
+    <path d="M5.5 7.25h2" />
   </svg>
 )
 
@@ -82,6 +103,7 @@ export function Sidebar({
 }: SidebarProps) {
   const { t } = useTranslation()
   const { theme, setTheme } = useTheme()
+  const [guideOpen, setGuideOpen] = useState(false)
   ensureSpinStyle()
   const refreshDisabled = !activeWorkspaceId || isRefreshing
 
@@ -158,6 +180,16 @@ export function Sidebar({
         style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
         <IconButton
+          aria-label={t('productGuide.openAria')}
+          title={t('productGuide.openTitle')}
+          size="sm"
+          variant={guideOpen ? 'primary' : 'ghost'}
+          aria-pressed={guideOpen}
+          onClick={() => setGuideOpen(true)}
+        >
+          <GuideIcon />
+        </IconButton>
+        <IconButton
           aria-label={isRefreshing ? t('sidebar.refreshing') : t('sidebar.refresh')}
           title={t('sidebar.refreshTooltip')}
           size="sm"
@@ -183,6 +215,7 @@ export function Sidebar({
         <ThemeToggle value={theme} onChange={setTheme} />
         <Settings />
       </div>
+      {guideOpen && <ProductGuideModal onClose={() => setGuideOpen(false)} />}
     </header>
   )
 }
