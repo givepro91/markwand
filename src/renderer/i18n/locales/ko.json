@@ -68,19 +68,19 @@
         "body": "흩어진 문서를 한 곳에 모아 새로 합류한 사람도 프로젝트 흐름을 빠르게 따라잡도록 돕습니다."
       },
       "wiki": {
-        "title": "프로젝트 안내판",
-        "body": "문서를 한눈에 요약, 문서 묶음, 결정 기록, 확인할 문제로 나눠 보여줍니다. 그냥 목록이 아니라 읽는 순서를 알려주는 안내판입니다."
+        "title": "프로젝트 위키 · Project Wiki",
+        "body": "문서를 한눈에 요약(Project Brief), 문서 묶음(Knowledge Map), 결정 기록(Decision Log), 확인할 문제(Risk Board)로 나눠 보여줍니다. 쉬운 말로 먼저 이해하고, Markwand의 개념도 자연스럽게 익힐 수 있습니다."
       },
       "search": {
         "title": "빠른 찾기",
         "body": "⌘K로 파일명, 문서 본문, 상태 정보를 함께 찾습니다. 원격 서버 문서는 앱이 필요한 만큼만 읽어 느려지지 않게 관리합니다."
       },
       "handoff": {
-        "title": "AI에게 전달하기",
+        "title": "AI에게 전달하기 · AI Handoff",
         "body": "현재 프로젝트 상황을 요약해 복사합니다. Claude Code, Codex, Cursor 같은 AI 도구에 붙여넣으면 처음부터 설명하지 않아도 됩니다."
       },
       "trust": {
-        "title": "문서 상태 확인",
+        "title": "문서 상태 확인 · Trust & Drift",
         "body": "깨진 링크, 오래된 내용, 부족한 정보를 찾아 이 문서를 그대로 믿어도 되는지 먼저 알려줍니다."
       },
       "ssh": {
@@ -90,7 +90,7 @@
     },
     "tips": {
       "cmdk": "⌘K를 눌러 현재 로드된 프로젝트 문서를 빠르게 찾습니다.",
-      "wiki": "프로젝트 화면의 위키 버튼을 켜면 읽을 순서와 확인할 문제가 함께 보입니다.",
+      "wiki": "프로젝트 위키에서 쉬운 설명과 Markwand 개념명을 함께 보며 흐름을 익힙니다.",
       "ssh": "원격 SSH 문서는 느릴 수 있으므로 먼저 프로젝트를 열어 문서 목록을 캐시해두면 탐색이 가벼워집니다.",
       "handoff": "왼쪽의 AI에게 전달하기 버튼을 누르면 현재 프로젝트 요약을 바로 복사합니다."
     }
@@ -185,34 +185,34 @@
   },
 
   "projectWiki": {
-    "toggle": "프로젝트 안내판 토글",
-    "badge": "프로젝트 안내판",
+    "toggle": "프로젝트 위키 토글",
+    "badge": "프로젝트 위키",
     "trustBadge": "신뢰도 {{score}}",
     "readingDoc": "문서 읽는 중",
-    "returnToWiki": "안내판으로 돌아가기",
-    "returnToWikiAria": "프로젝트 안내판으로 돌아가기",
-    "title": "{{name}} 안내판",
+    "returnToWiki": "위키로 돌아가기",
+    "returnToWikiAria": "프로젝트 위키로 돌아가기",
+    "title": "{{name}} 위키",
     "summary": "문서 {{docs}}개 중 최근 7일 변경 {{recent}}개. 깨진 링크 {{missing}}개, 오래된 참조 {{stale}}개를 추적 중입니다.",
-    "navAria": "프로젝트 안내판 섹션 이동",
+    "navAria": "프로젝트 위키 섹션 이동",
     "navBrief": "요약",
     "navLinks": "연결",
     "navTasks": "작업",
     "navStart": "시작",
     "navRisks": "문제",
-    "briefTitle": "한눈에 요약",
+    "briefTitle": "한눈에 요약 · Project Brief",
     "briefLoading": "문서 근거를 읽는 중",
     "briefEmpty": "요약할 수 있는 문서 본문을 아직 찾지 못했습니다.",
     "evidenceTitle": "근거 문서",
-    "copyHandoff": "AI용 요약 복사",
+    "copyHandoff": "AI용 요약 복사 · Handoff",
     "copyHandoffDone": "복사됨",
     "copyHandoffAria": "AI에게 전달할 프로젝트 요약 복사",
-    "knowledgeTitle": "문서 묶음",
+    "knowledgeTitle": "문서 묶음 · Knowledge Map",
     "knowledgeEmpty": "문서 성격을 분류할 수 있는 항목이 아직 없습니다.",
-    "docDebtTitle": "정리할 문서",
+    "docDebtTitle": "정리할 문서 · Doc Debt Radar",
     "docDebtEmpty": "우선 정리할 문서가 감지되지 않았습니다.",
     "docDebtScore": "점수 {{score}}",
     "docDebtAge": "{{days}}일",
-    "trustTitle": "믿어도 될까?",
+    "trustTitle": "믿어도 될까? · Trust Diagnosis",
     "trustScore": "{{score}} / 100",
     "trustSignalsEmpty": "현재 신뢰도를 낮추는 주요 신호가 없습니다.",
     "trustImpactPenalty": "-{{impact}}점",
@@ -275,7 +275,7 @@
       "copyPrompt": "AI에게 맡길 내용",
       "copyPromptAria": "현재 상황에 맞는 AI 작업 내용 복사"
     },
-    "linkGraphTitle": "문서 연결",
+    "linkGraphTitle": "문서 연결 · Link Graph",
     "linkGraphSummary": "확인된 문서 {{checked}}개에서 링크 {{refs}}개를 읽고, 위험 링크 {{risky}}개를 추적합니다.",
     "linkGraphEmpty": "문서를 열어 Drift 검사를 실행하면 링크 관계 그래프가 채워집니다.",
     "linkGraphChecked": "검사 {{count}}개",
@@ -293,7 +293,7 @@
       "missing": "깨짐",
       "stale": "오래됨"
     },
-    "aiTasksTitle": "AI에게 맡기기 좋은 작업",
+    "aiTasksTitle": "AI에게 맡기기 좋은 작업 · AI Task Suggestions",
     "aiTasksEmpty": "아직 추천할 AI 작업이 없습니다.",
     "copyTaskPrompt": "프롬프트 복사",
     "copyTaskPromptDone": "복사됨",
@@ -345,12 +345,12 @@
     },
     "onboardingTitle": "처음 읽을 문서",
     "onboardingEmpty": "추천할 시작 문서를 찾지 못했습니다.",
-    "riskTitle": "확인할 문제",
+    "riskTitle": "확인할 문제 · Risk Board",
     "riskEmpty": "현재 감지된 문서 참조 이슈가 없습니다.",
     "riskMissing": "깨짐",
     "riskStale": "오래됨",
     "openTopRisk": "가장 위험한 문서 열기",
-    "decisionsTitle": "결정 기록",
+    "decisionsTitle": "결정 기록 · Decision Log",
     "decisionsEmpty": "계획, 설계, 리뷰 문서를 아직 찾지 못했습니다.",
     "decisionAge": "{{days}}일 전",
     "decisionKind": {

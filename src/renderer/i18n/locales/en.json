@@ -68,19 +68,19 @@
         "body": "Markwand gathers scattered docs so a new teammate can understand the project flow without reading everything first."
       },
       "wiki": {
-        "title": "Project Guide",
-        "body": "Docs are grouped into a quick summary, document groups, decision history, and issues to check. It is a guided reading path, not just a file list."
+        "title": "Project Wiki",
+        "body": "Docs are grouped into Quick Summary (Project Brief), Document Groups (Knowledge Map), Decision History (Decision Log), and Issues to Check (Risk Board). Users can understand the plain meaning first while learning Markwand's product language."
       },
       "search": {
         "title": "Quick find",
         "body": "Press ⌘K to search filenames, document text, and status. Remote SSH docs are read with caches and small read budgets to stay responsive."
       },
       "handoff": {
-        "title": "Send to AI",
+        "title": "Send to AI · AI Handoff",
         "body": "Copy the current project summary and paste it into Claude Code, Codex, Cursor, or another AI tool without explaining the project from scratch."
       },
       "trust": {
-        "title": "Check document health",
+        "title": "Check document health · Trust & Drift",
         "body": "Broken links, stale content, and missing details are surfaced before you rely on a document for decisions."
       },
       "ssh": {
@@ -90,7 +90,7 @@
     },
     "tips": {
       "cmdk": "Press ⌘K to find documents across the projects currently loaded.",
-      "wiki": "Turn on the project wiki to see the reading path and issues to check together.",
+      "wiki": "Use the project wiki to see plain labels and Markwand concept names together.",
       "ssh": "Remote SSH docs can be slower; opening a project first warms the document cache and keeps search light.",
       "handoff": "Use Send to AI in the sidebar to copy the current project summary."
     }
@@ -185,34 +185,34 @@
   },
 
   "projectWiki": {
-    "toggle": "Toggle project guide",
-    "badge": "Project Guide",
+    "toggle": "Toggle project wiki",
+    "badge": "Project Wiki",
     "trustBadge": "Trust {{score}}",
     "readingDoc": "Reading document",
-    "returnToWiki": "Back to guide",
-    "returnToWikiAria": "Return to project guide",
-    "title": "{{name}} Guide",
+    "returnToWiki": "Back to Wiki",
+    "returnToWikiAria": "Return to project wiki",
+    "title": "{{name}} Wiki",
     "summary": "{{docs}} markdown docs, {{recent}} changed in the last 7 days. Tracking {{missing}} broken links and {{stale}} stale references.",
-    "navAria": "Project guide section navigation",
+    "navAria": "Project wiki section navigation",
     "navBrief": "Summary",
     "navLinks": "Links",
     "navTasks": "AI tasks",
     "navStart": "Start",
     "navRisks": "Issues",
-    "briefTitle": "Quick Summary",
+    "briefTitle": "Quick Summary · Project Brief",
     "briefLoading": "Reading document evidence",
     "briefEmpty": "No useful document body found for a brief yet.",
     "evidenceTitle": "Evidence docs",
-    "copyHandoff": "Copy AI summary",
+    "copyHandoff": "Copy AI summary · Handoff",
     "copyHandoffDone": "Copied",
     "copyHandoffAria": "Copy project summary for AI",
-    "knowledgeTitle": "Document Groups",
+    "knowledgeTitle": "Document Groups · Knowledge Map",
     "knowledgeEmpty": "No document roles to map yet.",
-    "docDebtTitle": "Docs to Clean Up",
+    "docDebtTitle": "Docs to Clean Up · Doc Debt Radar",
     "docDebtEmpty": "No priority cleanup documents detected.",
     "docDebtScore": "Score {{score}}",
     "docDebtAge": "{{days}}d",
-    "trustTitle": "Can I Trust This?",
+    "trustTitle": "Can I Trust This? · Trust Diagnosis",
     "trustScore": "{{score}} / 100",
     "trustSignalsEmpty": "No major signals are lowering trust right now.",
     "trustImpactPenalty": "-{{impact}} pts",
@@ -275,7 +275,7 @@
       "copyPrompt": "Task for AI",
       "copyPromptAria": "Copy the suggested AI task for the current project state"
     },
-    "linkGraphTitle": "Document Links",
+    "linkGraphTitle": "Document Links · Link Graph",
     "linkGraphSummary": "Read {{refs}} links across {{checked}} checked docs and track {{risky}} risky links.",
     "linkGraphEmpty": "Open documents and run Drift checks to populate the link relationship graph.",
     "linkGraphChecked": "{{count}} checked",
@@ -293,7 +293,7 @@
       "missing": "Broken",
       "stale": "Stale"
     },
-    "aiTasksTitle": "Good Tasks for AI",
+    "aiTasksTitle": "Good Tasks for AI · AI Task Suggestions",
     "aiTasksEmpty": "No AI tasks to suggest yet.",
     "copyTaskPrompt": "Copy prompt",
     "copyTaskPromptDone": "Copied",
@@ -345,12 +345,12 @@
     },
     "onboardingTitle": "Start Here",
     "onboardingEmpty": "No starting documents found yet.",
-    "riskTitle": "Issues to Check",
+    "riskTitle": "Issues to Check · Risk Board",
     "riskEmpty": "No document reference issues detected right now.",
     "riskMissing": "Broken",
     "riskStale": "Stale",
     "openTopRisk": "Open highest-risk doc",
-    "decisionsTitle": "Decision History",
+    "decisionsTitle": "Decision History · Decision Log",
     "decisionsEmpty": "No plan, design, or review docs found yet.",
     "decisionAge": "{{days}}d ago",
     "decisionKind": {
