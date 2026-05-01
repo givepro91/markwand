@@ -12,17 +12,19 @@
   --sp-12: 48px;
 
   /* radius */
-  --r-sm: 4px;
-  --r-md: 6px;
-  --r-lg: 8px;
-  --r-xl: 12px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 18px;
   --r-pill: 999px;
 
-  /* v0.4 — accent 배경 위 고대비 텍스트 색 (selection / primary button / chip).
-     light/dark 모두 흰색이 일관적으로 accent 와 ≥4.5:1 확보. */
+  /* accent 배경 위 고대비 텍스트 색 (selection / primary button / chip).
+     테마별 accent 밝기가 달라질 수 있어 themes.css 에서 override 가능. */
   --accent-contrast: #ffffff;
 
   /* typography */
+  --font-sans: 'Avenir Next', 'Nunito Sans', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', 'Cascadia Code', Consolas, monospace;
   --fs-xs: 11px;
   --fs-sm: 12px;
   --fs-md: 14px;
@@ -38,9 +40,9 @@
   --fw-bold: 700;
 
   /* elevation */
-  --shadow-sm: 0 1px 2px rgba(31,35,40,0.06);
-  --shadow-md: 0 3px 6px rgba(31,35,40,0.10);
-  --shadow-lg: 0 8px 24px rgba(31,35,40,0.12);
+  --shadow-sm: 0 1px 2px rgba(33, 36, 31, 0.06), 0 8px 24px rgba(33, 36, 31, 0.04);
+  --shadow-md: 0 8px 24px rgba(33, 36, 31, 0.10);
+  --shadow-lg: 0 18px 56px rgba(33, 36, 31, 0.16);
 
   /* motion */
   --duration-fast: 80ms;

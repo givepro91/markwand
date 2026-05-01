@@ -14,6 +14,10 @@ function stripPathExtras(p: string): string {
   return p.replace(/[?#].*$/, '').replace(/\\/g, '/')
 }
 
+function isWindowsAbsolutePath(s: string): boolean {
+  return /^[A-Za-z]:[\\/]/.test(s)
+}
+
 function isPathLike(s: string): boolean {
   if (!s || s.length < 2) return false
   if (/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(s)) return false
@@ -46,11 +50,13 @@ function isGlobOrPlaceholder(s: string): boolean {
 //   - 홈 디렉토리: `~/.bashrc` (home 해석 안 함)
 //   - 1-2자 단일 세그먼트 + 확장자 없음: `@/cd`, `@/a`
 function isMeaningfulPathCandidate(s: string): boolean {
-  if (!PATH_CHAR_RE.test(s)) return false
+  const candidate = stripPathExtras(s)
+  if (isWindowsAbsolutePath(candidate)) return true
+  if (!PATH_CHAR_RE.test(candidate)) return false
   // 홈 디렉토리 레퍼런스 — projectRoot 기반 resolve 로는 항상 미스.
-  if (s === '~' || s.startsWith('~/') || s.startsWith('~\\')) return false
+  if (candidate === '~' || candidate.startsWith('~/') || candidate.startsWith('~\\')) return false
 
-  const stripped = s.replace(/^@?\/?/, '')
+  const stripped = candidate.replace(/^@?\/?/, '')
   const segs = stripped.split(/[/\\]/).filter(Boolean)
   if (segs.length === 0) return false
 
@@ -65,11 +71,8 @@ function isMeaningfulPathCandidate(s: string): boolean {
   const lastSeg = segs[segs.length - 1]
   const hasExt = /\.[a-z0-9]{1,8}$/i.test(lastSeg)
 
-  // 확장자가 있는 경우, 마지막 세그를 제외한 나머지 세그는 2자 이상이어야 함.
-  // (예: `src/a.ts` ok, `s/foo/bar.ts` 의 `s` 는 불허 — sed/regex 변종 차단)
+  // 확장자가 있는 경로는 실제 파일 참조일 가능성이 높다.
   if (hasExt) {
-    const nonExt = segs.slice(0, -1)
-    if (nonExt.some((seg) => seg.length < 2)) return false
     return true
   }
 
@@ -168,21 +171,11 @@ export function extractReferences(
         continue
       }
 
-      // 라인 내 인라인 백틱 범위를 먼저 수집 — AT_REF 가 백틱 내부에 있으면 스킵(이중 추출 방지 + 쉘 커맨드·수식 오인 차단).
-      const backtickRanges: Array<[number, number]> = []
-      for (const m of line.matchAll(INLINE_BACKTICK_RE)) {
-        const s = m.index ?? 0
-        backtickRanges.push([s, s + m[0].length])
-      }
-      const isInBacktick = (idx: number): boolean =>
-        backtickRanges.some(([s, e]) => idx >= s && idx < e)
-
-      // @/path references — 가드: 백틱 내부 / glob · placeholder / 무의미 경로 전부 스킵
+      // @/path references — glob · placeholder / 무의미 경로 전부 스킵
       for (const m of line.matchAll(AT_REF_RE)) {
         const rawMatch = m[0]
         const pathPart = m[1]
         const idx = m.index ?? 0
-        if (isInBacktick(idx)) continue
         if (isGlobOrPlaceholder(pathPart)) continue
         if (!isMeaningfulPathCandidate(pathPart)) continue
         results.push({
@@ -201,8 +194,6 @@ export function extractReferences(
         if (inner.startsWith('@/')) continue // at-ref 로 이미 처리됨
         if (isNpmScopePackage(inner)) continue
         if (isGlobOrPlaceholder(inner)) continue
-        // 백틱 안 절대 경로는 "예시 경로"일 가능성이 높다 (`/Users/someone/...`) — 현재 머신에 없으면 항상 missing 되어 노이즈.
-        if (path.isAbsolute(stripPathExtras(inner))) continue
         if (!isMeaningfulPathCandidate(inner)) continue
         const col = (m.index ?? 0) + 1
         const primary = resolveRef(inner, 'inline', projectRoot, docDir)

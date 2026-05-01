@@ -14,12 +14,12 @@ const variantStyles: Record<NonNullable<BadgeProps['variant']>, CSSProperties> =
   marker: {
     background: 'var(--badge-bg)',
     color: 'var(--badge-text)',
-    fontFamily: 'ui-monospace, SFMono-Regular, Consolas, monospace',
+    fontFamily: 'var(--font-mono)',
   },
   count: {
     background: 'var(--badge-bg)',
     color: 'var(--badge-text)',
-    fontFamily: 'ui-monospace, SFMono-Regular, Consolas, monospace',
+    fontFamily: 'var(--font-mono)',
     borderRadius: 'var(--r-pill)',
   },
   success: {
@@ -52,7 +52,8 @@ export function Badge({
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 'var(--r-sm)',
+    borderRadius: 'var(--r-pill)',
+    border: '1px solid color-mix(in srgb, currentColor 16%, transparent)',
     fontWeight: 'var(--fw-medium)' as CSSProperties['fontWeight'],
     lineHeight: 'var(--lh-tight)',
     whiteSpace: 'nowrap',

@@ -52,13 +52,13 @@ export const ProjectCard = memo(function ProjectCard({ project, onOpen }: Projec
 
   return (
     <Card padding="sm" interactive onClick={() => onOpen(project)}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
         {/* 헤더 행: 이름 + 액션 아이콘 */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--sp-2)' }}>
           <h3
             style={{
               fontSize: 'var(--fs-sm)',
-              fontWeight: 'var(--fw-semibold)',
+              fontWeight: 'var(--fw-bold)',
               color: 'var(--text)',
               margin: 0,
               lineHeight: 'var(--lh-tight)',
@@ -127,7 +127,7 @@ export const ProjectCard = memo(function ProjectCard({ project, onOpen }: Projec
                   fontSize: 'var(--fs-xs)',
                   fontWeight: 'var(--fw-medium)',
                   padding: '1px 6px',
-                  borderRadius: '10px',
+                  borderRadius: 'var(--r-pill)',
                   background: driftCounts.missing > 0 ? 'var(--color-danger-bg)' : 'var(--color-warning-bg)',
                   color: driftCounts.missing > 0 ? 'var(--color-danger)' : 'var(--color-warning)',
                   lineHeight: 1.3,

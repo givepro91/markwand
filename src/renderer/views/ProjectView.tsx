@@ -7,13 +7,16 @@ import { ClaudeButton } from '../components/ClaudeButton'
 import { FilterBar } from '../components/FilterBar'
 import { TableOfContents } from '../components/TableOfContents'
 import { DriftPanel } from '../components/DriftPanel'
+import { ProjectWikiPanel } from '../components/ProjectWikiPanel'
 import { I18nErrorBoundary } from '../components/ErrorBoundary'
 import { RecentDocsPanel } from '../components/RecentDocsPanel'
-import { EmptyState, IconButton } from '../components/ui'
+import { Button, EmptyState, IconButton } from '../components/ui'
 import { useDocs } from '../hooks/useDocs'
+import { useProjectWikiBrief } from '../hooks/useProjectWikiBrief'
 import { useReloadOnRefresh } from '../hooks/useReloadOnRefresh'
 import { useAppStore } from '../state/store'
 import { createFindController, type FindController } from '../lib/findInContainer'
+import { buildProjectWikiSummary } from '../lib/projectWiki'
 import { classifyAsset } from '../../lib/viewable'
 import { applyMetaFilter } from '../utils/docFilters'
 import { humanizeError } from '../lib/humanizeError'
@@ -40,6 +43,69 @@ const SearchIcon = () => (
     <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
   </svg>
 )
+
+const WikiIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+    <path d="M2.5 2A1.5 1.5 0 0 0 1 3.5v9A1.5 1.5 0 0 0 2.5 14H7a1 1 0 0 1 1 1 .5.5 0 0 0 1 0 1 1 0 0 1 1-1h3.5A1.5 1.5 0 0 0 15 12.5v-9A1.5 1.5 0 0 0 13.5 2H10a2 2 0 0 0-1.5.68A2 2 0 0 0 7 2H2.5Zm0 1H7a1 1 0 0 1 1 1v9.13A2 2 0 0 0 7 13H2.5a.5.5 0 0 1-.5-.5v-9A.5.5 0 0 1 2.5 3ZM9 13.13V4a1 1 0 0 1 1-1h3.5a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5H10a2 2 0 0 0-1 .13Z" />
+  </svg>
+)
+
+export function ProjectDocReturnBar({
+  docName,
+  onReturnToWiki,
+}: {
+  docName: string
+  onReturnToWiki: () => void
+}) {
+  const { t } = useTranslation()
+
+  return (
+    <div
+      style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 'var(--z-sticky)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 'var(--sp-3)',
+        marginBottom: 'var(--sp-4)',
+        padding: 'var(--sp-3) var(--sp-4)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--r-xl)',
+        background: 'var(--surface-glass)',
+        backdropFilter: 'blur(14px)',
+        boxShadow: 'var(--shadow-sm)',
+      }}
+    >
+      <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 'var(--fw-medium)' }}>
+          {t('projectWiki.readingDoc')}
+        </span>
+        <strong
+          style={{
+            color: 'var(--text)',
+            fontSize: 'var(--fs-sm)',
+            fontWeight: 'var(--fw-semibold)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {docName}
+        </strong>
+      </div>
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={onReturnToWiki}
+        aria-label={t('projectWiki.returnToWikiAria')}
+      >
+        {t('projectWiki.returnToWiki')}
+      </Button>
+    </div>
+  )
+}
 
 const ChevronLeftIcon = () => (
   <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
@@ -82,6 +148,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
   const [showFind, setShowFind] = useState(false)
   const [findQuery, setFindQuery] = useState('')
   const [findResult, setFindResult] = useState<{ active: number; total: number } | null>(null)
+  const [showWiki, setShowWiki] = useState(true)
   const findInputRef = useRef<HTMLInputElement | null>(null)
   const findDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const findControllerRef = useRef<FindController | null>(null)
@@ -93,6 +160,21 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
   const setPendingDocOpen = useAppStore((s) => s.setPendingDocOpen)
   const lastViewedDocs = useAppStore((s) => s.lastViewedDocs)
   const setLastViewedDoc = useAppStore((s) => s.setLastViewedDoc)
+  const driftReports = useAppStore((s) => s.driftReports)
+  const readDocs = useAppStore((s) => s.readDocs)
+
+  const docsByPath = useMemo(() => new Map(docs.map((doc) => [doc.path, doc])), [docs])
+  const wikiSummary = useMemo(
+    () => buildProjectWikiSummary(docs, driftReports, readDocs),
+    [docs, driftReports, readDocs]
+  )
+  const { brief: wikiBrief, loading: wikiBriefLoading } = useProjectWikiBrief(projectName, wikiSummary, docsByPath)
+  const handleReturnToWiki = useCallback(() => {
+    setShowWiki(true)
+    requestAnimationFrame(() => {
+      scrollContainerRef.current?.scrollTo({ top: 0 })
+    })
+  }, [])
 
   // treeExpanded 복원
   useEffect(() => {
@@ -248,6 +330,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
 
   const loadDoc = useCallback(async (doc: Doc) => {
     setSelectedDoc(doc)
+    setShowWiki(false)
     setHeadings([])
     // F4: 마지막 본 문서 갱신
     setLastViewedDoc(projectId, doc.path)
@@ -348,6 +431,14 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
     }
   }, [showFind])
 
+  useEffect(() => {
+    if (!showWiki) return
+    setShowFind(false)
+    setFindQuery('')
+    setFindResult(null)
+    findControllerRef.current?.clear()
+  }, [showWiki])
+
   // 이미지 문서 선택 시 find/TOC state를 정리해 토글 불일치를 막는다.
   useEffect(() => {
     if (selectedDoc && classifyAsset(selectedDoc.path) === 'image') {
@@ -389,6 +480,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
         mtime: Date.now(),
       }
       setSelectedDoc(fakeDoc)
+      setShowWiki(false)
       setDocContent('')
       setLastViewedDoc(projectId, absPath)
       return
@@ -403,6 +495,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
         frontmatter: result.frontmatter,
       }
       setSelectedDoc(fakeDoc)
+      setShowWiki(false)
       setDocContent(result.content)
       setLastViewedDoc(projectId, absPath)
     } catch (err) {
@@ -701,10 +794,17 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
         {/* F2: 중앙 마크다운 뷰어 — ref 부착 */}
         <div
           ref={scrollContainerRef}
-          style={{ flex: 1, overflow: 'auto', padding: 'var(--sp-6) var(--sp-8)', position: 'relative' }}
+          style={{
+            flex: 1,
+            overflow: 'auto',
+            padding: 'var(--sp-6) var(--sp-8)',
+            position: 'relative',
+            background:
+              'radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 8%, transparent) 0, transparent 32%), var(--bg)',
+          }}
         >
-          {/* 우상단 아이콘 버튼 그룹 — md 문서일 때만 검색·TOC 노출 */}
-          {selectedDoc && classifyAsset(selectedDoc.path) === 'md' && (
+          {/* 우상단 아이콘 버튼 그룹 */}
+          {(selectedDoc || !showWiki) && (
             <div
               style={{
                 position: 'sticky',
@@ -716,6 +816,17 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
                 zIndex: 'var(--z-sticky)',
               }}
             >
+              <IconButton
+                aria-label={t('projectWiki.toggle')}
+                aria-pressed={showWiki}
+                size="sm"
+                variant={showWiki ? 'primary' : 'ghost'}
+                onClick={() => setShowWiki((p) => !p)}
+              >
+                <WikiIcon />
+              </IconButton>
+              {!showWiki && selectedDoc && classifyAsset(selectedDoc.path) === 'md' && (
+                <>
               <IconButton
                 aria-label={t('projectView.findInDoc')}
                 aria-pressed={showFind}
@@ -734,36 +845,50 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
               >
                 <TocIcon />
               </IconButton>
+                </>
+              )}
             </div>
           )}
-          {selectedDoc ? (
-            classifyAsset(selectedDoc.path) === 'image' ? (
-              <I18nErrorBoundary resetKey={selectedDoc.path}>
-                <ImageViewer
-                  path={selectedDoc.path}
-                  name={selectedDoc.name}
-                  size={selectedDoc.size}
-                  workspaceId={currentWorkspaceId}
-                />
-              </I18nErrorBoundary>
-            ) : (
-              <I18nErrorBoundary resetKey={selectedDoc.path}>
+          {showWiki ? (
+            <ProjectWikiPanel
+              projectName={projectName}
+              summary={wikiSummary}
+              brief={wikiBrief}
+              briefLoading={wikiBriefLoading}
+              docsByPath={docsByPath}
+              onOpenDoc={loadDoc}
+            />
+          ) : selectedDoc ? (
+            <>
+              <ProjectDocReturnBar docName={selectedDoc.name} onReturnToWiki={handleReturnToWiki} />
+              {classifyAsset(selectedDoc.path) === 'image' ? (
                 <I18nErrorBoundary resetKey={selectedDoc.path}>
-                  <DriftPanel
-                    docPath={selectedDoc.path}
-                    projectRoot={projectRoot}
-                    onJumpToRef={handleJumpToRef}
+                  <ImageViewer
+                    path={selectedDoc.path}
+                    name={selectedDoc.name}
+                    size={selectedDoc.size}
+                    workspaceId={currentWorkspaceId}
                   />
                 </I18nErrorBoundary>
-                <MarkdownViewer
-                  content={docContent}
-                  basePath={selectedDoc.path}
-                  onDocNavigate={handleDocNavigate}
-                  onHeadings={setHeadings}
-                  workspaceId={currentWorkspaceId}
-                />
-              </I18nErrorBoundary>
-            )
+              ) : (
+                <I18nErrorBoundary resetKey={selectedDoc.path}>
+                  <I18nErrorBoundary resetKey={selectedDoc.path}>
+                    <DriftPanel
+                      docPath={selectedDoc.path}
+                      projectRoot={projectRoot}
+                      onJumpToRef={handleJumpToRef}
+                    />
+                  </I18nErrorBoundary>
+                  <MarkdownViewer
+                    content={docContent}
+                    basePath={selectedDoc.path}
+                    onDocNavigate={handleDocNavigate}
+                    onHeadings={setHeadings}
+                    workspaceId={currentWorkspaceId}
+                  />
+                </I18nErrorBoundary>
+              )}
+            </>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
               <EmptyState

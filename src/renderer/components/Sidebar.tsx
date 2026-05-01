@@ -91,9 +91,11 @@ export function Sidebar({
         display: 'flex',
         alignItems: 'center',
         gap: 'var(--sp-3)',
-        padding: 'var(--sp-2) var(--sp-4)',
+        padding: 'var(--sp-3) var(--sp-4)',
         borderBottom: '1px solid var(--border)',
-        background: 'var(--bg-elev)',
+        background: 'var(--surface-glass)',
+        backdropFilter: 'blur(18px)',
+        boxShadow: 'var(--shadow-sm)',
         flexShrink: 0,
         WebkitAppRegion: 'drag',
       } as React.CSSProperties}
@@ -115,10 +117,11 @@ export function Sidebar({
         aria-label={t('sidebar.viewMode')}
         style={{
           display: 'flex',
-          gap: '2px',
-          background: 'var(--bg-hover)',
-          borderRadius: 'var(--r-md)',
-          padding: '2px',
+          gap: 'var(--sp-1)',
+          background: 'color-mix(in srgb, var(--bg-hover) 72%, transparent)',
+          border: '1px solid var(--border-muted)',
+          borderRadius: 'var(--r-pill)',
+          padding: '3px',
           WebkitAppRegion: 'no-drag',
         } as React.CSSProperties}
       >
@@ -134,10 +137,10 @@ export function Sidebar({
               style={{
                 padding: 'var(--sp-1) var(--sp-3)',
                 border: 'none',
-                borderRadius: 'var(--r-sm)',
+                borderRadius: 'var(--r-pill)',
                 fontSize: 'var(--fs-sm)',
-                background: isActive ? 'var(--accent)' : 'transparent',
-                color: isActive ? '#fff' : 'var(--text-muted)',
+                background: isActive ? 'linear-gradient(135deg, var(--accent), var(--accent-hover))' : 'transparent',
+                color: isActive ? 'var(--accent-contrast)' : 'var(--text-muted)',
                 boxShadow: isActive ? 'var(--shadow-sm)' : 'none',
                 fontWeight: isActive ? 'var(--fw-medium)' : 'var(--fw-normal)',
                 transition: 'background var(--duration-fast) var(--ease-standard)',

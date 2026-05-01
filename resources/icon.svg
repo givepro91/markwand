@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Markwand app icon</title>
+  <desc id="desc">A warm paper document stack connected by a teal knowledge graph and a dark wand.</desc>
+  <defs>
+    <linearGradient id="bg" x1="160" y1="96" x2="864" y2="928" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff7e6"/>
+      <stop offset="0.52" stop-color="#f4dcc4"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="300" y1="190" x2="690" y2="780" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fffdf7"/>
+      <stop offset="1" stop-color="#f1dfc2"/>
+    </linearGradient>
+    <linearGradient id="paperBack" x1="250" y1="230" x2="640" y2="820" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff4df"/>
+      <stop offset="1" stop-color="#dabf9c"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="316" y1="350" x2="738" y2="672" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#23c7b7"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="34" stdDeviation="34" flood-color="#12312f" flood-opacity="0.22"/>
+    </filter>
+    <filter id="tightShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#0d2624" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+
+  <rect x="32" y="32" width="960" height="960" rx="226" fill="url(#bg)"/>
+  <circle cx="198" cy="188" r="156" fill="#ffffff" opacity="0.18"/>
+  <circle cx="820" cy="778" r="210" fill="#061f1d" opacity="0.12"/>
+
+  <g filter="url(#softShadow)">
+    <path d="M274 220h320l156 156v396c0 36-30 66-66 66H274c-36 0-66-30-66-66V286c0-36 30-66 66-66Z" fill="url(#paperBack)" opacity="0.78"/>
+    <path d="M342 166h314l160 160v412c0 42-34 76-76 76H342c-42 0-76-34-76-76V242c0-42 34-76 76-76Z" fill="url(#paper)"/>
+    <path d="M656 166v106c0 30 24 54 54 54h106L656 166Z" fill="#e7caa5"/>
+  </g>
+
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M362 392h238M362 468h300M362 544h184" stroke="#684a31" stroke-width="28" opacity="0.34"/>
+    <path d="M358 668c66-84 132-96 198-36 64 58 126 48 186-30" stroke="url(#teal)" stroke-width="40"/>
+  </g>
+
+  <g filter="url(#tightShadow)">
+    <path d="M386 670l150-118 132 76 92-112" fill="none" stroke="#123f3a" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="386" cy="670" r="38" fill="#20b8aa" stroke="#fff8ec" stroke-width="18"/>
+    <circle cx="536" cy="552" r="38" fill="#0f766e" stroke="#fff8ec" stroke-width="18"/>
+    <circle cx="668" cy="628" r="38" fill="#23c7b7" stroke="#fff8ec" stroke-width="18"/>
+    <circle cx="760" cy="516" r="38" fill="#123f3a" stroke="#fff8ec" stroke-width="18"/>
+  </g>
+
+  <g transform="translate(640 652) rotate(-36)" filter="url(#tightShadow)">
+    <rect x="-22" y="-148" width="44" height="266" rx="22" fill="#1c1712"/>
+    <rect x="-12" y="-134" width="16" height="236" rx="8" fill="#fff4df" opacity="0.16"/>
+    <path d="M0-204l22 50 54 8-40 36 10 54-46-28-46 28 10-54-40-36 54-8 22-50Z" fill="#f7b955"/>
+  </g>
+</svg>

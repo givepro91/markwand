@@ -135,6 +135,153 @@
     }
   },
 
+  "projectWiki": {
+    "toggle": "프로젝트 위키 토글",
+    "badge": "프로젝트 위키",
+    "trustBadge": "신뢰도 {{score}}",
+    "readingDoc": "문서 읽는 중",
+    "returnToWiki": "위키로 돌아가기",
+    "returnToWikiAria": "프로젝트 위키로 돌아가기",
+    "title": "{{name}} 위키",
+    "summary": "문서 {{docs}}개 중 최근 7일 변경 {{recent}}개. 깨진 링크 {{missing}}개, 오래된 참조 {{stale}}개를 추적 중입니다.",
+    "navAria": "프로젝트 위키 섹션 이동",
+    "navBrief": "Brief",
+    "navLinks": "Links",
+    "navTasks": "Tasks",
+    "navStart": "Start",
+    "navRisks": "Risks",
+    "briefTitle": "Project Brief",
+    "briefLoading": "문서 근거를 읽는 중",
+    "briefEmpty": "요약할 수 있는 문서 본문을 아직 찾지 못했습니다.",
+    "evidenceTitle": "근거 문서",
+    "copyHandoff": "Handoff 복사",
+    "copyHandoffDone": "복사됨",
+    "copyHandoffAria": "AI에게 전달할 프로젝트 핸드오프 브리프 복사",
+    "knowledgeTitle": "Knowledge Map",
+    "knowledgeEmpty": "문서 성격을 분류할 수 있는 항목이 아직 없습니다.",
+    "docDebtTitle": "Doc Debt Radar",
+    "docDebtEmpty": "우선 정리할 문서 부채가 감지되지 않았습니다.",
+    "docDebtScore": "점수 {{score}}",
+    "docDebtAge": "{{days}}일",
+    "trustTitle": "Trust Diagnosis",
+    "trustScore": "{{score}} / 100",
+    "trustSignalsEmpty": "현재 신뢰도를 낮추는 주요 신호가 없습니다.",
+    "trustImpactPenalty": "-{{impact}}점",
+    "trustImpactBonus": "+{{impact}}점",
+    "trustSummary": {
+      "strong": "프로젝트 문서가 비교적 믿을 만합니다. 바로 읽기 경로를 따라가도 좋습니다.",
+      "watch": "문서 흐름은 보이지만 일부 근거를 확인해야 합니다. 먼저 위험 신호를 정리하면 좋습니다.",
+      "weak": "문서가 오래되었거나 참조 위험이 큽니다. 의사결정 전에 정리 작업이 필요합니다."
+    },
+    "trustSignal": {
+      "riskRefs": "참조 이슈 {{count}}개",
+      "staleDocs": "오래된 문서 {{count}}개",
+      "missingMetaDocs": "메타 부족 {{count}}개",
+      "unreadDocs": "안읽은 문서 {{count}}개",
+      "recentDocs": "최근 변경 {{count}}개"
+    },
+    "linkGraphTitle": "Link Graph",
+    "linkGraphSummary": "확인된 문서 {{checked}}개에서 링크 {{refs}}개를 읽고, 위험 링크 {{risky}}개를 추적합니다.",
+    "linkGraphEmpty": "문서를 열어 Drift 검사를 실행하면 링크 관계 그래프가 채워집니다.",
+    "linkGraphChecked": "검사 {{count}}개",
+    "linkGraphOk": "정상 {{count}}개",
+    "linkGraphRisk": "위험 {{count}}개",
+    "linkGraphHubs": "문서 허브",
+    "linkGraphHubsEmpty": "아직 연결 중심 문서를 찾지 못했습니다.",
+    "linkGraphRiskLinks": "위험 링크",
+    "linkGraphRiskLinksEmpty": "현재 표시할 위험 링크가 없습니다.",
+    "linkGraphInbound": "받음 {{count}}",
+    "linkGraphOutbound": "보냄 {{count}}",
+    "linkGraphRiskShort": "위험 {{count}}",
+    "linkGraphLine": "{{line}}행",
+    "linkGraphStatus": {
+      "missing": "깨짐",
+      "stale": "오래됨"
+    },
+    "aiTasksTitle": "AI Task Suggestions",
+    "aiTasksEmpty": "아직 추천할 AI 작업이 없습니다.",
+    "copyTaskPrompt": "프롬프트 복사",
+    "copyTaskPromptDone": "복사됨",
+    "copyTaskPromptSuccess": "AI 작업 프롬프트를 복사했습니다.",
+    "copyTaskPromptError": "프롬프트를 복사하지 못했습니다.",
+    "copyTaskPromptAria": "{{task}} 작업 프롬프트 복사",
+    "openTaskDoc": "관련 문서 열기",
+    "openTaskDocAria": "{{task}} 관련 문서 열기",
+    "aiTaskPriority": {
+      "high": "높음",
+      "medium": "중간",
+      "low": "낮음"
+    },
+    "aiTask": {
+      "repairReferences": {
+        "title": "문서 참조 복구",
+        "desc": "깨지거나 오래된 참조를 먼저 정리해 문서 신뢰도를 회복합니다."
+      },
+      "refreshStaleDocs": {
+        "title": "오래된 문서 갱신",
+        "desc": "오래된 핵심 문서를 최신 프로젝트 흐름에 맞게 갱신하거나 보관합니다."
+      },
+      "completeMetadata": {
+        "title": "문서 메타데이터 정리",
+        "desc": "source/status 정보를 맞춰 Wiki 분류와 필터링 품질을 높입니다."
+      },
+      "buildOnboardingBrief": {
+        "title": "온보딩 브리프 작성",
+        "desc": "처음 읽을 문서들을 바탕으로 새 협업자를 위한 짧은 안내문을 만듭니다."
+      },
+      "extractDecisionTimeline": {
+        "title": "의사결정 타임라인 추출",
+        "desc": "계획, 설계, 리뷰 문서에서 결정 흐름과 남은 질문을 정리합니다."
+      }
+    },
+    "emptyTitle": "아직 위키를 만들 문서가 없습니다",
+    "emptyDesc": "프로젝트에 마크다운 문서가 생기면 개요와 읽기 경로가 표시됩니다.",
+    "metrics": {
+      "docs": "마크다운",
+      "recent": "최근 변경",
+      "unread": "안읽음",
+      "risks": "참조 이슈",
+      "trust": "문서 신뢰도"
+    },
+    "trustLevel": {
+      "strong": "좋음",
+      "watch": "주의",
+      "weak": "취약"
+    },
+    "onboardingTitle": "처음 읽을 문서",
+    "onboardingEmpty": "추천할 시작 문서를 찾지 못했습니다.",
+    "riskTitle": "Risk Board",
+    "riskEmpty": "현재 감지된 문서 참조 이슈가 없습니다.",
+    "riskMissing": "깨짐",
+    "riskStale": "오래됨",
+    "openTopRisk": "가장 위험한 문서 열기",
+    "decisionsTitle": "Decision Log",
+    "decisionsEmpty": "계획, 설계, 리뷰 문서를 아직 찾지 못했습니다.",
+    "facetsTitle": "문서 성격",
+    "facetsEmpty": "frontmatter source/status 정보가 아직 없습니다.",
+    "reason": {
+      "entrypoint": "시작점",
+      "recent": "최근",
+      "decision": "결정",
+      "risk": "위험"
+    },
+    "cluster": {
+      "overview": "개요",
+      "decision": "결정",
+      "release": "릴리스",
+      "implementation": "구현",
+      "operations": "운영",
+      "media": "미디어",
+      "reference": "참조"
+    },
+    "docDebtReason": {
+      "stale": "오래됨",
+      "risk": "참조 위험",
+      "missingMeta": "메타 부족",
+      "unread": "안읽음"
+    }
+  },
+
   "sidebar": {
     "viewMode": "뷰 모드",
     "tabs": {

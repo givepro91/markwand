@@ -39,20 +39,22 @@ export const ProjectRow = memo(function ProjectRow({ project, onOpen }: ProjectR
         display: 'flex',
         alignItems: 'center',
         gap: 'var(--sp-3)',
-        padding: 'var(--sp-2) var(--sp-3)',
-        borderRadius: 'var(--r-md)',
+        padding: 'var(--sp-3)',
+        borderRadius: 'var(--r-lg)',
         cursor: 'pointer',
         border: '1px solid transparent',
-        transition: 'background var(--duration-fast) var(--ease-standard)',
+        transition: 'background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard)',
         position: 'relative',
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'var(--bg-hover)'
-        e.currentTarget.style.borderColor = 'var(--border)'
+        e.currentTarget.style.background = 'var(--surface-glass)'
+        e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--accent) 24%, var(--border))'
+        e.currentTarget.style.transform = 'translateY(-1px)'
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = 'transparent'
         e.currentTarget.style.borderColor = 'transparent'
+        e.currentTarget.style.transform = 'translateY(0)'
       }}
     >
       {/* 프로젝트 이름 */}

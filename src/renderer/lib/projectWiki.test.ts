@@ -1,0 +1,331 @@
+import { describe, expect, it } from 'vitest'
+import { buildProjectWikiSummary } from './projectWiki'
+import type { Doc, DriftReport, VerifiedReference } from '../../preload/types'
+
+const NOW = Date.parse('2026-05-01T00:00:00Z')
+
+function doc(name: string, overrides: Partial<Doc> = {}): Doc {
+  return {
+    path: `/project/${name}`,
+    projectId: 'p1',
+    name,
+    mtime: NOW - 60_000,
+    ...overrides,
+  }
+}
+
+function drift(docPath: string, missing: number, stale: number, references: VerifiedReference[] = []): DriftReport {
+  return {
+    docPath,
+    docMtime: NOW,
+    projectRoot: '/project',
+    references,
+    counts: {
+      ok: references.length > 0 ? references.filter((ref) => ref.status === 'ok').length : 1,
+      missing,
+      stale,
+    },
+    verifiedAt: NOW,
+  }
+}
+
+function ref(target: string, status: VerifiedReference['status'], overrides: Partial<VerifiedReference> = {}): VerifiedReference {
+  return {
+    raw: `@${target}`,
+    resolvedPath: target,
+    kind: 'at',
+    line: 3,
+    col: 1,
+    status,
+    ...overrides,
+  }
+}
+
+describe('buildProjectWikiSummary', () => {
+  it('builds overview counts, source/status facets, and onboarding path', () => {
+    const docs: Doc[] = [
+      doc('README.md', { frontmatter: { source: 'claude', status: 'draft' } }),
+      doc('CLAUDE.md', { frontmatter: { source: 'claude', status: 'published' } }),
+      doc('docs/plans/v1-plan.md', { frontmatter: { source: 'design', status: 'draft' } }),
+      doc('docs/release-notes/v1.md', { frontmatter: { source: 'review' } }),
+      doc('screenshot.png'),
+    ]
+
+    const summary = buildProjectWikiSummary(docs, {}, { '/project/README.md': NOW }, NOW)
+
+    expect(summary.totalDocs).toBe(5)
+    expect(summary.markdownDocs).toBe(4)
+    expect(summary.imageDocs).toBe(1)
+    expect(summary.recentDocs).toBe(4)
+    expect(summary.unreadDocs).toBe(3)
+    expect(summary.sourceCounts).toEqual([
+      { source: 'claude', count: 2 },
+      { source: 'design', count: 1 },
+      { source: 'review', count: 1 },
+    ])
+    expect(summary.statusCounts).toEqual([
+      { status: 'draft', count: 2 },
+      { status: 'published', count: 1 },
+    ])
+    expect(summary.onboardingPath.map((item) => item.name)).toEqual([
+      'README.md',
+      'CLAUDE.md',
+      'docs/plans/v1-plan.md',
+      'docs/release-notes/v1.md',
+    ])
+    expect(summary.decisionLog.map((item) => item.name)).toEqual([
+      'docs/plans/v1-plan.md',
+      'docs/release-notes/v1.md',
+    ])
+    expect(summary.clusters.map((item) => ({ key: item.key, count: item.count }))).toEqual([
+      { key: 'decision', count: 2 },
+      { key: 'overview', count: 2 },
+      { key: 'media', count: 1 },
+    ])
+    expect(summary.docDebt[0]).toMatchObject({
+      name: 'docs/release-notes/v1.md',
+      reasons: ['missingMeta', 'unread'],
+    })
+    expect(summary.trust).toMatchObject({
+      score: 98,
+      level: 'strong',
+      penalties: {
+        riskRefs: 0,
+        staleDocs: 0,
+        missingMetaDocs: 1,
+        unreadDocs: 3,
+      },
+    })
+    expect(summary.trust.signals).toEqual([
+      { key: 'missingMetaDocs', count: 1, impact: -4, tone: 'neutral' },
+      { key: 'unreadDocs', count: 3, impact: -6, tone: 'neutral' },
+      { key: 'recentDocs', count: 4, impact: 8, tone: 'positive' },
+    ])
+    expect(summary.suggestedTasks.map((item) => item.intent)).toEqual([
+      'completeMetadata',
+      'buildOnboardingBrief',
+      'extractDecisionTimeline',
+    ])
+    expect(summary.relationships).toMatchObject({
+      checkedDocs: 0,
+      totalRefs: 0,
+      hubs: [],
+      riskyLinks: [],
+    })
+  })
+
+  it('summarizes drift risks by document and total counts', () => {
+    const risky = doc('docs/plan.md')
+    const ok = doc('README.md')
+
+    const summary = buildProjectWikiSummary(
+      [risky, ok],
+      {
+        [risky.path]: drift(risky.path, 2, 1),
+        [ok.path]: drift(ok.path, 0, 0),
+      },
+      {},
+      NOW
+    )
+
+    expect(summary.risks.missingRefs).toBe(2)
+    expect(summary.risks.staleRefs).toBe(1)
+    expect(summary.risks.docsWithRisk).toEqual([
+      { path: risky.path, name: risky.name, missing: 2, stale: 1 },
+    ])
+    expect(summary.docDebt[0]).toMatchObject({
+      path: risky.path,
+      missing: 2,
+      stale: 1,
+      reasons: ['risk', 'missingMeta', 'unread'],
+    })
+    expect(summary.trust.level).toBe('watch')
+    expect(summary.trust.penalties.riskRefs).toBe(3)
+    expect(summary.trust.signals[0]).toEqual({ key: 'riskRefs', count: 3, impact: -30, tone: 'danger' })
+    expect(summary.suggestedTasks[0]).toMatchObject({
+      id: 'repair-references',
+      intent: 'repairReferences',
+      priority: 'high',
+      docs: [{ path: risky.path, name: risky.name, reason: 'risk' }],
+    })
+  })
+
+  it('builds a relationship map from verified document references', () => {
+    const overview = doc('README.md')
+    const plan = doc('docs/plan.md')
+    const archive = doc('docs/archive.md')
+    const missingTarget = '/project/docs/missing.md'
+
+    const summary = buildProjectWikiSummary(
+      [overview, plan, archive],
+      {
+        [overview.path]: drift(overview.path, 1, 1, [
+          ref(plan.path, 'ok'),
+          ref(archive.path, 'stale', { raw: './docs/archive.md', kind: 'inline', line: 12 }),
+          ref(missingTarget, 'missing', { raw: '@docs/missing.md', line: 14 }),
+        ]),
+        [plan.path]: drift(plan.path, 0, 0, [
+          ref(overview.path, 'ok', { raw: '@README.md', line: 2 }),
+        ]),
+      },
+      {},
+      NOW
+    )
+
+    expect(summary.relationships).toMatchObject({
+      checkedDocs: 2,
+      totalRefs: 4,
+      okRefs: 2,
+      missingRefs: 1,
+      staleRefs: 1,
+    })
+    expect(summary.relationships.hubs[0]).toMatchObject({
+      path: overview.path,
+      inbound: 1,
+      outbound: 3,
+      riskRefs: 2,
+    })
+    expect(summary.relationships.riskyLinks).toEqual([
+      expect.objectContaining({
+        sourcePath: overview.path,
+        targetPath: missingTarget,
+        targetName: 'missing.md',
+        status: 'missing',
+        raw: '@docs/missing.md',
+      }),
+      expect.objectContaining({
+        sourcePath: overview.path,
+        targetPath: archive.path,
+        targetName: archive.name,
+        status: 'stale',
+        kind: 'inline',
+      }),
+    ])
+  })
+
+  it('clusters docs into a knowledge map by document role', () => {
+    const docs: Doc[] = [
+      doc('README.md'),
+      doc('src/hooks/useDocs.md'),
+      doc('ops/deploy-runbook.md'),
+      doc('architecture/adr-auth.md'),
+      doc('notes/random.md'),
+      doc('diagram.png'),
+    ]
+
+    const summary = buildProjectWikiSummary(docs, {}, {}, NOW)
+
+    expect(summary.clusters.map((item) => item.key)).toEqual([
+      'decision',
+      'implementation',
+      'media',
+      'operations',
+      'overview',
+      'reference',
+    ])
+    expect(summary.clusters.find((item) => item.key === 'implementation')?.docs[0].name).toBe('src/hooks/useDocs.md')
+  })
+
+  it('disambiguates duplicate basenames with relative paths across wiki sections', () => {
+    const rootClaude = doc('CLAUDE.md')
+    const nestedClaude = doc('CLAUDE.md', {
+      path: '/project/.claude/CLAUDE.md',
+    })
+    const designInputA = doc('claude-design-input.md', {
+      path: '/project/docs/design/claude-design-input.md',
+      frontmatter: { source: 'design', status: 'draft' },
+    })
+    const designInputB = doc('claude-design-input.md', {
+      path: '/project/archive/claude-design-input.md',
+      frontmatter: { source: 'review', status: 'draft' },
+    })
+
+    const summary = buildProjectWikiSummary(
+      [rootClaude, nestedClaude, designInputA, designInputB],
+      { [designInputA.path]: drift(designInputA.path, 2, 0) },
+      {},
+      NOW
+    )
+
+    expect(summary.onboardingPath.map((item) => item.name)).toContain('CLAUDE.md')
+    expect(summary.onboardingPath.map((item) => item.name)).toContain('.claude/CLAUDE.md')
+    expect(summary.decisionLog.map((item) => item.name)).toContain('docs/design/claude-design-input.md')
+    expect(summary.decisionLog.map((item) => item.name)).toContain('archive/claude-design-input.md')
+    expect(summary.risks.docsWithRisk[0].name).toBe('docs/design/claude-design-input.md')
+    expect(summary.suggestedTasks[0].docs[0].name).toBe('docs/design/claude-design-input.md')
+  })
+
+  it('prioritizes stale and under-specified docs in the doc debt radar', () => {
+    const old = doc('docs/old-overview.md', {
+      mtime: NOW - 90 * 24 * 60 * 60 * 1000,
+      frontmatter: { source: 'claude', status: 'draft' },
+    })
+    const risky = doc('docs/risky.md', {
+      frontmatter: { source: 'design', status: 'draft' },
+    })
+    const fresh = doc('docs/fresh.md', {
+      frontmatter: { source: 'review', status: 'published' },
+    })
+
+    const summary = buildProjectWikiSummary(
+      [old, risky, fresh],
+      { [risky.path]: drift(risky.path, 2, 0) },
+      { [old.path]: NOW, [risky.path]: NOW, [fresh.path]: NOW },
+      NOW
+    )
+
+    expect(summary.docDebt.map((item) => item.name)).toEqual(['docs/risky.md', 'docs/old-overview.md'])
+    expect(summary.docDebt[0].reasons).toEqual(['risk'])
+    expect(summary.docDebt[1].reasons).toEqual(['stale'])
+    expect(summary.trust).toMatchObject({
+      level: 'watch',
+      penalties: {
+        riskRefs: 2,
+        staleDocs: 1,
+        missingMetaDocs: 0,
+        unreadDocs: 0,
+      },
+    })
+    expect(summary.trust.signals).toEqual([
+      { key: 'riskRefs', count: 2, impact: -20, tone: 'danger' },
+      { key: 'staleDocs', count: 1, impact: -8, tone: 'warning' },
+      { key: 'recentDocs', count: 2, impact: 4, tone: 'positive' },
+    ])
+    expect(summary.suggestedTasks.map((item) => item.intent)).toEqual([
+      'repairReferences',
+      'refreshStaleDocs',
+      'buildOnboardingBrief',
+    ])
+    expect(summary.suggestedTasks[1]).toMatchObject({
+      id: 'refresh-stale-docs',
+      priority: 'medium',
+      docs: [{ path: old.path, name: old.name }],
+    })
+  })
+
+  it('marks low-trust projects as weak when docs are risky and under-specified', () => {
+    const docs: Doc[] = [
+      doc('docs/a.md', { mtime: NOW - 120 * 24 * 60 * 60 * 1000 }),
+      doc('docs/b.md', { mtime: NOW - 100 * 24 * 60 * 60 * 1000 }),
+      doc('docs/c.md', { mtime: NOW - 80 * 24 * 60 * 60 * 1000 }),
+    ]
+
+    const summary = buildProjectWikiSummary(
+      docs,
+      {
+        [docs[0].path]: drift(docs[0].path, 3, 2),
+        [docs[1].path]: drift(docs[1].path, 2, 1),
+      },
+      {},
+      NOW
+    )
+
+    expect(summary.trust.score).toBeLessThan(55)
+    expect(summary.trust.level).toBe('weak')
+    expect(summary.suggestedTasks.map((item) => ({ intent: item.intent, priority: item.priority }))).toEqual([
+      { intent: 'repairReferences', priority: 'high' },
+      { intent: 'refreshStaleDocs', priority: 'high' },
+      { intent: 'completeMetadata', priority: 'medium' },
+    ])
+  })
+})

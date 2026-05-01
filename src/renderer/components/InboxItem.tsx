@@ -29,24 +29,26 @@ export function InboxItem({ path, projectName, title, mtime, isRead, onClick }: 
         display: 'flex',
         alignItems: 'center',
         gap: 'var(--sp-3)',
-        padding: 'var(--sp-2) var(--sp-3)',
+        padding: 'var(--sp-3) var(--sp-4)',
         cursor: 'pointer',
-        borderRadius: 'var(--r-md)',
+        borderRadius: 'var(--r-lg)',
         opacity: isRead ? 0.6 : 1,
-        transition: 'opacity var(--duration-normal), background var(--duration-fast) var(--ease-standard)',
+        transition: 'opacity var(--duration-normal), background var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard)',
         background: composerChecked ? 'var(--color-success-bg)' : 'transparent',
-        border: 'none',
+        border: '1px solid transparent',
         width: '100%',
         textAlign: 'left',
         fontFamily: 'inherit',
       }}
       onMouseEnter={(e) => {
         if (!composerChecked)
-          (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)'
+          (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-glass)'
+        ;(e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'
       }}
       onMouseLeave={(e) => {
         if (!composerChecked)
           (e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+        ;(e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'
       }}
     >
       <Checkbox

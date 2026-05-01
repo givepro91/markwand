@@ -142,12 +142,33 @@ export function InboxView({ workspaceId, onOpenDoc }: InboxViewProps) {
   }
 
   return (
-    <div style={{ padding: 'var(--sp-6)', height: '100%', overflow: 'auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--sp-5)' }}>
-        <h2 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'var(--fw-semibold)', color: 'var(--text)', margin: 0 }}>
+    <div
+      style={{
+        padding: 'var(--sp-6)',
+        height: '100%',
+        overflow: 'auto',
+        background:
+          'radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 8%, transparent) 0, transparent 34%), var(--bg)',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 'var(--sp-4)',
+          marginBottom: 'var(--sp-5)',
+          padding: 'var(--sp-5)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--r-xl)',
+          background: 'var(--surface-wash), var(--surface-glass)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
+        <h2 style={{ fontSize: 'var(--fs-xl)', fontWeight: 'var(--fw-bold)', color: 'var(--text)', margin: 0, letterSpacing: '-0.02em' }}>
           {t('sidebar.tabs.inbox')}
         </h2>
-        <div style={{ display: 'flex', gap: 'var(--sp-1)' }}>
+        <div style={{ display: 'flex', gap: 'var(--sp-1)', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {(['all', 'read', 'unread'] as ReadFilter[]).map((f) => (
             <Button
               key={f}
@@ -178,7 +199,17 @@ export function InboxView({ workspaceId, onOpenDoc }: InboxViewProps) {
         const items = grouped[group]
         if (items.length === 0) return null
         return (
-          <div key={group} style={{ marginBottom: 'var(--sp-6)' }}>
+          <div
+            key={group}
+            style={{
+              marginBottom: 'var(--sp-6)',
+              border: '1px solid var(--border-muted)',
+              borderRadius: 'var(--r-xl)',
+              background: 'color-mix(in srgb, var(--bg-elev) 86%, transparent)',
+              boxShadow: 'var(--shadow-sm)',
+              overflow: 'hidden',
+            }}
+          >
             <div
               style={{
                 fontSize: 'var(--fs-xs)',
@@ -186,9 +217,9 @@ export function InboxView({ workspaceId, onOpenDoc }: InboxViewProps) {
                 color: 'var(--text-muted)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
-                padding: '0 var(--sp-4) var(--sp-2)',
+                padding: 'var(--sp-3) var(--sp-4)',
                 borderBottom: '1px solid var(--border-muted)',
-                marginBottom: 'var(--sp-1)',
+                background: 'color-mix(in srgb, var(--bg-hover) 48%, transparent)',
               }}
             >
               {t(GROUP_LABEL_KEYS[group])}

@@ -135,6 +135,153 @@
     }
   },
 
+  "projectWiki": {
+    "toggle": "Toggle project wiki",
+    "badge": "Project Wiki",
+    "trustBadge": "Trust {{score}}",
+    "readingDoc": "Reading document",
+    "returnToWiki": "Back to Wiki",
+    "returnToWikiAria": "Return to project wiki",
+    "title": "{{name}} Wiki",
+    "summary": "{{docs}} markdown docs, {{recent}} changed in the last 7 days. Tracking {{missing}} broken links and {{stale}} stale references.",
+    "navAria": "Project wiki section navigation",
+    "navBrief": "Brief",
+    "navLinks": "Links",
+    "navTasks": "Tasks",
+    "navStart": "Start",
+    "navRisks": "Risks",
+    "briefTitle": "Project Brief",
+    "briefLoading": "Reading document evidence",
+    "briefEmpty": "No useful document body found for a brief yet.",
+    "evidenceTitle": "Evidence docs",
+    "copyHandoff": "Copy handoff",
+    "copyHandoffDone": "Copied",
+    "copyHandoffAria": "Copy project handoff brief for AI",
+    "knowledgeTitle": "Knowledge Map",
+    "knowledgeEmpty": "No document roles to map yet.",
+    "docDebtTitle": "Doc Debt Radar",
+    "docDebtEmpty": "No priority document debt detected.",
+    "docDebtScore": "Score {{score}}",
+    "docDebtAge": "{{days}}d",
+    "trustTitle": "Trust Diagnosis",
+    "trustScore": "{{score}} / 100",
+    "trustSignalsEmpty": "No major signals are lowering trust right now.",
+    "trustImpactPenalty": "-{{impact}} pts",
+    "trustImpactBonus": "+{{impact}} pts",
+    "trustSummary": {
+      "strong": "Project docs look reasonably trustworthy. The suggested reading path is safe to start with.",
+      "watch": "The document flow is visible, but a few evidence signals need review before relying on it fully.",
+      "weak": "Docs are stale or risky enough that cleanup should come before major decisions."
+    },
+    "trustSignal": {
+      "riskRefs": "{{count}} ref issues",
+      "staleDocs": "{{count}} stale docs",
+      "missingMetaDocs": "{{count}} missing metadata",
+      "unreadDocs": "{{count}} unread docs",
+      "recentDocs": "{{count}} recent changes"
+    },
+    "linkGraphTitle": "Link Graph",
+    "linkGraphSummary": "Read {{refs}} links across {{checked}} checked docs and track {{risky}} risky links.",
+    "linkGraphEmpty": "Open documents and run Drift checks to populate the link relationship graph.",
+    "linkGraphChecked": "{{count}} checked",
+    "linkGraphOk": "{{count}} ok",
+    "linkGraphRisk": "{{count}} risky",
+    "linkGraphHubs": "Document hubs",
+    "linkGraphHubsEmpty": "No connected hub documents found yet.",
+    "linkGraphRiskLinks": "Risky links",
+    "linkGraphRiskLinksEmpty": "No risky links to show right now.",
+    "linkGraphInbound": "{{count}} in",
+    "linkGraphOutbound": "{{count}} out",
+    "linkGraphRiskShort": "{{count}} risky",
+    "linkGraphLine": "line {{line}}",
+    "linkGraphStatus": {
+      "missing": "Broken",
+      "stale": "Stale"
+    },
+    "aiTasksTitle": "AI Task Suggestions",
+    "aiTasksEmpty": "No AI tasks to suggest yet.",
+    "copyTaskPrompt": "Copy prompt",
+    "copyTaskPromptDone": "Copied",
+    "copyTaskPromptSuccess": "Copied the AI task prompt.",
+    "copyTaskPromptError": "Could not copy the task prompt.",
+    "copyTaskPromptAria": "Copy prompt for {{task}} task",
+    "openTaskDoc": "Open related doc",
+    "openTaskDocAria": "Open related doc for {{task}} task",
+    "aiTaskPriority": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "aiTask": {
+      "repairReferences": {
+        "title": "Repair document references",
+        "desc": "Fix broken or stale references first to recover document trust."
+      },
+      "refreshStaleDocs": {
+        "title": "Refresh stale docs",
+        "desc": "Update or archive stale core documents against the latest project direction."
+      },
+      "completeMetadata": {
+        "title": "Normalize document metadata",
+        "desc": "Add source/status metadata so Wiki classification and filtering become more reliable."
+      },
+      "buildOnboardingBrief": {
+        "title": "Write an onboarding brief",
+        "desc": "Turn the starting documents into a short guide for a new collaborator."
+      },
+      "extractDecisionTimeline": {
+        "title": "Extract a decision timeline",
+        "desc": "Summarize decision flow and unresolved questions from plan, design, and review docs."
+      }
+    },
+    "emptyTitle": "No documents to map yet",
+    "emptyDesc": "Project overview and reading paths will appear once markdown docs are available.",
+    "metrics": {
+      "docs": "Markdown",
+      "recent": "Recent",
+      "unread": "Unread",
+      "risks": "Ref issues",
+      "trust": "Doc trust"
+    },
+    "trustLevel": {
+      "strong": "Strong",
+      "watch": "Watch",
+      "weak": "Weak"
+    },
+    "onboardingTitle": "Start Here",
+    "onboardingEmpty": "No starting documents found yet.",
+    "riskTitle": "Risk Board",
+    "riskEmpty": "No document reference issues detected right now.",
+    "riskMissing": "Broken",
+    "riskStale": "Stale",
+    "openTopRisk": "Open highest-risk doc",
+    "decisionsTitle": "Decision Log",
+    "decisionsEmpty": "No plan, design, or review docs found yet.",
+    "facetsTitle": "Document Shape",
+    "facetsEmpty": "No frontmatter source/status data yet.",
+    "reason": {
+      "entrypoint": "Start",
+      "recent": "Recent",
+      "decision": "Decision",
+      "risk": "Risk"
+    },
+    "cluster": {
+      "overview": "Overview",
+      "decision": "Decisions",
+      "release": "Releases",
+      "implementation": "Implementation",
+      "operations": "Operations",
+      "media": "Media",
+      "reference": "Reference"
+    },
+    "docDebtReason": {
+      "stale": "Stale",
+      "risk": "Ref risk",
+      "missingMeta": "Missing meta",
+      "unread": "Unread"
+    }
+  },
+
   "sidebar": {
     "viewMode": "View mode",
     "tabs": {

@@ -158,19 +158,34 @@ export function AllProjectsView({ workspaceId, onOpenProject }: AllProjectsViewP
   const docCount = isFilterActive ? filteredDocs.length : sorted.length
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        overflow: 'hidden',
+        background:
+          'radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 8%, transparent) 0, transparent 34%), var(--bg)',
+      }}
+    >
       {/* 헤더 */}
       <div
         style={{
-          padding: 'var(--sp-6) var(--sp-6) var(--sp-4)',
+          margin: 'var(--sp-6) var(--sp-6) var(--sp-4)',
+          padding: 'var(--sp-5)',
           flexShrink: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          gap: 'var(--sp-4)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--r-xl)',
+          background: 'var(--surface-wash), var(--surface-glass)',
+          boxShadow: 'var(--shadow-sm)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)' }}>
-          <h2 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'var(--fw-semibold)', color: 'var(--text)', margin: 0 }}>
+          <h2 style={{ fontSize: 'var(--fs-xl)', fontWeight: 'var(--fw-bold)', color: 'var(--text)', margin: 0, letterSpacing: '-0.02em' }}>
             {isFilterActive
               ? t('allProjects.titleFiltered', { count: docCount })
               : t('allProjects.titleAll', { count: sorted.length })}
@@ -185,7 +200,7 @@ export function AllProjectsView({ workspaceId, onOpenProject }: AllProjectsViewP
             </StatusMessage>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {/* 정렬 버튼 */}
           <div style={{ display: 'flex', gap: 'var(--sp-1)' }}>
             {(['recent', 'name', 'count'] as SortOrder[]).map((o) => (
@@ -400,8 +415,8 @@ export function AllProjectsView({ workspaceId, onOpenProject }: AllProjectsViewP
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-              gap: 'var(--sp-3)',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+              gap: 'var(--sp-4)',
               paddingTop: 'var(--sp-2)',
             }}
           >

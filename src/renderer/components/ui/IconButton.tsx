@@ -25,8 +25,8 @@ const variantStyles: Record<NonNullable<IconButtonProps['variant']>, CSSProperti
     borderColor: 'transparent',
   },
   primary: {
-    background: 'var(--accent)',
-    color: '#fff',
+    background: 'linear-gradient(135deg, var(--accent), var(--accent-hover))',
+    color: 'var(--accent-contrast)',
     borderColor: 'transparent',
   },
 }
@@ -56,7 +56,7 @@ export function IconButton({
     fontSize: 'var(--fs-md)',
     cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.5 : 1,
-    transition: `background var(--duration-fast) var(--ease-standard)`,
+    transition: `background var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard)`,
     padding: 0,
     flexShrink: 0,
     ...variantStyles[variant],
@@ -76,14 +76,18 @@ export function IconButton({
         const el = e.currentTarget
         if (variant === 'primary') {
           el.style.background = 'var(--accent-hover)'
+          el.style.boxShadow = '0 8px 20px color-mix(in srgb, var(--accent) 22%, transparent)'
         } else {
-          el.style.background = 'var(--bg-hover)'
+          el.style.background = 'var(--surface-glass)'
         }
+        el.style.transform = 'translateY(-1px)'
       }}
       onMouseLeave={(e) => {
         if (disabled) return
         const el = e.currentTarget
         el.style.background = variantStyles[variant].background as string
+        el.style.boxShadow = 'none'
+        el.style.transform = 'translateY(0)'
       }}
     >
       {children}

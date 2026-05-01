@@ -17,6 +17,7 @@ import { registerSshIpcHandlers } from './ipc/ssh'
 import { setActiveWebContents as setSshActiveWebContents } from './transport/ssh/hostKeyPromptBridge'
 import { getStore } from './services/store'
 import { startWatcher, stopWatcher } from './services/watcher'
+import { runQuitCleanup } from './services/quitCleanup'
 import { parseShellShowItemInput } from './security/validators'
 
 // app:// 프로토콜을 privileged로 등록해야 한다 (보안 정책상 secure 처리)
@@ -151,20 +152,25 @@ app.on('browser-window-blur', () => {
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
+  // Markwand는 백그라운드 상주 앱이 아니므로 macOS에서도 마지막 창을 닫으면 종료한다.
+  app.quit()
 })
 
 // M3 S3 — 앱 종료 시 SSH transport pool 전체 정리 (dispose 역순) + local watcher 종료.
-app.on('before-quit', async (event) => {
-  const { disposeAll } = await import('./transport/pool')
-  try {
-    event.preventDefault()
-    await Promise.all([disposeAll(), stopWatcher()])
-  } catch (err) {
-    process.stderr.write(`[main] before-quit cleanup error: ${String(err)}\n`)
-  } finally {
-    app.exit(0)
-  }
+let quitCleanupStarted = false
+app.on('before-quit', (event) => {
+  if (quitCleanupStarted) return
+  quitCleanupStarted = true
+  event.preventDefault()
+
+  void (async () => {
+    try {
+      const { disposeAll } = await import('./transport/pool')
+      await runQuitCleanup({ disposeAll, stopWatcher })
+    } catch (err) {
+      process.stderr.write(`[main] before-quit cleanup setup error: ${String(err)}\n`)
+    } finally {
+      app.exit(0)
+    }
+  })()
 })

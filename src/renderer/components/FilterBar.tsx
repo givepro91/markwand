@@ -111,8 +111,8 @@ function segmentButton(active: boolean): CSSProperties {
     lineHeight: 'var(--lh-tight)',
     cursor: 'pointer',
     border: 'none',
-    background: active ? 'var(--accent)' : 'transparent',
-    color: active ? '#fff' : 'var(--text-muted)',
+    background: active ? 'linear-gradient(135deg, var(--accent), var(--accent-hover))' : 'transparent',
+    color: active ? 'var(--accent-contrast)' : 'var(--text-muted)',
     transition: `background var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard)`,
     outline: 'none',
   }
@@ -187,9 +187,11 @@ export function FilterBar({ docs: _docs }: FilterBarProps) {
     display: 'flex',
     alignItems: 'center',
     gap: 'var(--sp-2)',
-    padding: 'var(--sp-2) var(--sp-4)',
+    padding: 'var(--sp-3) var(--sp-4)',
     borderBottom: '1px solid var(--border-muted)',
-    background: 'var(--bg)',
+    background: 'var(--surface-glass)',
+    backdropFilter: 'blur(14px)',
+    boxShadow: 'var(--shadow-sm)',
     overflowX: 'auto',
     flexShrink: 0,
   }
@@ -216,7 +218,7 @@ export function FilterBar({ docs: _docs }: FilterBarProps) {
     border: isActive ? '1.5px solid var(--accent)' : '1.5px solid var(--border)',
     cursor: 'pointer',
     whiteSpace: 'nowrap' as CSSProperties['whiteSpace'],
-    background: isActive ? 'var(--accent)' : 'var(--bg-elev)',
+    background: isActive ? 'linear-gradient(135deg, var(--accent), var(--accent-hover))' : 'var(--bg-elev)',
     color: isActive ? 'var(--accent-contrast, #fff)' : 'var(--text-muted)',
     outline: 'none',
     flexShrink: 0,
@@ -323,7 +325,8 @@ export function FilterBar({ docs: _docs }: FilterBarProps) {
         style={{
           display: 'inline-flex',
           border: '1px solid var(--border)',
-          borderRadius: 'var(--r-md)',
+          borderRadius: 'var(--r-pill)',
+          background: 'var(--bg-elev)',
           overflow: 'hidden',
           flexShrink: 0,
         }}

@@ -1,6 +1,6 @@
 {
   "name": "markwand",
-  "version": "0.4.0-beta.5",
+  "version": "0.4.0-beta.6",
   "description": "An AI-output curator for your desktop — discover, read, and re-enter the markdown docs scattered across your AI-driven projects.",
   "main": "./out/main/index.js",
   "author": "jay@spacewalk.tech",
@@ -12,7 +12,10 @@
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
     "lint": "eslint src --ext .ts,.tsx",
-    "dist:mac": "pnpm build && electron-builder --mac --publish never",
+    "dist:mac": "pnpm dist:mac:free",
+    "dist:mac:free": "CSC_IDENTITY_AUTO_DISCOVERY=false MARKWAND_ADHOC_SIGN=1 pnpm build && CSC_IDENTITY_AUTO_DISCOVERY=false MARKWAND_ADHOC_SIGN=1 electron-builder --mac --dir --arm64 --x64 --publish never && node scripts/package-mac-free.mjs",
+    "dist:mac:unsigned": "pnpm dist:mac:free",
+    "dist:mac:release": "pnpm build && electron-builder --mac --publish never -c.mac.hardenedRuntime=true -c.mac.entitlements=build/entitlements.mac.plist -c.mac.entitlementsInherit=build/entitlements.mac.inherit.plist -c.mac.notarize=true -c.dmg.sign=true",
     "test": "vitest run",
     "bench:transport": "npx --yes tsx scripts/bench-transport.ts",
     "bench:renderer-chunks": "npx --yes tsx --expose-gc scripts/bench-renderer-chunks.ts",
@@ -92,8 +95,10 @@
         }
       ],
       "icon": "resources/icon.icns",
-      "identity": null,
-      "hardenedRuntime": false
+      "hardenedRuntime": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.inherit.plist",
+      "notarize": false
     },
     "dmg": {
       "sign": false,
@@ -112,12 +117,6 @@
           "y": 180,
           "type": "link",
           "path": "/Applications"
-        },
-        {
-          "x": 280,
-          "y": 330,
-          "type": "file",
-          "path": "build/여기를 먼저 더블클릭.html"
         }
       ]
     }

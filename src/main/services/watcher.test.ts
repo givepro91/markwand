@@ -11,6 +11,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import type { WebContents } from 'electron'
+import type { FSWatcher } from 'chokidar'
 import { parseFrontmatter } from './scanner'
 import { localFs } from '../transport/local/fs'
 import {
@@ -124,11 +125,11 @@ describe('startWatcher — real chokidar integration (FS-RT-1)', () => {
   }
 
   // setTimeout 기반 debounce(150ms) + chokidar awaitWriteFinish(stabilityThreshold=150ms,
-  // pollInterval=50ms) + 비동기 stat → 약 ~600ms 안정. 실패 회귀가 발생하면
-  // 더 긴 대기 시간을 주는 것이 아니라 페이로드 합성 로직을 의심해야 한다.
+  // pollInterval=50ms) + 비동기 stat → 보통 600ms 내 안정.
+  // Vitest 전체 suite 에서는 다른 파일 테스트와 polling watcher 가 동시에 돌아 여유를 둔다.
   async function waitForEvent(
     predicate: (e: { channel: string; payload: unknown }) => boolean,
-    timeoutMs = 3000,
+    timeoutMs = 8000,
   ): Promise<{ channel: string; payload: unknown }> {
     const start = Date.now()
     while (Date.now() - start < timeoutMs) {
@@ -139,6 +140,18 @@ describe('startWatcher — real chokidar integration (FS-RT-1)', () => {
     throw new Error(
       `waitForEvent timeout after ${timeoutMs}ms; got: ${JSON.stringify(sentEvents)}`,
     )
+  }
+
+  function waitForReady(watcher: FSWatcher): Promise<void> {
+    return new Promise((resolve) => {
+      if ('closed' in watcher && watcher.closed) {
+        resolve()
+        return
+      }
+      watcher.once('ready', () => {
+        setTimeout(resolve, 100)
+      })
+    })
   }
 
   beforeEach(() => {
@@ -164,9 +177,7 @@ describe('startWatcher — real chokidar integration (FS-RT-1)', () => {
   })
 
   it("신규 .md 파일 생성 → fs:change 'add' 페이로드 (projectId/name/mtime/size 포함) + docsCache 무효화", async () => {
-    startWatcher([tmpRoot], makeMockWebContents())
-    // chokidar 초기 walk 안정화. ignoreInitial=true 이므로 기존 파일 add 이벤트는 안 옴.
-    await new Promise((r) => setTimeout(r, 300))
+    await waitForReady(startWatcher([tmpRoot], makeMockWebContents()))
 
     const newPath = path.join(tmpRoot, 'fresh.md')
     fs.writeFileSync(newPath, '---\ntitle: hello\n---\n# new')
@@ -192,8 +203,7 @@ describe('startWatcher — real chokidar integration (FS-RT-1)', () => {
   })
 
   it("신규 이미지(.png) 파일 생성 → fs:change 'add' 페이로드 (frontmatter 없음)", async () => {
-    startWatcher([tmpRoot], makeMockWebContents())
-    await new Promise((r) => setTimeout(r, 300))
+    await waitForReady(startWatcher([tmpRoot], makeMockWebContents()))
 
     const newPath = path.join(tmpRoot, 'shot.png')
     // 1x1 minimal PNG
@@ -217,8 +227,7 @@ describe('startWatcher — real chokidar integration (FS-RT-1)', () => {
   })
 
   it("하위 폴더 안에 신규 .md 생성 → fs:change 'add' 페이로드 (depth ≤ 4 통과)", async () => {
-    startWatcher([tmpRoot], makeMockWebContents())
-    await new Promise((r) => setTimeout(r, 300))
+    await waitForReady(startWatcher([tmpRoot], makeMockWebContents()))
 
     fs.mkdirSync(path.join(tmpRoot, 'docs'))
     const newPath = path.join(tmpRoot, 'docs', 'guide.md')
@@ -239,8 +248,7 @@ describe('startWatcher — real chokidar integration (FS-RT-1)', () => {
     const seedPath = path.join(tmpRoot, 'old.md')
     fs.writeFileSync(seedPath, '# seed')
 
-    startWatcher([tmpRoot], makeMockWebContents())
-    await new Promise((r) => setTimeout(r, 300))
+    await waitForReady(startWatcher([tmpRoot], makeMockWebContents()))
 
     fs.unlinkSync(seedPath)
 
@@ -259,8 +267,7 @@ describe('startWatcher — real chokidar integration (FS-RT-1)', () => {
     const seedPath = path.join(tmpRoot, 'edit.md')
     fs.writeFileSync(seedPath, '---\ntags: [a]\n---\n# v1')
 
-    startWatcher([tmpRoot], makeMockWebContents())
-    await new Promise((r) => setTimeout(r, 300))
+    await waitForReady(startWatcher([tmpRoot], makeMockWebContents()))
 
     fs.writeFileSync(seedPath, '---\ntags: [a, b]\n---\n# v2 longer content here')
 
@@ -280,8 +287,7 @@ describe('startWatcher — real chokidar integration (FS-RT-1)', () => {
   })
 
   it("ignored 파일(.txt 등 non-viewable) 생성 → fs:change 안 보냄", async () => {
-    startWatcher([tmpRoot], makeMockWebContents())
-    await new Promise((r) => setTimeout(r, 300))
+    await waitForReady(startWatcher([tmpRoot], makeMockWebContents()))
 
     fs.writeFileSync(path.join(tmpRoot, 'note.txt'), 'plain text')
     // 안정화 대기 후 ignored 가 정말 안 보내졌는지 확인
@@ -297,8 +303,7 @@ describe('startWatcher — real chokidar integration (FS-RT-1)', () => {
 
   it("projectIdResolver 가 null 반환(워크스페이스 밖) → 페이로드 projectId 없이 발송, invalidator 미호출", async () => {
     setProjectIdResolver(() => null)
-    startWatcher([tmpRoot], makeMockWebContents())
-    await new Promise((r) => setTimeout(r, 300))
+    await waitForReady(startWatcher([tmpRoot], makeMockWebContents()))
 
     const newPath = path.join(tmpRoot, 'orphan.md')
     fs.writeFileSync(newPath, '# o')

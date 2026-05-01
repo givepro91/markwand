@@ -1,0 +1,49 @@
+import { describe, expect, it, vi } from 'vitest'
+import { runQuitCleanup } from './quitCleanup'
+
+describe('runQuitCleanup', () => {
+  it('waits for transport and watcher cleanup when both complete quickly', async () => {
+    const disposeAll = vi.fn(async () => undefined)
+    const stopWatcher = vi.fn(async () => undefined)
+
+    await expect(
+      runQuitCleanup({ disposeAll, stopWatcher, timeoutMs: 100, log: vi.fn() }),
+    ).resolves.toBe('completed')
+
+    expect(disposeAll).toHaveBeenCalledTimes(1)
+    expect(stopWatcher).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not block quit forever when cleanup hangs', async () => {
+    vi.useFakeTimers()
+    const disposeAll = vi.fn(() => new Promise<void>(() => undefined))
+    const stopWatcher = vi.fn(async () => undefined)
+    const log = vi.fn()
+
+    const result = runQuitCleanup({ disposeAll, stopWatcher, timeoutMs: 100, log })
+    await vi.advanceTimersByTimeAsync(100)
+
+    await expect(result).resolves.toBe('timed-out')
+    expect(log).toHaveBeenCalledWith(
+      '[main] before-quit cleanup timed out after 100ms; forcing exit',
+    )
+
+    vi.useRealTimers()
+  })
+
+  it('logs cleanup failures but still lets quit continue', async () => {
+    const disposeAll = vi.fn(async () => {
+      throw new Error('ssh dispose failed')
+    })
+    const stopWatcher = vi.fn(async () => undefined)
+    const log = vi.fn()
+
+    await expect(
+      runQuitCleanup({ disposeAll, stopWatcher, timeoutMs: 100, log }),
+    ).resolves.toBe('completed')
+
+    expect(log).toHaveBeenCalledWith(
+      '[main] before-quit cleanup error: Error: ssh dispose failed',
+    )
+  })
+})

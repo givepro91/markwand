@@ -30,7 +30,7 @@ function normalizeTags(value: unknown): string[] | undefined {
       .filter((v): v is string | number => typeof v === 'string' || typeof v === 'number')
       .map((v) => String(v).trim())
       .filter((s) => s.length > 0)
-    return arr.length > 0 ? arr : undefined
+    return arr
   }
   if (typeof value === 'string') {
     const arr = value

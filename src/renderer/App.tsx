@@ -470,7 +470,7 @@ export default function App() {
   // 워크스페이스가 없을 때 메인 영역에 1차 CTA
   if (workspaces.length === 0) {
     return (
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg)', color: 'var(--text)' }}>
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'transparent', color: 'var(--text)' }}>
         <Sidebar
           workspaces={workspaces}
           activeWorkspaceId={activeWorkspaceId}
@@ -506,7 +506,7 @@ export default function App() {
   }
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg)', color: 'var(--text)' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'transparent', color: 'var(--text)' }}>
       {/* M3 S2 후반부 — TOFU 모달. queue 비었을 때 null 반환이라 상시 mount 안전. */}
       <SshHostKeyPrompt />
       {/* Follow-up FS2 — SSH workspace 추가 폼. flag on + experimental 체크 시에만 트리거. */}

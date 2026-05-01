@@ -14,12 +14,13 @@ export interface ButtonProps {
 
 const variantStyles: Record<NonNullable<ButtonProps['variant']>, CSSProperties> = {
   primary: {
-    background: 'var(--accent)',
-    color: '#fff',
+    background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)',
+    color: 'var(--accent-contrast)',
     borderColor: 'transparent',
+    boxShadow: '0 6px 16px color-mix(in srgb, var(--accent) 20%, transparent)',
   },
   ghost: {
-    background: 'transparent',
+    background: 'color-mix(in srgb, var(--bg-elev) 72%, transparent)',
     color: 'var(--text)',
     borderColor: 'var(--border)',
   },

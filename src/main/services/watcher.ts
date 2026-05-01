@@ -46,6 +46,8 @@ const PROJECT_CHANGE_DEBOUNCE_MS = 500
 
 const DEBOUNCE_MS = 150
 const PROJECT_DEPTH_MAX = 2 // workspace root 기준 depth ≤ 2 의 디렉토리 변화만 프로젝트 목록에 반영
+const IS_TEST_WATCH_ENV =
+  process.env.VITEST === 'true' || process.env.NODE_ENV === 'test'
 
 // 디렉토리 자체를 watch에서 통째로 제외해야 한다.
 // chokidar의 ignored가 .md 필터만 하면 node_modules 같은 큰 디렉토리도
@@ -169,13 +171,13 @@ function sendChange(type: ChangeType, filePath: string): void {
   debounceTimers.set(key, timer)
 }
 
-export function startWatcher(roots: string[], webContents: WebContents): void {
+export function startWatcher(roots: string[], webContents: WebContents): FSWatcher {
   activeWebContents = webContents
   for (const r of roots) watchedRoots.add(r)
 
   if (watcher) {
     watcher.add(roots)
-    return
+    return watcher
   }
 
   watcher = watch(roots, {
@@ -197,6 +199,12 @@ export function startWatcher(roots: string[], webContents: WebContents): void {
       stabilityThreshold: DEBOUNCE_MS,
       pollInterval: 50,
     },
+    // Vitest sandbox/macOS 환경에서는 fs.watch 가 EMFILE 로 fail-soft 되는 경우가 있다.
+    // 테스트는 polling 으로 실제 add/change/unlink 흐름을 안정적으로 검증하고,
+    // 프로덕션은 기본 OS watcher 를 유지해 대형 workspace 비용을 피한다.
+    usePolling: IS_TEST_WATCH_ENV,
+    interval: 50,
+    binaryInterval: 50,
     // depth 10 은 ~/develop 같은 큰 트리(swk: 15k 디렉토리)에서 chokidar 초기 walk 가
     // libuv 스레드풀을 점거해 첫 scanProjects 가 4000배 느려지는 회귀(2026-04-25 사용자 보고).
     // 프로젝트 변경 감지(addDir on isProjectLevelDir) 는 depth ≤ 2 면 충분하고,
@@ -226,6 +234,8 @@ export function startWatcher(roots: string[], webContents: WebContents): void {
       if (msg.includes('EMFILE') || msg.includes('ENOSPC')) return
       console.error('[watcher] error:', msg)
     })
+
+  return watcher
 }
 
 export function addWatchRoots(roots: string[], webContents?: WebContents): void {
