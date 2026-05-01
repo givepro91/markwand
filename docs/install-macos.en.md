@@ -1,10 +1,10 @@
-# macOS Installation Guide — v0.4.0-beta.6
+# macOS Installation Guide — v0.4.0-beta.7
 
 > **English** · [한국어](./install-macos.md)
 
 Markwand is distributed as a **free beta ZIP** without the Apple Developer Program. The app is ad-hoc signed, so it still shows a macOS warning on first launch, but installation does not require Terminal for the normal path.
 
-> Release notes: [release-notes/v0.4.0-beta.6.md](./release-notes/v0.4.0-beta.6.md)
+> Release notes: [release-notes/v0.4.0-beta.7.md](./release-notes/v0.4.0-beta.7.md)
 
 ---
 
@@ -12,24 +12,24 @@ Markwand is distributed as a **free beta ZIP** without the Apple Developer Progr
 
 Choose the file for your Mac:
 
-- **Apple Silicon (M1 / M2 / M3 / M4)**: `Markwand-0.4.0-beta.6-arm64-free.zip`
-- **Intel Mac**: `Markwand-0.4.0-beta.6-x64-free.zip`
+- **Apple Silicon (M1 / M2 / M3 / M4)**: `Markwand-0.4.0-beta.7-arm64-free.zip`
+- **Intel Mac**: `Markwand-0.4.0-beta.7-x64-free.zip`
 
 Latest release: https://github.com/givepro91/markwand/releases
 
 ## 2. Verify SHA-256 (optional)
 
 ```bash
-shasum -a 256 ~/Downloads/Markwand-0.4.0-beta.6-arm64-free.zip
+shasum -a 256 ~/Downloads/Markwand-0.4.0-beta.7-arm64-free.zip
 # or
-shasum -a 256 ~/Downloads/Markwand-0.4.0-beta.6-x64-free.zip
+shasum -a 256 ~/Downloads/Markwand-0.4.0-beta.7-x64-free.zip
 ```
 
 Expected hashes:
 
 ```text
-8af452461ad818163ca3ebff9a62a4c3800650aab01e96b123b69a980156be27  Markwand-0.4.0-beta.6-arm64-free.zip
-fc01630535457b989c9e4df681e32be0e8a6252ef4858d2a8847c85f4c50c154  Markwand-0.4.0-beta.6-x64-free.zip
+dbbcc2be96340d9b53d4bf8081872d45b217631896de850c389a1a719a0c9bde  Markwand-0.4.0-beta.7-arm64-free.zip
+8c04d24c12f2c23dd4106605642b90bb3e671e03bc6adda38145d00bd4b1a92d  Markwand-0.4.0-beta.7-x64-free.zip
 ```
 
 ## 3. Unzip and move to Applications
@@ -46,11 +46,11 @@ fc01630535457b989c9e4df681e32be0e8a6252ef4858d2a8847c85f4c50c154  Markwand-0.4.0
 
 After this one-time step, normal double-click launch should work.
 
-## 5. If you get stuck
+## 5. If macOS still refuses to open it
 
-The ZIP includes `First Run Guide.html`. Open it if the first-launch flow is unclear.
+On recent macOS versions, right-click → Open may still show only **Move to Trash / Done**. If that happens, double-click `Open Markwand.command` inside the ZIP folder. A Terminal window will briefly open, remove the quarantine flag, and launch Markwand.
 
-If macOS says the app is damaged, quarantine was applied aggressively. Use Terminal only for this fallback:
+Manual fallback:
 
 ```bash
 xattr -cr /Applications/Markwand.app

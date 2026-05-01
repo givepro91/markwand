@@ -1,6 +1,6 @@
 {
   "name": "markwand",
-  "version": "0.4.0-beta.6",
+  "version": "0.4.0-beta.7",
   "description": "An AI-output curator for your desktop — discover, read, and re-enter the markdown docs scattered across your AI-driven projects.",
   "main": "./out/main/index.js",
   "author": "jay@spacewalk.tech",
