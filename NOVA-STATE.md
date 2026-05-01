@@ -1,11 +1,11 @@
 # Nova State
 
 ## Current
-- **Goal**: v0.4.0-beta.10 quit/CPU hotfix 완료, GitHub Release 생성 대기.
-- **Phase**: **release-blocked** — code/artifacts/local smoke PASS, GitHub Release API는 `givepro91` 계정 `workflow` scope 갱신 필요.
-- **Blocker**: `gh release create` 실패: active `jay-swk` has `workflow` scope but no repo push/release permission; `givepro91` has repo permission but lacks `workflow` scope.
-- **Last Activity**: v0.4.0-beta.10 로컬 설치 smoke PASS — startup watcher default-off, forced dev env ignored, 7s running quit 398ms, no Markwand orphan process (2026-05-01).
-- **Remote**: `origin/main` = `de8df60`; tag `v0.4.0-beta.10` pushed; GitHub Release object pending.
+- **Goal**: v0.4.0-beta.10 quit/CPU hotfix 공개 완료.
+- **Phase**: **released** — code/tag/artifacts/local smoke/GitHub prerelease PASS.
+- **Blocker**: none
+- **Last Activity**: v0.4.0-beta.10 GitHub Release 공개 — arm64/x64 ZIP 업로드, beta.8 deprecated title 정리, local quit smoke PASS (2026-05-01).
+- **Remote**: `origin/main` = `21c0f9e`; tag `v0.4.0-beta.10` = `deacb77`; Release: https://github.com/givepro91/markwand/releases/tag/v0.4.0-beta.10
 
 ## Recently Done
 1. v0.4.0-beta.10 — quit/CPU hotfix. Startup file watcher default-off (`MARKWAND_ENABLE_STARTUP_WATCH=1` opt-in), quit hides windows immediately, cleanup watchdog 500ms, startup watcher timer cancelled on quit.
@@ -17,11 +17,6 @@
 |---|---|
 | `dist/Markwand-0.4.0-beta.10-arm64-free.zip` | `291e8f4bc58cec6c1ce4886efa9f37585fdf24d3e8144a434540181c49ba726d` |
 | `dist/Markwand-0.4.0-beta.10-x64-free.zip` | `1d01f4dd179216746f79ec3d7060666f7fa31504d5e48a1f6f616ce8b6e19022` |
-
-## Next
-1. Refresh GitHub CLI auth for `givepro91`: `gh auth switch -u givepro91 && gh auth refresh -h github.com -s workflow`.
-2. Create prerelease: `gh release create v0.4.0-beta.10 dist/Markwand-0.4.0-beta.10-arm64-free.zip dist/Markwand-0.4.0-beta.10-x64-free.zip --repo givepro91/markwand --title "v0.4.0-beta.10 — faster quit guard" --notes-file docs/release-notes/v0.4.0-beta.10.md --prerelease --verify-tag`.
-3. Mark v0.4.0-beta.8/v0.4.0-beta.9 deprecated after beta.10 release is visible.
 
 ## Open Product Work
 - UX/UI polish and QA hardening remain active goals after the release blocker is cleared.
