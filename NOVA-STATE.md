@@ -1,15 +1,15 @@
 # Nova State
 
 ## Current
-- **Goal**: v0.4.0-beta.6 Project Wiki + 무료 macOS ZIP 배포 공개 완료.
-- **Phase**: **released** — beta.6 release commit/tag/push/GitHub prerelease 완료. 다음은 ESLint 게이트 정비 또는 Project Wiki 의미 분석 고도화.
+- **Goal**: v0.4.0-beta.7 macOS first-run helper 공개 완료.
+- **Phase**: **released** — beta.7 packaging follow-up commit/tag/push/GitHub prerelease 완료. 다음은 ESLint 게이트 정비 또는 Project Wiki 의미 분석 고도화.
 - **Blocker**: none
 - **Recently Done (3)**:
-  1. v0.4.0-beta.6 — Project Wiki MVP(Start Here/Risk Board/Knowledge Map/AI task prompt), 동일 basename 상대경로 표시, 새 UI/아이콘, 무료 ZIP 배포, 종료 cleanup watchdog. QA: typecheck PASS · vitest 374/374 · build PASS · bench PASS · dist:mac:free PASS · 설치 앱 Quit 3회 PASS.
-  2. v0.4.0-beta.5 — 좌측 트리 실시간 동기화 (incremental 'add' fs:change + activeProjectId prefs persist). 사용자 dogfood 회귀 2건 root cause 두 layer fix. 자동 회귀 차단 단위·통합 시뮬 20건 신규.
-  3. v0.4.0-beta.4 — 새로고침 UX 보강 (글로벌 새로고침 + ⌘R + 버전 표시 + 깜빡임 제거 + docs/img/content 재로드 + FileTree 스크롤 보존 + RecentDocsPanel 인박스 라우팅). Self-QA 사이클 6회.
-- **Last Activity**: v0.4.0-beta.6 GitHub Release 공개 — prerelease ZIP arm64/x64 업로드, sha256 기록, 무료 비공증 spctl rejected 예상 확인 (2026-05-01).
-- **Remote**: git@github-givepro91:givepro91/markwand.git (main) — origin = `c3b6ce0` (v0.4.0-beta.6). tag `v0.4.0-beta.6` 원격 반영 완료. GitHub Release prerelease: https://github.com/givepro91/markwand/releases/tag/v0.4.0-beta.6 (ZIP arm64 `8af45246…6be27` · x64 `fc016305…0c154`).
+  1. v0.4.0-beta.7 — macOS Gatekeeper fallback 보강. ZIP에 `Open Markwand.command` 포함(quarantine 제거 후 실행), First Run Guide/설치 문서 업데이트. QA: typecheck PASS · vitest 374/374 · dist:mac:free PASS · helper smoke PASS.
+  2. v0.4.0-beta.6 — Project Wiki MVP(Start Here/Risk Board/Knowledge Map/AI task prompt), 동일 basename 상대경로 표시, 새 UI/아이콘, 무료 ZIP 배포, 종료 cleanup watchdog. QA: typecheck PASS · vitest 374/374 · build PASS · bench PASS · dist:mac:free PASS · 설치 앱 Quit 3회 PASS.
+  3. v0.4.0-beta.5 — 좌측 트리 실시간 동기화 (incremental 'add' fs:change + activeProjectId prefs persist). 사용자 dogfood 회귀 2건 root cause 두 layer fix. 자동 회귀 차단 단위·통합 시뮬 20건 신규.
+- **Last Activity**: v0.4.0-beta.7 GitHub Release 공개 — prerelease ZIP arm64/x64 업로드, first-run helper 포함, sha256 기록 (2026-05-01).
+- **Remote**: git@github-givepro91:givepro91/markwand.git (main) — origin = `e5d6040` (v0.4.0-beta.7). tag `v0.4.0-beta.7` 원격 반영 완료. GitHub Release prerelease: https://github.com/givepro91/markwand/releases/tag/v0.4.0-beta.7 (ZIP arm64 `dbbcc2be…c9bde` · x64 `8c04d24c…1a92d`).
 - **Active Plan**: docs/plans/v0.4.0-ux-overhaul.md (v0.4 UX Overhaul, deep, 9 sprints — 사용자 승인 대기)
 - **Completed Plan**: docs/plans/v0.3.0-beta.9-quickwin.md (S1·S2·S3 + Release 전부 완료)
 - **Prior Plan**: docs/plans/remote-fs-transport-followup.md (v1.0 Follow-up — 4 sprints FS0~FS3 완료)
