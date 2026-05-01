@@ -379,5 +379,102 @@
     ],
     "createdAt": "2026-04-25T01:47:43.623Z",
     "updatedAt": "2026-04-26T12:54:49.164Z"
+  },
+  "orch-momef7gr-t20n": {
+    "id": "orch-momef7gr-t20n",
+    "task": "Markwand Project Wiki를 글로벌 상용화 차별 기능 수준으로 고도화: 문서 관계 그래프, 위키 탐색/작업 허브 UX, 검증 및 최적화",
+    "complexity": "complex",
+    "status": "completed",
+    "phases": [
+      {
+        "name": "상태분석",
+        "role": "Architect",
+        "status": "completed",
+        "result": "DriftReport.references 기반으로 문서 관계 그래프 구현 가능. 추가 파일 스캔 없이 summary/UI/test 확장으로 진행.",
+        "startedAt": "2026-05-01T04:14:30.328Z",
+        "completedAt": "2026-05-01T04:15:15.348Z"
+      },
+      {
+        "name": "관계그래프구현",
+        "role": "Generator",
+        "status": "completed",
+        "result": "ProjectWikiSummary.relationships, Link Graph UI, handoff Link Graph, 관련 회귀 테스트 18개 통과",
+        "startedAt": "2026-05-01T04:15:20.958Z",
+        "completedAt": "2026-05-01T04:18:39.599Z"
+      },
+      {
+        "name": "위키탐색UX",
+        "role": "Generator",
+        "status": "completed",
+        "result": "Sticky 섹션 네비게이션 추가 및 ProjectWikiPanel 이벤트 테스트 4개 통과",
+        "startedAt": "2026-05-01T04:18:42.720Z",
+        "completedAt": "2026-05-01T04:19:51.501Z"
+      },
+      {
+        "name": "자가검증",
+        "role": "Evaluator",
+        "status": "completed",
+        "result": "typecheck PASS, targeted wiki/view tests 20 PASS, full pnpm test 369 PASS, pnpm build PASS, HMR error 없음, 고아 프로세스 없음",
+        "startedAt": "2026-05-01T04:19:55.264Z",
+        "completedAt": "2026-05-01T04:22:18.003Z"
+      },
+      {
+        "name": "정리",
+        "role": "Reporter",
+        "status": "completed",
+        "result": "사용자 부재 중 진행 결과 요약 준비. pnpm dev는 요청대로 유지 중.",
+        "completedAt": "2026-05-01T04:22:24.699Z"
+      }
+    ],
+    "createdAt": "2026-05-01T04:14:26.187Z",
+    "updatedAt": "2026-05-01T04:22:24.699Z"
+  },
+  "orch-momjbizp-ia66": {
+    "id": "orch-momjbizp-ia66",
+    "task": "Markwand 설치 앱 직접 실행 QA, 회귀/UX/릴리스 검증, 무료 macOS 배포 릴리스 생성",
+    "complexity": "complex",
+    "status": "completed",
+    "phases": [
+      {
+        "name": "상태 점검",
+        "role": "Context Chain",
+        "status": "completed",
+        "result": "현재 main, 최신 태그 v0.4.0-beta.5, package version beta.5. 릴리스 후보는 v0.4.0-beta.6로 진행. Markwand/dev/test/build 고아 프로세스 없음.",
+        "completedAt": "2026-05-01T06:31:57.985Z"
+      },
+      {
+        "name": "QA 실행",
+        "role": "Evaluator",
+        "status": "completed",
+        "result": "PASS: typecheck, vitest 374/374, production build, bench:transport. Known gap: pnpm lint 실행 불가(eslint dependency/config 없음).",
+        "startedAt": "2026-05-01T06:33:57.953Z",
+        "completedAt": "2026-05-01T06:34:19.515Z"
+      },
+      {
+        "name": "앱 실기 검증",
+        "role": "Runtime QA",
+        "status": "completed",
+        "result": "PASS: /Applications 설치, version 0.4.0-beta.6, launch detected 0.094s, bundle-id Quit 3회 0.510/0.978/0.373s, CPU idle 0.0%, 고아 프로세스 없음. Screenshot은 macOS capture 권한/디스플레이로 불가.",
+        "startedAt": "2026-05-01T06:35:54.958Z",
+        "completedAt": "2026-05-01T06:41:21.092Z"
+      },
+      {
+        "name": "릴리스 빌드",
+        "role": "Release Engineer",
+        "status": "completed",
+        "result": "PASS: dist:mac:free 생성 완료. ZIP arm64/x64, codesign verify PASS. spctl rejected는 무료 비공증 배포의 예상 결과.",
+        "startedAt": "2026-05-01T06:34:23.686Z",
+        "completedAt": "2026-05-01T06:35:51.724Z"
+      },
+      {
+        "name": "릴리스 확정",
+        "role": "Publisher",
+        "status": "completed",
+        "result": "PASS: pushed main c3b6ce0 + tag v0.4.0-beta.6, GitHub prerelease created with arm64/x64 ZIP assets.",
+        "completedAt": "2026-05-01T06:41:28.348Z"
+      }
+    ],
+    "createdAt": "2026-05-01T06:31:32.581Z",
+    "updatedAt": "2026-05-01T06:41:28.348Z"
   }
 }

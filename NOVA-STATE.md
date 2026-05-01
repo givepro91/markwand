@@ -1,15 +1,15 @@
 # Nova State
 
 ## Current
-- **Goal**: v0.4.0-beta.5 좌측 트리 실시간 동기화 보강 release commit 완료. 태그/DMG/GitHub Release 사용자 명시 승인 대기.
-- **Phase**: **release-prep** — beta.5 release commit + tag 생성. push/dist:mac/SHA256/GitHub Release 별도 승인 후.
+- **Goal**: v0.4.0-beta.6 Project Wiki + 무료 macOS ZIP 배포 공개 완료.
+- **Phase**: **released** — beta.6 release commit/tag/push/GitHub prerelease 완료. 다음은 ESLint 게이트 정비 또는 Project Wiki 의미 분석 고도화.
 - **Blocker**: none
 - **Recently Done (3)**:
-  1. v0.4.0-beta.5 — 좌측 트리 실시간 동기화 (incremental 'add' fs:change + activeProjectId prefs persist). 사용자 dogfood 회귀 2건(신규 파일 미반영·hot-reload 후 ProjectView mount 풀림) root cause 두 layer fix. 자동 회귀 차단 단위·통합 시뮬 20건 신규.
-  2. v0.4.0-beta.4 — 새로고침 UX 보강 (글로벌 새로고침 + ⌘R + 버전 표시 + 깜빡임 제거 + docs/img/content 재로드 + FileTree 스크롤 보존 + RecentDocsPanel 인박스 라우팅). Self-QA 사이클 6회.
-  3. v0.4.0-beta.3 — S7 Annotation MVP (텍스트 하이라이트, 노랑 1색, 로컬 md only).
-- **Last Activity**: v0.4.0-beta.4 GitHub Release 공개 — release id 315207497, DMG arm64+x64 업로드, sha256 일치 검증 (2026-04-29).
-- **Remote**: git@github-givepro91:givepro91/markwand.git (main) — origin = `604520e` (v0.4.0-beta.4 SHA256). tag `v0.4.0-beta.4` 원격 반영 완료. GitHub Release prerelease: https://github.com/givepro91/markwand/releases/tag/v0.4.0-beta.4 (DMG arm64 `a657927a…955e` · x64 `b5d4bdec…5bd4`).
+  1. v0.4.0-beta.6 — Project Wiki MVP(Start Here/Risk Board/Knowledge Map/AI task prompt), 동일 basename 상대경로 표시, 새 UI/아이콘, 무료 ZIP 배포, 종료 cleanup watchdog. QA: typecheck PASS · vitest 374/374 · build PASS · bench PASS · dist:mac:free PASS · 설치 앱 Quit 3회 PASS.
+  2. v0.4.0-beta.5 — 좌측 트리 실시간 동기화 (incremental 'add' fs:change + activeProjectId prefs persist). 사용자 dogfood 회귀 2건 root cause 두 layer fix. 자동 회귀 차단 단위·통합 시뮬 20건 신규.
+  3. v0.4.0-beta.4 — 새로고침 UX 보강 (글로벌 새로고침 + ⌘R + 버전 표시 + 깜빡임 제거 + docs/img/content 재로드 + FileTree 스크롤 보존 + RecentDocsPanel 인박스 라우팅). Self-QA 사이클 6회.
+- **Last Activity**: v0.4.0-beta.6 GitHub Release 공개 — prerelease ZIP arm64/x64 업로드, sha256 기록, 무료 비공증 spctl rejected 예상 확인 (2026-05-01).
+- **Remote**: git@github-givepro91:givepro91/markwand.git (main) — origin = `c3b6ce0` (v0.4.0-beta.6). tag `v0.4.0-beta.6` 원격 반영 완료. GitHub Release prerelease: https://github.com/givepro91/markwand/releases/tag/v0.4.0-beta.6 (ZIP arm64 `8af45246…6be27` · x64 `fc016305…0c154`).
 - **Active Plan**: docs/plans/v0.4.0-ux-overhaul.md (v0.4 UX Overhaul, deep, 9 sprints — 사용자 승인 대기)
 - **Completed Plan**: docs/plans/v0.3.0-beta.9-quickwin.md (S1·S2·S3 + Release 전부 완료)
 - **Prior Plan**: docs/plans/remote-fs-transport-followup.md (v1.0 Follow-up — 4 sprints FS0~FS3 완료)
