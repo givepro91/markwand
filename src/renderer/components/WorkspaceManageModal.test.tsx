@@ -20,6 +20,24 @@ const workspace: Workspace = {
 }
 
 describe('WorkspaceManageModal', () => {
+  it('renders through a body portal so the app header cannot clip the dialog', () => {
+    renderWithProviders(
+      <div style={{ overflow: 'hidden', height: '48px' }}>
+        <WorkspaceManageModal
+          workspaces={[workspace]}
+          onRemove={vi.fn().mockResolvedValue(undefined)}
+          onAdd={vi.fn().mockResolvedValue(undefined)}
+          onClose={vi.fn()}
+        />
+      </div>
+    )
+
+    const dialog = screen.getByRole('dialog', { name: 'manage.title' })
+    const portalRoot = dialog.closest('[data-workspace-manage-modal-root]')
+
+    expect(portalRoot?.parentElement).toBe(document.body)
+  })
+
   it('keeps the settings gear modal within the viewport and scrollable', () => {
     renderWithProviders(
       <WorkspaceManageModal

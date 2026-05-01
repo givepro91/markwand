@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Button } from './ui'
 import type { Workspace } from '../../../src/preload/types'
@@ -106,8 +107,9 @@ export function WorkspaceManageModal({ workspaces, onRemove, onAdd, onClose }: W
     }
   }, [undoBuffer, clearUndoBuffer, onAdd])
 
-  return (
+  const modal = (
     <div
+      data-workspace-manage-modal-root=""
       style={{
         position: 'fixed',
         inset: 0,
@@ -118,7 +120,9 @@ export function WorkspaceManageModal({ workspaces, onRemove, onAdd, onClose }: W
         padding: 'calc(var(--sp-6) + env(safe-area-inset-top, 0px)) var(--sp-4) var(--sp-4)',
         overflowY: 'auto',
         zIndex: 'calc(var(--z-modal) + 20)',
-      }}
+        boxSizing: 'border-box',
+        WebkitAppRegion: 'no-drag',
+      } as React.CSSProperties}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
@@ -137,7 +141,9 @@ export function WorkspaceManageModal({ workspaces, onRemove, onAdd, onClose }: W
           maxHeight: 'calc(100vh - 48px)',
           overflowY: 'auto',
           boxShadow: 'var(--shadow-lg)',
-        }}
+          boxSizing: 'border-box',
+          WebkitAppRegion: 'no-drag',
+        } as React.CSSProperties}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--sp-4)' }}>
           <h3
@@ -299,4 +305,6 @@ export function WorkspaceManageModal({ workspaces, onRemove, onAdd, onClose }: W
       </div>
     </div>
   )
+
+  return createPortal(modal, document.body)
 }
