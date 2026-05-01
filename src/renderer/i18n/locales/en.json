@@ -59,29 +59,29 @@
     "openAria": "Open Markwand guide",
     "openTitle": "See Markwand's intent and core features",
     "kicker": "Markwand Guide",
-    "title": "Markwand turns scattered docs into a project map",
-    "intro": "As AI-generated markdown grows, the hard part is no longer opening files. It is understanding context, trust, and the next useful action.",
+    "title": "See what matters first, even when docs pile up",
+    "intro": "When AI notes, plans, and meeting docs keep growing, filenames are not enough. Markwand turns them into reading order, open issues, and next actions.",
     "tipsTitle": "Try it fast",
     "sections": {
       "why": {
         "title": "Why it exists",
-        "body": "Markwand gathers scattered AI output and project docs so humans and AI tools can find the right reading path and context quickly."
+        "body": "Markwand gathers scattered docs so a new teammate can understand the project flow without reading everything first."
       },
       "wiki": {
-        "title": "Project Wiki",
-        "body": "The wiki reshapes document lists into a Knowledge Map, Project Brief, Decision Log, and Risk Board so the project flow is visible."
+        "title": "Project Guide",
+        "body": "Docs are grouped into a quick summary, document groups, decision history, and issues to check. It is a guided reading path, not just a file list."
       },
       "search": {
-        "title": "⌘K search",
-        "body": "Search filenames, metadata, and document bodies. SSH workspaces use caches and strict read budgets so search stays lightweight."
+        "title": "Quick find",
+        "body": "Press ⌘K to search filenames, document text, and status. Remote SSH docs are read with caches and small read budgets to stay responsive."
       },
       "handoff": {
-        "title": "AI Handoff",
-        "body": "Project Pulse and task prompts turn the current project state into copy-ready context for Claude Code, Codex, Cursor, and similar tools."
+        "title": "Send to AI",
+        "body": "Copy the current project summary and paste it into Claude Code, Codex, Cursor, or another AI tool without explaining the project from scratch."
       },
       "trust": {
-        "title": "Trust & Drift",
-        "body": "Broken links, stale references, and missing metadata are surfaced before you rely on a document for decisions."
+        "title": "Check document health",
+        "body": "Broken links, stale content, and missing details are surfaced before you rely on a document for decisions."
       },
       "ssh": {
         "title": "Read-only SSH",
@@ -90,10 +90,18 @@
     },
     "tips": {
       "cmdk": "Press ⌘K to find documents across the projects currently loaded.",
-      "wiki": "Turn on the project wiki to see the reading path and risky docs together.",
+      "wiki": "Turn on the project wiki to see the reading path and issues to check together.",
       "ssh": "Remote SSH docs can be slower; opening a project first warms the document cache and keeps search light.",
-      "handoff": "Copy the Wiki handoff or AI task prompt to pass sharper context into your next AI coding session."
+      "handoff": "Use Send to AI in the sidebar to copy the current project summary."
     }
+  },
+
+  "aiHandoff": {
+    "copy": "Send to AI",
+    "copied": "Copied",
+    "copyAria": "Copy the current project summary for an AI tool",
+    "copySuccess": "Copied the project summary for AI.",
+    "copyError": "Could not copy the project summary."
   },
 
   "inbox": {
@@ -177,34 +185,34 @@
   },
 
   "projectWiki": {
-    "toggle": "Toggle project wiki",
-    "badge": "Project Wiki",
+    "toggle": "Toggle project guide",
+    "badge": "Project Guide",
     "trustBadge": "Trust {{score}}",
     "readingDoc": "Reading document",
-    "returnToWiki": "Back to Wiki",
-    "returnToWikiAria": "Return to project wiki",
-    "title": "{{name}} Wiki",
+    "returnToWiki": "Back to guide",
+    "returnToWikiAria": "Return to project guide",
+    "title": "{{name}} Guide",
     "summary": "{{docs}} markdown docs, {{recent}} changed in the last 7 days. Tracking {{missing}} broken links and {{stale}} stale references.",
-    "navAria": "Project wiki section navigation",
-    "navBrief": "Brief",
+    "navAria": "Project guide section navigation",
+    "navBrief": "Summary",
     "navLinks": "Links",
-    "navTasks": "Tasks",
+    "navTasks": "AI tasks",
     "navStart": "Start",
-    "navRisks": "Risks",
-    "briefTitle": "Project Brief",
+    "navRisks": "Issues",
+    "briefTitle": "Quick Summary",
     "briefLoading": "Reading document evidence",
     "briefEmpty": "No useful document body found for a brief yet.",
     "evidenceTitle": "Evidence docs",
-    "copyHandoff": "Copy handoff",
+    "copyHandoff": "Copy AI summary",
     "copyHandoffDone": "Copied",
-    "copyHandoffAria": "Copy project handoff brief for AI",
-    "knowledgeTitle": "Knowledge Map",
+    "copyHandoffAria": "Copy project summary for AI",
+    "knowledgeTitle": "Document Groups",
     "knowledgeEmpty": "No document roles to map yet.",
-    "docDebtTitle": "Doc Debt Radar",
-    "docDebtEmpty": "No priority document debt detected.",
+    "docDebtTitle": "Docs to Clean Up",
+    "docDebtEmpty": "No priority cleanup documents detected.",
     "docDebtScore": "Score {{score}}",
     "docDebtAge": "{{days}}d",
-    "trustTitle": "Trust Diagnosis",
+    "trustTitle": "Can I Trust This?",
     "trustScore": "{{score}} / 100",
     "trustSignalsEmpty": "No major signals are lowering trust right now.",
     "trustImpactPenalty": "-{{impact}} pts",
@@ -246,7 +254,7 @@
         },
         "completeMetadata": {
           "title": "Clean up document shape to make the wiki smarter",
-          "desc": "Adding source/status metadata improves the Knowledge Map, filters, and AI task suggestions together."
+          "desc": "Adding source/status metadata improves document groups, filters, and AI task suggestions together."
         },
         "buildOnboardingBrief": {
           "title": "Turn the reading path into an onboarding brief",
@@ -264,10 +272,10 @@
       "focusDoc": "Suggested doc: {{doc}}",
       "openFocusDoc": "Open suggested doc",
       "openFocusDocAria": "Open suggested document {{doc}}",
-      "copyPrompt": "AI task prompt",
-      "copyPromptAria": "Copy the Project Pulse AI task prompt"
+      "copyPrompt": "Task for AI",
+      "copyPromptAria": "Copy the suggested AI task for the current project state"
     },
-    "linkGraphTitle": "Link Graph",
+    "linkGraphTitle": "Document Links",
     "linkGraphSummary": "Read {{refs}} links across {{checked}} checked docs and track {{risky}} risky links.",
     "linkGraphEmpty": "Open documents and run Drift checks to populate the link relationship graph.",
     "linkGraphChecked": "{{count}} checked",
@@ -285,7 +293,7 @@
       "missing": "Broken",
       "stale": "Stale"
     },
-    "aiTasksTitle": "AI Task Suggestions",
+    "aiTasksTitle": "Good Tasks for AI",
     "aiTasksEmpty": "No AI tasks to suggest yet.",
     "copyTaskPrompt": "Copy prompt",
     "copyTaskPromptDone": "Copied",
@@ -310,7 +318,7 @@
       },
       "completeMetadata": {
         "title": "Normalize document metadata",
-        "desc": "Add source/status metadata so Wiki classification and filtering become more reliable."
+        "desc": "Add source/status metadata so document groups, filters, and AI task suggestions become more reliable."
       },
       "buildOnboardingBrief": {
         "title": "Write an onboarding brief",
@@ -327,22 +335,22 @@
       "docs": "Markdown",
       "recent": "Recent",
       "unread": "Unread",
-      "risks": "Ref issues",
-      "trust": "Doc trust"
+      "risks": "Issues to check",
+      "trust": "Trust level"
     },
     "trustLevel": {
       "strong": "Strong",
       "watch": "Watch",
-      "weak": "Weak"
+      "weak": "Risky"
     },
     "onboardingTitle": "Start Here",
     "onboardingEmpty": "No starting documents found yet.",
-    "riskTitle": "Risk Board",
+    "riskTitle": "Issues to Check",
     "riskEmpty": "No document reference issues detected right now.",
     "riskMissing": "Broken",
     "riskStale": "Stale",
     "openTopRisk": "Open highest-risk doc",
-    "decisionsTitle": "Decision Log",
+    "decisionsTitle": "Decision History",
     "decisionsEmpty": "No plan, design, or review docs found yet.",
     "decisionAge": "{{days}}d ago",
     "decisionKind": {

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { FileTree } from '../components/FileTree'
 import { MarkdownViewer } from '../components/MarkdownViewer'
 import { ImageViewer } from '../components/ImageViewer'
-import { ClaudeButton } from '../components/ClaudeButton'
+import { AiHandoffButton } from '../components/AiHandoffButton'
 import { FilterBar } from '../components/FilterBar'
 import { TableOfContents } from '../components/TableOfContents'
 import { DriftPanel } from '../components/DriftPanel'
@@ -703,7 +703,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
             >
               {projectName}
             </span>
-            <ClaudeButton projectDir={projectRoot} />
+            <AiHandoffButton projectName={projectName} summary={wikiSummary} brief={wikiBrief} />
           </div>
           {/* 최근 7일 문서 — FileTree 위 별도 섹션. 시각 구분(다른 배경 + 굵은 borderBottom).
               빈 상태(7일 내 수정 0건)일 땐 컴포넌트 자체가 null 반환해 헷갈림 방지.
