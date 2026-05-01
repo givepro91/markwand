@@ -78,6 +78,15 @@ const summary: ProjectWikiSummary = {
   }],
   onboardingPath: [{ path: doc.path, name: doc.name, reason: 'entrypoint', score: 100 }],
   decisionLog: [],
+  decisionTimeline: [{
+    path: doc.path,
+    name: doc.name,
+    kind: 'review',
+    status: 'draft',
+    source: 'review',
+    ageDays: 2,
+    score: 150,
+  }],
   risks: {
     missingRefs: 1,
     staleRefs: 1,
@@ -194,6 +203,24 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
     )
 
     fireEvent.click(screen.getByText('risky.md → missing.md'))
+
+    expect(onOpenDoc).toHaveBeenCalledWith(doc)
+  })
+
+  it('opens a document from the decision timeline', () => {
+    const onOpenDoc = vi.fn()
+    renderWithProviders(
+      <ProjectWikiPanel
+        projectName="markwand"
+        summary={summary}
+        brief={null}
+        briefLoading={false}
+        docsByPath={new Map([[doc.path, doc]])}
+        onOpenDoc={onOpenDoc}
+      />
+    )
+
+    fireEvent.click(screen.getByText('projectWiki.decisionAge'))
 
     expect(onOpenDoc).toHaveBeenCalledWith(doc)
   })

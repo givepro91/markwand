@@ -12,6 +12,7 @@ import type {
   WikiDocCluster,
   WikiDocDebt,
   WikiDocLink,
+  WikiDecisionEvent,
   WikiLinkHub,
   WikiRiskDoc,
   WikiRiskLink,
@@ -498,6 +499,114 @@ function DocDebtRadar({
         )
       })}
     </div>
+  )
+}
+
+function DecisionTimeline({
+  items,
+  docsByPath,
+  onOpenDoc,
+}: {
+  items: WikiDecisionEvent[]
+  docsByPath: Map<string, Doc>
+  onOpenDoc: (doc: Doc) => void
+}) {
+  const { t } = useTranslation()
+
+  if (items.length === 0) {
+    return <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--fs-sm)' }}>{t('projectWiki.decisionsEmpty')}</p>
+  }
+
+  return (
+    <ol
+      style={{
+        listStyle: 'none',
+        margin: 0,
+        padding: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 'var(--sp-2)',
+      }}
+    >
+      {items.map((item, index) => {
+        const doc = docsByPath.get(item.path)
+        return (
+          <li
+            key={item.path}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'auto minmax(0, 1fr)',
+              gap: 'var(--sp-3)',
+              alignItems: 'stretch',
+            }}
+          >
+            <div
+              aria-hidden="true"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 'var(--sp-1)',
+              }}
+            >
+              <span
+                style={{
+                  width: '1.5rem',
+                  height: '1.5rem',
+                  borderRadius: '999px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: index === 0 ? 'var(--accent)' : 'var(--bg-elev)',
+                  color: index === 0 ? 'var(--accent-contrast)' : 'var(--text-muted)',
+                  border: '1px solid var(--border)',
+                  fontSize: 'var(--fs-xs)',
+                  fontWeight: 'var(--fw-semibold)',
+                }}
+              >
+                {index + 1}
+              </span>
+              {index < items.length - 1 && (
+                <span style={{ width: '1px', flex: 1, minHeight: '1.25rem', background: 'var(--border)' }} />
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => doc && onOpenDoc(doc)}
+              disabled={!doc}
+              style={{
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--r-md)',
+                background: 'var(--bg)',
+                color: 'var(--text)',
+                padding: 'var(--sp-3)',
+                fontFamily: 'inherit',
+                textAlign: 'left',
+                cursor: doc ? 'pointer' : 'not-allowed',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 'var(--sp-2)',
+                minWidth: 0,
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--sp-2)' }}>
+                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {item.name}
+                </span>
+                <Badge variant={index === 0 ? 'marker' : 'default'} size="sm">
+                  {t(`projectWiki.decisionKind.${item.kind}`)}
+                </Badge>
+              </span>
+              <span style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-1)', color: 'var(--text-muted)', fontSize: 'var(--fs-xs)' }}>
+                <Badge variant="default" size="sm">{t('projectWiki.decisionAge', { days: item.ageDays })}</Badge>
+                {item.status && <Badge variant="default" size="sm">{item.status}</Badge>}
+                {item.source && <Badge variant="marker" size="sm">{item.source}</Badge>}
+              </span>
+            </button>
+          </li>
+        )
+      })}
+    </ol>
   )
 }
 
@@ -1154,10 +1263,9 @@ export function ProjectWikiPanel({
         </Section>
 
         <Section title={t('projectWiki.decisionsTitle')}>
-          <DocList
-            items={summary.decisionLog}
+          <DecisionTimeline
+            items={summary.decisionTimeline}
             docsByPath={docsByPath}
-            empty={t('projectWiki.decisionsEmpty')}
             onOpenDoc={onOpenDoc}
           />
         </Section>

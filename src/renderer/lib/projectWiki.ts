@@ -42,6 +42,18 @@ export interface WikiDocDebt {
   reasons: WikiDocDebtReason[]
 }
 
+export type WikiDecisionKind = 'plan' | 'design' | 'review' | 'release' | 'decision'
+
+export interface WikiDecisionEvent {
+  path: string
+  name: string
+  kind: WikiDecisionKind
+  status: string | null
+  source: string | null
+  ageDays: number
+  score: number
+}
+
 export type WikiTrustLevel = 'strong' | 'watch' | 'weak'
 
 export type WikiTrustSignalKey = 'riskRefs' | 'staleDocs' | 'missingMetaDocs' | 'unreadDocs' | 'recentDocs'
@@ -139,6 +151,7 @@ export interface ProjectWikiSummary {
   suggestedTasks: WikiSuggestedTask[]
   onboardingPath: WikiDocLink[]
   decisionLog: WikiDocLink[]
+  decisionTimeline: WikiDecisionEvent[]
   risks: {
     missingRefs: number
     staleRefs: number
@@ -254,6 +267,18 @@ function isDecisionDoc(doc: Doc): boolean {
     p.includes('/docs/plan') ||
     p.includes('/docs/release')
   )
+}
+
+function classifyDecisionKind(doc: Doc): WikiDecisionKind {
+  const p = doc.path.toLowerCase()
+  const n = doc.name.toLowerCase()
+  const source = String(doc.frontmatter?.source ?? '').toLowerCase()
+
+  if (source === 'release' || n.includes('release') || p.includes('/release')) return 'release'
+  if (source === 'review' || n.includes('review') || p.includes('/review')) return 'review'
+  if (n.includes('plan') || p.includes('/plan')) return 'plan'
+  if (source === 'design' || n.includes('design') || n.includes('adr') || p.includes('/design')) return 'design'
+  return 'decision'
 }
 
 function scoreEntrypoint(doc: Doc): number {
@@ -596,6 +621,44 @@ function buildSuggestedTasks(
     .slice(0, 3)
 }
 
+function buildDecisionTimeline(
+  decisionDocs: Doc[],
+  displayNames: Map<string, string>,
+  now: number
+): WikiDecisionEvent[] {
+  return decisionDocs
+    .map((doc) => {
+      const status = typeof doc.frontmatter?.status === 'string' && doc.frontmatter.status.trim()
+        ? doc.frontmatter.status.trim()
+        : null
+      const source = typeof doc.frontmatter?.source === 'string' && doc.frontmatter.source.trim()
+        ? doc.frontmatter.source.trim()
+        : null
+      const ageDays = Math.max(0, Math.floor((now - doc.mtime) / DAY_MS))
+      const kind = classifyDecisionKind(doc)
+      const recencyScore = Math.max(0, 120 - ageDays)
+      const kindWeight: Record<WikiDecisionKind, number> = {
+        release: 50,
+        review: 45,
+        design: 40,
+        plan: 35,
+        decision: 30,
+      }
+
+      return {
+        path: doc.path,
+        name: displayNameFor(displayNames, doc),
+        kind,
+        status,
+        source,
+        ageDays,
+        score: recencyScore + kindWeight[kind],
+      }
+    })
+    .sort((a, b) => b.score - a.score || a.ageDays - b.ageDays || a.name.localeCompare(b.name))
+    .slice(0, 7)
+}
+
 function buildProjectPulse(
   trust: WikiTrustScore,
   suggestedTasks: WikiSuggestedTask[],
@@ -681,11 +744,13 @@ export function buildProjectWikiSummary(
     if (onboardingPath.length >= 5) break
   }
 
-  const decisionLog = markdownDocs
+  const decisionDocs = markdownDocs
     .filter(isDecisionDoc)
     .sort((a, b) => b.mtime - a.mtime)
+  const decisionLog = decisionDocs
     .slice(0, 6)
     .map((doc) => ({ path: doc.path, name: displayNameFor(displayNames, doc), reason: 'decision' as const, score: doc.mtime }))
+  const decisionTimeline = buildDecisionTimeline(decisionDocs, displayNames, now)
 
   const docsWithRisk: WikiRiskDoc[] = []
   let missingRefs = 0
@@ -728,6 +793,7 @@ export function buildProjectWikiSummary(
     suggestedTasks,
     onboardingPath,
     decisionLog,
+    decisionTimeline,
     risks: {
       missingRefs,
       staleRefs,

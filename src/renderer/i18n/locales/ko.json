@@ -303,6 +303,14 @@
     "openTopRisk": "가장 위험한 문서 열기",
     "decisionsTitle": "Decision Log",
     "decisionsEmpty": "계획, 설계, 리뷰 문서를 아직 찾지 못했습니다.",
+    "decisionAge": "{{days}}일 전",
+    "decisionKind": {
+      "plan": "계획",
+      "design": "설계",
+      "review": "리뷰",
+      "release": "릴리스",
+      "decision": "결정"
+    },
     "facetsTitle": "문서 성격",
     "facetsEmpty": "frontmatter source/status 정보가 아직 없습니다.",
     "reason": {

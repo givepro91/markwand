@@ -26,6 +26,7 @@ function summary(overrides: Partial<ProjectWikiSummary> = {}): ProjectWikiSummar
     statusCounts: [],
     onboardingPath: [],
     decisionLog: [],
+    decisionTimeline: [],
     risks: { missingRefs: 0, staleRefs: 0, docsWithRisk: [] },
     clusters: [],
     docDebt: [],

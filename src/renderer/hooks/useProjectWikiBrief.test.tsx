@@ -58,6 +58,7 @@ function makeSummary(items: WikiDocLink[], overrides: Partial<ProjectWikiSummary
     },
     onboardingPath: items,
     decisionLog: [],
+    decisionTimeline: [],
     risks: { missingRefs: 0, staleRefs: 0, docsWithRisk: [] },
     ...overrides,
   }

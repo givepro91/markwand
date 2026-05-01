@@ -77,6 +77,10 @@ describe('buildProjectWikiSummary', () => {
       'docs/plans/v1-plan.md',
       'docs/release-notes/v1.md',
     ])
+    expect(summary.decisionTimeline.map((item) => ({ name: item.name, kind: item.kind, status: item.status, source: item.source }))).toEqual([
+      { name: 'docs/release-notes/v1.md', kind: 'release', status: null, source: 'review' },
+      { name: 'docs/plans/v1-plan.md', kind: 'plan', status: 'draft', source: 'design' },
+    ])
     expect(summary.clusters.map((item) => ({ key: item.key, count: item.count }))).toEqual([
       { key: 'decision', count: 2 },
       { key: 'overview', count: 2 },
@@ -264,6 +268,7 @@ describe('buildProjectWikiSummary', () => {
     expect(summary.onboardingPath.map((item) => item.name)).toContain('.claude/CLAUDE.md')
     expect(summary.decisionLog.map((item) => item.name)).toContain('docs/design/claude-design-input.md')
     expect(summary.decisionLog.map((item) => item.name)).toContain('archive/claude-design-input.md')
+    expect(summary.decisionTimeline.map((item) => item.name)).toContain('docs/design/claude-design-input.md')
     expect(summary.risks.docsWithRisk[0].name).toBe('docs/design/claude-design-input.md')
     expect(summary.suggestedTasks[0].docs[0].name).toBe('docs/design/claude-design-input.md')
   })

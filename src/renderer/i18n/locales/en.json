@@ -303,6 +303,14 @@
     "openTopRisk": "Open highest-risk doc",
     "decisionsTitle": "Decision Log",
     "decisionsEmpty": "No plan, design, or review docs found yet.",
+    "decisionAge": "{{days}}d ago",
+    "decisionKind": {
+      "plan": "Plan",
+      "design": "Design",
+      "review": "Review",
+      "release": "Release",
+      "decision": "Decision"
+    },
     "facetsTitle": "Document Shape",
     "facetsEmpty": "No frontmatter source/status data yet.",
     "reason": {
