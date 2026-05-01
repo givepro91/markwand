@@ -138,6 +138,14 @@ const inflightDocScans = new Map<string, Promise<Doc[]>>()
 // projectId → workspaceId 역매핑. watcher fs:change 로 프로젝트 캐시 무효화 시 필요.
 const projectToWorkspace = new Map<string, string>()
 
+export function getCachedProjectsSnapshot(): Project[] {
+  return [...projectsCache.values()].flat()
+}
+
+export function getCachedDocsForProject(projectId: string): Doc[] | undefined {
+  return docsCache.get(projectId)
+}
+
 function invalidateProjectsCache(workspaceId?: string): void {
   if (workspaceId) {
     projectsCache.delete(workspaceId)
@@ -197,6 +205,85 @@ export function findProjectIdByPathIn(
 
 export function findProjectIdByPath(filePath: string): string | null {
   return findProjectIdByPathIn(projectsCache, filePath)
+}
+
+async function locateProjectForScan(projectId: string, opts: { allowSshProjectScan?: boolean } = {}): Promise<{
+  projectRoot: string
+  hostWsId: string
+} | null> {
+  const { allowSshProjectScan = true } = opts
+  const store = await getStore()
+  const workspaces = store.get('workspaces')
+
+  for (const ws of workspaces) {
+    let projects = projectsCache.get(ws.id)
+    if (!projects) {
+      if (!allowSshProjectScan && ws.id.startsWith('ssh:')) continue
+      projects = await getOrScanProjects(ws.id, ws.root, ws.mode ?? 'container')
+    }
+    const found = projects.find((p) => p.id === projectId)
+    if (found) {
+      return { projectRoot: found.root, hostWsId: ws.id }
+    }
+  }
+  return null
+}
+
+export async function getOrScanDocsForProject(
+  projectId: string,
+  opts: {
+    force?: boolean
+    allowSshScan?: boolean
+    onChunk?: (chunk: Doc[]) => void
+  } = {}
+): Promise<Doc[]> {
+  const { force = false, allowSshScan = true, onChunk } = opts
+
+  if (force) {
+    docsCache.delete(projectId)
+    inflightDocScans.delete(projectId)
+  }
+
+  const cached = docsCache.get(projectId)
+  if (cached) {
+    onChunk?.(cached)
+    console.log(`[ipc] project:scan-docs(${projectId.slice(0, 8)}) CACHED ${cached.length} docs`)
+    return cached
+  }
+  const inflight = inflightDocScans.get(projectId)
+  if (inflight) {
+    const docs = await inflight
+    onChunk?.(docs)
+    return docs
+  }
+
+  const located = await locateProjectForScan(projectId, { allowSshProjectScan: allowSshScan })
+  if (!located) throw new Error('PROJECT_NOT_FOUND')
+  const { projectRoot, hostWsId } = located
+  if (!allowSshScan && hostWsId.startsWith('ssh:')) {
+    throw new Error('SSH_SEARCH_REQUIRES_CACHED_DOCS')
+  }
+  projectToWorkspace.set(projectId, hostWsId)
+
+  const transport = await getActiveTransport(hostWsId)
+
+  const t0 = Date.now()
+  const runScan = (async () => {
+    const allDocs: Doc[] = []
+    for await (const chunk of composeDocsFromFileStats(transport, projectId, projectRoot)) {
+      onChunk?.(chunk)
+      allDocs.push(...chunk)
+    }
+    docsCache.set(projectId, allDocs)
+    inflightDocScans.delete(projectId)
+    console.log(`[ipc] project:scan-docs(${projectId.slice(0, 8)}, ${transport.kind}) ${allDocs.length} docs in ${Date.now() - t0}ms`)
+    return allDocs
+  })().catch((err) => {
+    inflightDocScans.delete(projectId)
+    throw err
+  })
+  inflightDocScans.set(projectId, runScan)
+  return runScan
 }
 
 async function getOrScanProjects(
@@ -565,67 +652,9 @@ export function registerWorkspaceHandlers(): void {
   ipcMain.handle('project:scan-docs', async (event, raw: unknown) => {
     const { projectId, force } = parseScanDocsInput(raw)
 
-    // Follow-up FS-RT-1 — force=true (명시 / 자동 새로고침) 시 main docsCache 무효화 후 fresh scan.
-    // 기존: workspace:refresh 가 docs 캐시를 비웠으나 renderer effect 순서(child→parent) 때문에
-    // project:scan-docs 가 먼저 도착해 stale 데이터를 반환하던 race 차단.
-    if (force) {
-      docsCache.delete(projectId)
-      inflightDocScans.delete(projectId)
-    }
-
-    // Follow-up FS7 — 캐시 hit: 기존 chunk 를 한 번에 전송 + 캐시 그대로 반환.
-    // SSH 에서는 이 경로가 핵심 속도 향상 (수 초 → 즉시).
-    const cached = docsCache.get(projectId)
-    if (cached) {
-      event.sender.send('project:docs-chunk', cached)
-      console.log(`[ipc] project:scan-docs(${projectId.slice(0, 8)}) CACHED ${cached.length} docs`)
-      return cached
-    }
-    const inflight = inflightDocScans.get(projectId)
-    if (inflight) {
-      // 동시 호출: 기존 promise 결과를 공유 — 다만 chunk 이벤트는 중복 전송 안 됨 (최적화 가치 낮음).
-      const docs = await inflight
-      event.sender.send('project:docs-chunk', docs)
-      return docs
-    }
-
-    const store = await getStore()
-    const workspaces = store.get('workspaces')
-
-    // 캐시된 scanProjects 결과를 활용해 projectRoot를 찾는다.
-    let projectRoot: string | null = null
-    let hostWsId: string | null = null
-    for (const ws of workspaces) {
-      const projects = await getOrScanProjects(ws.id, ws.root, ws.mode ?? 'container')
-      const found = projects.find((p) => p.id === projectId)
-      if (found) {
-        projectRoot = found.root
-        hostWsId = ws.id
-        break
-      }
-    }
-
-    if (!projectRoot || !hostWsId) throw new Error('PROJECT_NOT_FOUND')
-    projectToWorkspace.set(projectId, hostWsId)
-
-    const transport = await getActiveTransport(hostWsId)
-
-    const t0 = Date.now()
-    const runScan = (async () => {
-      const allDocs: Doc[] = []
-      for await (const chunk of composeDocsFromFileStats(transport, projectId, projectRoot)) {
-        event.sender.send('project:docs-chunk', chunk)
-        allDocs.push(...chunk)
-      }
-      docsCache.set(projectId, allDocs)
-      inflightDocScans.delete(projectId)
-      console.log(`[ipc] project:scan-docs(${projectId.slice(0, 8)}, ${transport.kind}) ${allDocs.length} docs in ${Date.now() - t0}ms`)
-      return allDocs
-    })().catch((err) => {
-      inflightDocScans.delete(projectId)
-      throw err
+    return getOrScanDocsForProject(projectId, {
+      force,
+      onChunk: (chunk) => event.sender.send('project:docs-chunk', chunk),
     })
-    inflightDocScans.set(projectId, runScan)
-    return runScan
   })
 }

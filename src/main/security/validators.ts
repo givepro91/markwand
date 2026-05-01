@@ -73,6 +73,20 @@ export function parseScanDocsInput(raw: unknown): { projectId: string; force?: b
     .parse(raw)
 }
 
+export function parseSearchQueryInput(raw: unknown): {
+  query: string
+  limit: number
+  projectIds?: string[]
+} {
+  return z
+    .object({
+      query: z.string().min(1).max(128),
+      limit: z.number().int().min(1).max(50).default(20),
+      projectIds: z.array(ProjectIdInput).max(100).optional(),
+    })
+    .parse(raw)
+}
+
 export function parseReadDocInput(raw: unknown): { path: string } {
   return z.object({ path: PathInput }).parse(raw)
 }

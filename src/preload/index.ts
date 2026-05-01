@@ -7,6 +7,7 @@ import type {
   HostKeyPromptPayload,
   TransportStatusEvent,
   AnnotationFilePayload,
+  SearchQueryInput,
 } from './types'
 
 // ipcRenderer 객체를 직접 노출하지 않는다.
@@ -58,6 +59,10 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.on('fs:project-change', wrapper)
       return () => ipcRenderer.off('fs:project-change', wrapper)
     },
+  },
+
+  search: {
+    query: (input: SearchQueryInput) => ipcRenderer.invoke('workspace:search-docs', input),
   },
 
   drift: {

@@ -111,7 +111,7 @@ Rendering goes through `rehype-sanitize` — untrusted document content never re
 Near-term:
 - Signed + notarized macOS builds
 - Windows build
-- Full-text search backend for ⌘K (currently filename + path)
+- Deeper "Ask this project" search on top of the SSH-aware ⌘K text search backend
 - Writable workspaces behind an explicit opt-in
 
 Longer-term: VS Code / JetBrains companion, agent-friendly MCP integration, richer drift heuristics.

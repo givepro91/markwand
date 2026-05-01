@@ -2,20 +2,12 @@ import { useEffect, useRef, useState, useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppStore } from '../state/store'
 import { useGlobalHotkey } from '../hooks/useGlobalHotkey'
-
-// Search API result shape (task 2 contract)
-interface SearchResult {
-  path: string
-  projectId: string
-  title: string
-  snippet: string
-  score: number
-}
+import type { SearchResult } from '../../preload/types'
 
 // Type extension for window.api.search (implemented by task 2 backend)
 type ApiWithSearch = typeof window.api & {
   search: {
-    query: (params: { query: string; limit: number }) => Promise<{ results: SearchResult[] }>
+    query: (params: { query: string; limit: number; projectIds?: string[] }) => Promise<{ results: SearchResult[] }>
   }
 }
 
@@ -147,7 +139,11 @@ export function CommandPalette() {
     const t = setTimeout(async () => {
       try {
         const api = window.api as ApiWithSearch
-        const res = await api.search.query({ query: query.trim(), limit: 20 })
+        const res = await api.search.query({
+          query: query.trim(),
+          limit: 20,
+          projectIds: projects.map((project) => project.id),
+        })
         setResults(res.results)
         setActiveIndex(0)
       } catch {

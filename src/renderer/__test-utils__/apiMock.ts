@@ -59,7 +59,7 @@ export function createApiMock(overrides: Record<string, unknown> = {}) {
       writeText: vi.fn(() => ok()),
     },
     search: {
-      query: vi.fn(() => ok([])),
+      query: vi.fn(() => ok({ results: [] })),
     },
     ...overrides,
   } satisfies Record<string, Record<string, AnyFn | unknown>>

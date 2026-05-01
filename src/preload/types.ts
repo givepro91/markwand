@@ -75,6 +75,20 @@ export interface ReadDocResult {
   frontmatter?: Record<string, unknown>
 }
 
+export interface SearchResult {
+  path: string
+  projectId: string
+  title: string
+  snippet: string
+  score: number
+}
+
+export interface SearchQueryInput {
+  query: string
+  limit: number
+  projectIds?: string[]
+}
+
 export interface FsChangeEvent {
   type: 'add' | 'change' | 'unlink'
   path: string
