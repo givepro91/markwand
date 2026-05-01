@@ -17,8 +17,9 @@ import { registerSshIpcHandlers } from './ipc/ssh'
 import { setActiveWebContents as setSshActiveWebContents } from './transport/ssh/hostKeyPromptBridge'
 import { getStore } from './services/store'
 import { startWatcher, stopWatcher } from './services/watcher'
-import { runQuitCleanup } from './services/quitCleanup'
+import { hideWindowsForFastQuit, runQuitCleanup } from './services/quitCleanup'
 import { getDevRendererUrl, shouldAutoOpenDevTools } from './services/runtimeMode'
+import { shouldStartStartupWatcher } from './services/startupWatchPolicy'
 import { parseShellShowItemInput } from './security/validators'
 
 // app:// 프로토콜을 privileged로 등록해야 한다 (보안 정책상 secure 처리)
@@ -108,19 +109,21 @@ async function initializeApp(): Promise<void> {
 
   const win = await createWindow()
 
-  // v0.3.0-beta.9 — chokidar watch 활성화.
+  // v0.4.0-beta.10 — startup watcher는 명시 opt-in으로만 켠다.
   // 2026-04-25 회귀 fix: chokidar 초기 walk 가 libuv 스레드풀(4) 을 점거해 첫
   // workspace:scan 의 fs.access 가 4500배 느려지던 문제(swk 15k 디렉토리에서 131s 측정).
-  // startWatcher 호출을 첫 IPC 스캔이 끝날 때까지 defer — 5s 마진은 거의 모든 워크스페이스
-  // 첫 스캔 완료를 커버. 그 동안의 변경은 사용자가 새로고침으로 동기화.
-  if (roots.length > 0 && win) {
-    setTimeout(() => {
+  // 사용자 로컬에서도 quit AppleEvent가 watcher 초기 crawl 뒤에 밀리는 문제가 재현되어
+  // 상용 배포 기본값은 안정성 우선으로 둔다. 필요 시 MARKWAND_ENABLE_STARTUP_WATCH=1.
+  if (roots.length > 0 && win && shouldStartStartupWatcher(process.env)) {
+    startupWatcherTimer = setTimeout(() => {
       if (!win.isDestroyed()) startWatcher(roots, win.webContents)
-    }, 5_000).unref()
+    }, 5_000)
+    startupWatcherTimer.unref()
   }
 }
 
 let mainWindow: BrowserWindow | null = null
+let startupWatcherTimer: ReturnType<typeof setTimeout> | null = null
 
 function registerShellHandlers(): void {
   ipcMain.handle('shell:reveal', async (_event, raw: unknown) => {
@@ -164,6 +167,11 @@ app.on('before-quit', (event) => {
   if (quitCleanupStarted) return
   quitCleanupStarted = true
   event.preventDefault()
+  if (startupWatcherTimer) {
+    clearTimeout(startupWatcherTimer)
+    startupWatcherTimer = null
+  }
+  hideWindowsForFastQuit(BrowserWindow.getAllWindows())
 
   void (async () => {
     try {

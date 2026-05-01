@@ -7,7 +7,19 @@ export interface QuitCleanupOptions {
   log?: (message: string) => void
 }
 
-const DEFAULT_QUIT_CLEANUP_TIMEOUT_MS = 1500
+export const DEFAULT_QUIT_CLEANUP_TIMEOUT_MS = 500
+
+export interface HideableWindow {
+  isDestroyed: () => boolean
+  hide: () => void
+}
+
+export function hideWindowsForFastQuit(windows: HideableWindow[]): void {
+  for (const win of windows) {
+    if (win.isDestroyed()) continue
+    win.hide()
+  }
+}
 
 export async function runQuitCleanup({
   disposeAll,

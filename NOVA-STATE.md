@@ -1,28 +1,28 @@
 # Nova State
 
 ## Current
-- **Goal**: v0.4.0-beta.9 packaged runtime guard 완료, GitHub Release 생성 대기.
-- **Phase**: **release-blocked** — code/tag/artifacts/local smoke PASS, GitHub Release API는 `givepro91` 계정 `workflow` scope 갱신 필요.
+- **Goal**: v0.4.0-beta.10 quit/CPU hotfix 완료, GitHub Release 생성 대기.
+- **Phase**: **release-blocked** — code/artifacts/local smoke PASS, GitHub Release API는 `givepro91` 계정 `workflow` scope 갱신 필요.
 - **Blocker**: `gh release create` 실패: active `jay-swk` has `workflow` scope but no repo push/release permission; `givepro91` has repo permission but lacks `workflow` scope.
-- **Last Activity**: v0.4.0-beta.9 로컬 설치 smoke PASS — forced `ELECTRON_RENDERER_URL`/`MD_VIEWER_DEBUG` ignored in packaged app, app loaded `app.asar`, no Markwand DevTools/chrome-error process, quit left no Markwand process (2026-05-01).
-- **Remote**: `origin/main` = `d21561f`; tag `v0.4.0-beta.9` = `b95bc05`; GitHub Release object is not created yet.
+- **Last Activity**: v0.4.0-beta.10 로컬 설치 smoke PASS — startup watcher default-off, forced dev env ignored, 7s running quit 398ms, no Markwand orphan process (2026-05-01).
+- **Remote**: `origin/main` = `1115ef4` before beta.10 commit; tag/release `v0.4.0-beta.10` pending.
 
 ## Recently Done
-1. v0.4.0-beta.9 — packaged app no longer honors dev-only renderer/debug env vars. Added `runtimeMode` unit tests. QA: `pnpm typecheck` PASS, full `pnpm test` PASS (377), `pnpm dist:mac:free` PASS, `/Applications/Markwand.app` forced-env smoke PASS.
-2. v0.4.0-beta.8 — removed `.command` helper and corrected unsigned free-install docs to Terminal `xattr -cr` fallback.
-3. v0.4.0-beta.6 — Project Wiki MVP, Knowledge Map/Risk Board/Start Here, refreshed UI/icon, free ZIP packaging.
+1. v0.4.0-beta.10 — quit/CPU hotfix. Startup file watcher default-off (`MARKWAND_ENABLE_STARTUP_WATCH=1` opt-in), quit hides windows immediately, cleanup watchdog 500ms, startup watcher timer cancelled on quit.
+2. v0.4.0-beta.9 — packaged app no longer honors dev-only renderer/debug env vars. Added `runtimeMode` unit tests.
+3. v0.4.0-beta.8 — removed `.command` helper and corrected unsigned free-install docs to Terminal `xattr -cr` fallback.
 
 ## Release Artifacts
 | Artifact | SHA256 |
 |---|---|
-| `dist/Markwand-0.4.0-beta.9-arm64-free.zip` | `ce2f572b96049b3d2bd7652bfad840063e2b334b28217ceedf5f8fbc67bec918` |
-| `dist/Markwand-0.4.0-beta.9-x64-free.zip` | `e4d1650f1c90ef616383d52cb68127b8f58b5318c9768d7cf6c110cd5137a60d` |
+| `dist/Markwand-0.4.0-beta.10-arm64-free.zip` | `291e8f4bc58cec6c1ce4886efa9f37585fdf24d3e8144a434540181c49ba726d` |
+| `dist/Markwand-0.4.0-beta.10-x64-free.zip` | `1d01f4dd179216746f79ec3d7060666f7fa31504d5e48a1f6f616ce8b6e19022` |
 
 ## Next
 1. Refresh GitHub CLI auth for `givepro91`: `gh auth switch -u givepro91 && gh auth refresh -h github.com -s workflow`.
-2. Create prerelease: `gh release create v0.4.0-beta.9 dist/Markwand-0.4.0-beta.9-arm64-free.zip dist/Markwand-0.4.0-beta.9-x64-free.zip --repo givepro91/markwand --title "v0.4.0-beta.9 — production launch guard" --notes-file docs/release-notes/v0.4.0-beta.9.md --prerelease --verify-tag`.
-3. Mark v0.4.0-beta.8 deprecated after beta.9 release is visible.
-4. Commit/push this state update after release status is finalized.
+2. Commit/push beta.10 hotfix and create tag `v0.4.0-beta.10`.
+3. Create prerelease: `gh release create v0.4.0-beta.10 dist/Markwand-0.4.0-beta.10-arm64-free.zip dist/Markwand-0.4.0-beta.10-x64-free.zip --repo givepro91/markwand --title "v0.4.0-beta.10 — faster quit guard" --notes-file docs/release-notes/v0.4.0-beta.10.md --prerelease --verify-tag`.
+4. Mark v0.4.0-beta.8/v0.4.0-beta.9 deprecated after beta.10 release is visible.
 
 ## Open Product Work
 - UX/UI polish and QA hardening remain active goals after the release blocker is cleared.

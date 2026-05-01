@@ -1,7 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
-import { runQuitCleanup } from './quitCleanup'
+import {
+  DEFAULT_QUIT_CLEANUP_TIMEOUT_MS,
+  hideWindowsForFastQuit,
+  runQuitCleanup,
+} from './quitCleanup'
 
 describe('runQuitCleanup', () => {
+  it('keeps the default watchdog short enough for Cmd+Q to feel instant', () => {
+    expect(DEFAULT_QUIT_CLEANUP_TIMEOUT_MS).toBeLessThanOrEqual(500)
+  })
+
   it('waits for transport and watcher cleanup when both complete quickly', async () => {
     const disposeAll = vi.fn(async () => undefined)
     const stopWatcher = vi.fn(async () => undefined)
@@ -45,5 +53,17 @@ describe('runQuitCleanup', () => {
     expect(log).toHaveBeenCalledWith(
       '[main] before-quit cleanup error: Error: ssh dispose failed',
     )
+  })
+})
+
+describe('hideWindowsForFastQuit', () => {
+  it('hides live windows synchronously and skips destroyed windows', () => {
+    const live = { isDestroyed: vi.fn(() => false), hide: vi.fn() }
+    const destroyed = { isDestroyed: vi.fn(() => true), hide: vi.fn() }
+
+    hideWindowsForFastQuit([live, destroyed])
+
+    expect(live.hide).toHaveBeenCalledTimes(1)
+    expect(destroyed.hide).not.toHaveBeenCalled()
   })
 })
