@@ -490,6 +490,7 @@ function DocDebtRadar({
               gap: 'var(--sp-2)',
               width: '100%',
               minWidth: 0,
+              boxSizing: 'border-box',
             }}
           >
             <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--sp-2)', minWidth: 0 }}>
@@ -604,6 +605,7 @@ function DecisionTimeline({
                 gap: 'var(--sp-2)',
                 minWidth: 0,
                 width: '100%',
+                boxSizing: 'border-box',
               }}
             >
               <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--sp-2)', minWidth: 0 }}>

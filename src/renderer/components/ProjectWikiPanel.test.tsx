@@ -268,8 +268,8 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
 
     expect(docDebtSection).toHaveStyle({ minWidth: '0' })
     expect(decisionSection).toHaveStyle({ minWidth: '0' })
-    expect(debtButton).toHaveStyle({ minWidth: '0', width: '100%' })
-    expect(timelineButton).toHaveStyle({ minWidth: '0', width: '100%' })
+    expect(debtButton).toHaveStyle({ minWidth: '0', width: '100%', boxSizing: 'border-box' })
+    expect(timelineButton).toHaveStyle({ minWidth: '0', width: '100%', boxSizing: 'border-box' })
     expect(debtTitle).toHaveStyle({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })
     expect(timelineTitle).toHaveStyle({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })
   })
