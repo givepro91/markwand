@@ -45,6 +45,13 @@ function summary(overrides: Partial<ProjectWikiSummary> = {}): ProjectWikiSummar
       penalties: { riskRefs: 0, staleDocs: 0, missingMetaDocs: 0, unreadDocs: 0 },
       signals: [],
     },
+    pulse: {
+      tone: 'healthy',
+      focus: 'readFirst',
+      reasons: ['healthy'],
+      primaryDoc: null,
+      actionTaskId: null,
+    },
     ...overrides,
   }
 }

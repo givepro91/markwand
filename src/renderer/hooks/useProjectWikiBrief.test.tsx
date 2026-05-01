@@ -49,6 +49,13 @@ function makeSummary(items: WikiDocLink[], overrides: Partial<ProjectWikiSummary
       penalties: { riskRefs: 0, staleDocs: 0, missingMetaDocs: 0, unreadDocs: 0 },
       signals: [],
     },
+    pulse: {
+      tone: 'healthy',
+      focus: 'readFirst',
+      reasons: ['healthy'],
+      primaryDoc: items[0] ?? null,
+      actionTaskId: null,
+    },
     onboardingPath: items,
     decisionLog: [],
     risks: { missingRefs: 0, staleRefs: 0, docsWithRisk: [] },

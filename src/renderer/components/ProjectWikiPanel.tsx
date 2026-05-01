@@ -139,6 +139,104 @@ function TrustDiagnostics({ summary }: { summary: ProjectWikiSummary }) {
   )
 }
 
+function ProjectPulseCard({
+  projectName,
+  summary,
+  docsByPath,
+  onOpenDoc,
+}: {
+  projectName: string
+  summary: ProjectWikiSummary
+  docsByPath: Map<string, Doc>
+  onOpenDoc: (doc: Doc) => void
+}) {
+  const { t } = useTranslation()
+  const [copied, setCopied] = useState(false)
+  const pulse = summary.pulse
+  const focusDoc = pulse.primaryDoc ? docsByPath.get(pulse.primaryDoc.path) : undefined
+  const task = pulse.actionTaskId
+    ? summary.suggestedTasks.find((item) => item.id === pulse.actionTaskId)
+    : undefined
+  const variant = pulse.tone === 'attention' ? 'danger' : pulse.tone === 'healthy' ? 'success' : 'default'
+
+  const copyPrompt = async () => {
+    if (!task) return
+    try {
+      await navigator.clipboard.writeText(formatProjectWikiTaskPrompt(projectName, summary, task))
+      setCopied(true)
+      toast.success(t('projectWiki.copyTaskPromptSuccess'))
+      setTimeout(() => setCopied(false), 1200)
+    } catch {
+      toast.error(t('projectWiki.copyTaskPromptError'))
+    }
+  }
+
+  return (
+    <section
+      id="project-wiki-pulse"
+      style={{
+        border: '1px solid color-mix(in srgb, var(--accent) 28%, var(--border))',
+        borderRadius: 'var(--r-xl)',
+        padding: 'var(--sp-5)',
+        background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent) 0%, var(--bg-elev) 62%)',
+        boxShadow: 'var(--shadow-md)',
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr) auto',
+        gap: 'var(--sp-4)',
+        alignItems: 'center',
+        scrollMarginTop: 'var(--sp-6)',
+      }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', minWidth: 0 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--sp-2)' }}>
+          <Badge variant={variant} size="sm">{t(`projectWiki.pulse.tone.${pulse.tone}`)}</Badge>
+          {pulse.reasons.map((reason) => (
+            <Badge key={reason} variant="default" size="sm">
+              {t(`projectWiki.pulse.reason.${reason}`)}
+            </Badge>
+          ))}
+        </div>
+        <div>
+          <h2 style={{ margin: 0, color: 'var(--text)', fontSize: 'var(--fs-xl)', fontWeight: 'var(--fw-bold)', letterSpacing: '-0.02em' }}>
+            {t(`projectWiki.pulse.focus.${pulse.focus}.title`)}
+          </h2>
+          <p style={{ margin: 'var(--sp-2) 0 0', color: 'var(--text-muted)', fontSize: 'var(--fs-sm)', lineHeight: 'var(--lh-relaxed)' }}>
+            {t(`projectWiki.pulse.focus.${pulse.focus}.desc`)}
+          </p>
+        </div>
+        {pulse.primaryDoc && (
+          <div style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-sm)' }}>
+            {t('projectWiki.pulse.focusDoc', { doc: pulse.primaryDoc.name })}
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', alignItems: 'stretch' }}>
+        {focusDoc && (
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => onOpenDoc(focusDoc)}
+            aria-label={t('projectWiki.pulse.openFocusDocAria', { doc: pulse.primaryDoc?.name })}
+          >
+            {t('projectWiki.pulse.openFocusDoc')}
+          </Button>
+        )}
+        {task && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={copyPrompt}
+            aria-label={t('projectWiki.pulse.copyPromptAria')}
+          >
+            {copied ? t('projectWiki.copyTaskPromptDone') : t('projectWiki.pulse.copyPrompt')}
+          </Button>
+        )}
+      </div>
+    </section>
+  )
+}
+
 function Section({ title, children, id }: { title: string; children: ReactNode; id?: string }) {
   return (
     <section id={id} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', scrollMarginTop: 'var(--sp-6)' }}>
@@ -942,6 +1040,13 @@ export function ProjectWikiPanel({
           })}
         </p>
       </header>
+
+      <ProjectPulseCard
+        projectName={projectName}
+        summary={summary}
+        docsByPath={docsByPath}
+        onOpenDoc={onOpenDoc}
+      />
 
       <WikiSectionNav />
 

@@ -180,6 +180,52 @@
       "unreadDocs": "안읽은 문서 {{count}}개",
       "recentDocs": "최근 변경 {{count}}개"
     },
+    "pulse": {
+      "tone": {
+        "healthy": "흐름 좋음",
+        "active": "진행 중",
+        "attention": "먼저 정리"
+      },
+      "reason": {
+        "riskRefs": "참조 이슈",
+        "staleDocs": "오래된 문서",
+        "missingMetaDocs": "메타 부족",
+        "unreadDocs": "안읽음",
+        "recentDocs": "최근 변경",
+        "healthy": "위험 없음"
+      },
+      "focus": {
+        "repairReferences": {
+          "title": "깨진 문서 흐름부터 복구하세요",
+          "desc": "AI가 요약하기 전에 링크와 참조 신뢰도를 먼저 회복하면 이후 작업 품질이 크게 좋아집니다."
+        },
+        "refreshStaleDocs": {
+          "title": "오래된 핵심 문서를 최신화하세요",
+          "desc": "현재 결정이나 구현과 맞지 않는 문서를 먼저 갱신하면 팀이 같은 지도를 보게 됩니다."
+        },
+        "completeMetadata": {
+          "title": "문서 성격을 정리하면 위키가 똑똑해집니다",
+          "desc": "source/status 메타를 맞추면 Knowledge Map, 필터, AI 작업 추천 품질이 함께 올라갑니다."
+        },
+        "buildOnboardingBrief": {
+          "title": "처음 읽을 흐름을 브리프로 묶어보세요",
+          "desc": "시작 문서들을 한 장짜리 안내문으로 만들면 새 사람과 AI가 훨씬 빠르게 합류할 수 있습니다."
+        },
+        "extractDecisionTimeline": {
+          "title": "의사결정 타임라인을 뽑아보세요",
+          "desc": "계획과 설계 문서에 흩어진 결정, 변경, 남은 질문을 시간순으로 정리할 차례입니다."
+        },
+        "readFirst": {
+          "title": "지금은 읽기 경로를 따라가면 됩니다",
+          "desc": "큰 위험 신호가 없으니 추천된 시작 문서부터 읽으며 프로젝트 맥락을 잡아도 좋습니다."
+        }
+      },
+      "focusDoc": "추천 문서: {{doc}}",
+      "openFocusDoc": "추천 문서 열기",
+      "openFocusDocAria": "{{doc}} 추천 문서 열기",
+      "copyPrompt": "AI 작업 프롬프트",
+      "copyPromptAria": "Project Pulse의 AI 작업 프롬프트 복사"
+    },
     "linkGraphTitle": "Link Graph",
     "linkGraphSummary": "확인된 문서 {{checked}}개에서 링크 {{refs}}개를 읽고, 위험 링크 {{risky}}개를 추적합니다.",
     "linkGraphEmpty": "문서를 열어 Drift 검사를 실행하면 링크 관계 그래프가 채워집니다.",

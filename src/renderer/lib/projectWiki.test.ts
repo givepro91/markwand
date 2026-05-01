@@ -106,6 +106,12 @@ describe('buildProjectWikiSummary', () => {
       'buildOnboardingBrief',
       'extractDecisionTimeline',
     ])
+    expect(summary.pulse).toMatchObject({
+      tone: 'active',
+      focus: 'completeMetadata',
+      primaryDoc: { name: 'docs/release-notes/v1.md' },
+      actionTaskId: 'complete-metadata',
+    })
     expect(summary.relationships).toMatchObject({
       checkedDocs: 0,
       totalRefs: 0,
@@ -147,6 +153,13 @@ describe('buildProjectWikiSummary', () => {
       intent: 'repairReferences',
       priority: 'high',
       docs: [{ path: risky.path, name: risky.name, reason: 'risk' }],
+    })
+    expect(summary.pulse).toMatchObject({
+      tone: 'attention',
+      focus: 'repairReferences',
+      reasons: ['riskRefs', 'missingMetaDocs', 'unreadDocs'],
+      primaryDoc: { path: risky.path, name: risky.name },
+      actionTaskId: 'repair-references',
     })
   })
 
@@ -327,5 +340,24 @@ describe('buildProjectWikiSummary', () => {
       { intent: 'refreshStaleDocs', priority: 'high' },
       { intent: 'completeMetadata', priority: 'medium' },
     ])
+    expect(summary.pulse.tone).toBe('attention')
+    expect(summary.pulse.focus).toBe('repairReferences')
+  })
+
+  it('falls back to a calm reading pulse when docs have no generated maintenance tasks', () => {
+    const readme = doc('README.md', {
+      frontmatter: { source: 'human', status: 'published' },
+    })
+
+    const summary = buildProjectWikiSummary([readme], {}, { [readme.path]: NOW }, NOW + 14 * 24 * 60 * 60 * 1000)
+
+    expect(summary.suggestedTasks.map((item) => item.intent)).toEqual(['buildOnboardingBrief'])
+    expect(summary.pulse).toMatchObject({
+      tone: 'healthy',
+      focus: 'readFirst',
+      reasons: ['healthy'],
+      primaryDoc: { path: readme.path, name: readme.name },
+      actionTaskId: null,
+    })
   })
 })

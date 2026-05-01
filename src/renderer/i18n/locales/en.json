@@ -180,6 +180,52 @@
       "unreadDocs": "{{count}} unread docs",
       "recentDocs": "{{count}} recent changes"
     },
+    "pulse": {
+      "tone": {
+        "healthy": "Flow looks good",
+        "active": "In motion",
+        "attention": "Triage first"
+      },
+      "reason": {
+        "riskRefs": "Ref issues",
+        "staleDocs": "Stale docs",
+        "missingMetaDocs": "Missing metadata",
+        "unreadDocs": "Unread",
+        "recentDocs": "Recent changes",
+        "healthy": "No major risk"
+      },
+      "focus": {
+        "repairReferences": {
+          "title": "Repair the broken document flow first",
+          "desc": "Restoring link trust before asking AI to summarize will make every downstream task sharper."
+        },
+        "refreshStaleDocs": {
+          "title": "Refresh the stale core docs",
+          "desc": "Bring old docs back in line with current decisions so the team is reading the same map."
+        },
+        "completeMetadata": {
+          "title": "Clean up document shape to make the wiki smarter",
+          "desc": "Adding source/status metadata improves the Knowledge Map, filters, and AI task suggestions together."
+        },
+        "buildOnboardingBrief": {
+          "title": "Turn the reading path into an onboarding brief",
+          "desc": "A one-page guide helps new humans and AI collaborators join the project much faster."
+        },
+        "extractDecisionTimeline": {
+          "title": "Extract the decision timeline",
+          "desc": "Plans and design notes are ready to become a chronological view of decisions, changes, and open questions."
+        },
+        "readFirst": {
+          "title": "Follow the reading path next",
+          "desc": "No major risk is blocking you, so the suggested start docs are safe to read for project context."
+        }
+      },
+      "focusDoc": "Suggested doc: {{doc}}",
+      "openFocusDoc": "Open suggested doc",
+      "openFocusDocAria": "Open suggested document {{doc}}",
+      "copyPrompt": "AI task prompt",
+      "copyPromptAria": "Copy the Project Pulse AI task prompt"
+    },
     "linkGraphTitle": "Link Graph",
     "linkGraphSummary": "Read {{refs}} links across {{checked}} checked docs and track {{risky}} risky links.",
     "linkGraphEmpty": "Open documents and run Drift checks to populate the link relationship graph.",

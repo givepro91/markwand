@@ -63,6 +63,13 @@ const summary: ProjectWikiSummary = {
       { key: 'recentDocs', count: 1, impact: 2, tone: 'positive' },
     ],
   },
+  pulse: {
+    tone: 'attention',
+    focus: 'repairReferences',
+    reasons: ['riskRefs', 'unreadDocs', 'recentDocs'],
+    primaryDoc: { path: doc.path, name: doc.name, reason: 'risk', score: 40 },
+    actionTaskId: 'repair-references',
+  },
   suggestedTasks: [{
     id: 'repair-references',
     intent: 'repairReferences',
@@ -135,6 +142,42 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
     fireEvent.click(screen.getByRole('button', { name: 'projectWiki.openTaskDocAria' }))
 
     expect(onOpenDoc).toHaveBeenCalledWith(doc)
+  })
+
+  it('opens the Project Pulse focus document', async () => {
+    const onOpenDoc = vi.fn()
+    renderWithProviders(
+      <ProjectWikiPanel
+        projectName="markwand"
+        summary={summary}
+        brief={null}
+        briefLoading={false}
+        docsByPath={new Map([[doc.path, doc]])}
+        onOpenDoc={onOpenDoc}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'projectWiki.pulse.openFocusDocAria' }))
+
+    expect(onOpenDoc).toHaveBeenCalledWith(doc)
+  })
+
+  it('copies the Project Pulse task prompt', async () => {
+    renderWithProviders(
+      <ProjectWikiPanel
+        projectName="markwand"
+        summary={summary}
+        brief={null}
+        briefLoading={false}
+        docsByPath={new Map([[doc.path, doc]])}
+        onOpenDoc={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'projectWiki.pulse.copyPromptAria' }))
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce())
+    expect(writeText.mock.calls[0][0]).toContain('# AI Task: Repair risky document references')
   })
 
   it('opens the source document from a risky link graph row', () => {

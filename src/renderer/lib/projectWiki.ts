@@ -111,6 +111,18 @@ export interface WikiSuggestedTask {
   docs: WikiDocLink[]
 }
 
+export type WikiPulseTone = 'healthy' | 'active' | 'attention'
+export type WikiPulseFocus = WikiSuggestedTaskIntent | 'readFirst'
+export type WikiPulseReason = 'riskRefs' | 'staleDocs' | 'missingMetaDocs' | 'unreadDocs' | 'recentDocs' | 'healthy'
+
+export interface WikiProjectPulse {
+  tone: WikiPulseTone
+  focus: WikiPulseFocus
+  reasons: WikiPulseReason[]
+  primaryDoc: WikiDocLink | null
+  actionTaskId: string | null
+}
+
 export interface ProjectWikiSummary {
   totalDocs: number
   markdownDocs: number
@@ -122,6 +134,7 @@ export interface ProjectWikiSummary {
   clusters: WikiDocCluster[]
   docDebt: WikiDocDebt[]
   trust: WikiTrustScore
+  pulse: WikiProjectPulse
   relationships: WikiRelationshipMap
   suggestedTasks: WikiSuggestedTask[]
   onboardingPath: WikiDocLink[]
@@ -583,6 +596,55 @@ function buildSuggestedTasks(
     .slice(0, 3)
 }
 
+function buildProjectPulse(
+  trust: WikiTrustScore,
+  suggestedTasks: WikiSuggestedTask[],
+  onboardingPath: WikiDocLink[],
+  recentDocs: number
+): WikiProjectPulse {
+  const topTask = suggestedTasks[0]
+  const riskRefs = trust.penalties.riskRefs
+  const staleDocs = trust.penalties.staleDocs
+  const missingMetaDocs = trust.penalties.missingMetaDocs
+  const unreadDocs = trust.penalties.unreadDocs
+  const reasons: WikiPulseReason[] = []
+
+  if (riskRefs > 0) reasons.push('riskRefs')
+  if (staleDocs > 0) reasons.push('staleDocs')
+  if (missingMetaDocs > 0) reasons.push('missingMetaDocs')
+  if (unreadDocs > 0) reasons.push('unreadDocs')
+  if (recentDocs > 0) reasons.push('recentDocs')
+  if (reasons.length === 0) reasons.push('healthy')
+
+  if (riskRefs === 0 && staleDocs === 0 && missingMetaDocs === 0 && unreadDocs === 0 && trust.level === 'strong') {
+    return {
+      tone: 'healthy',
+      focus: 'readFirst',
+      reasons: ['healthy'],
+      primaryDoc: onboardingPath[0] ?? null,
+      actionTaskId: null,
+    }
+  }
+
+  if (topTask) {
+    return {
+      tone: topTask.priority === 'high' || trust.level === 'weak' ? 'attention' : 'active',
+      focus: topTask.intent,
+      reasons: reasons.slice(0, 3),
+      primaryDoc: topTask.docs[0] ?? null,
+      actionTaskId: topTask.id,
+    }
+  }
+
+  return {
+    tone: trust.level === 'strong' ? 'healthy' : 'active',
+    focus: 'readFirst',
+    reasons: reasons.slice(0, 3),
+    primaryDoc: onboardingPath[0] ?? null,
+    actionTaskId: null,
+  }
+}
+
 export function buildProjectWikiSummary(
   docs: Doc[],
   driftReports: Record<string, DriftReport>,
@@ -648,6 +710,7 @@ export function buildProjectWikiSummary(
   const docDebt = buildDocDebt(markdownDocs, driftReports, readDocs, displayNames, now)
   const trust = buildTrustScore(markdownDocs, docDebt, unreadDocs, recentDocs, missingRefs, staleRefs)
   const relationships = buildRelationshipMap(markdownDocs, driftReports, displayNames)
+  const suggestedTasks = buildSuggestedTasks(onboardingPath, decisionLog, docsWithRisk, docDebt, trust)
 
   return {
     totalDocs: docs.length,
@@ -660,8 +723,9 @@ export function buildProjectWikiSummary(
     clusters: buildClusters([...markdownDocs, ...imageDocs], displayNames).slice(0, 6),
     docDebt,
     trust,
+    pulse: buildProjectPulse(trust, suggestedTasks, onboardingPath, recentDocs),
     relationships,
-    suggestedTasks: buildSuggestedTasks(onboardingPath, decisionLog, docsWithRisk, docDebt, trust),
+    suggestedTasks,
     onboardingPath,
     decisionLog,
     risks: {
