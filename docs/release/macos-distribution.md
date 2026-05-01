@@ -24,7 +24,8 @@ Expected first-launch user flow:
 3. In Applications, Control-click or right-click `Markwand`.
 4. Choose `Open`.
 5. Confirm `Open` once.
-6. If macOS still shows only `Move to Trash` / `Done`, double-click `Open Markwand.command` from the ZIP folder. It removes quarantine from `/Applications/Markwand.app` and opens the app.
+6. If macOS still shows only `Move to Trash` / `Done`, use the documented Terminal fallback:
+   `xattr -cr /Applications/Markwand.app && open /Applications/Markwand.app`.
 
 This avoids telling users to manually find Privacy & Security settings. It still shows a macOS warning because the app is not notarized.
 
@@ -34,7 +35,7 @@ This avoids telling users to manually find Privacy & Security settings. It still
 - `MARKWAND_ADHOC_SIGN=1` enables the `build/afterPack.js` ad-hoc signing hook.
 - `mac.hardenedRuntime` and `mac.notarize` are disabled by default because notarization is not available without Apple Developer Program credentials.
 - The ZIP includes `First Run Guide.html` with first-run instructions. The source file is `build/처음 실행 안내.html`.
-- The ZIP includes `Open Markwand.command` as a free-distribution fallback for recent macOS Gatekeeper behavior where Control-click > Open is still blocked. The source file is `build/Open Markwand.command`.
+- Do not ship `.command`, `.app` helper, or Automator helper fallbacks in the free path unless they are tested by Finder double-click after browser-style quarantine. They can be blocked by the same Gatekeeper check.
 
 ## Paid Release Path
 

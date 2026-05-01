@@ -8,7 +8,6 @@ const productName = pkg.build?.productName ?? 'Markwand'
 const version = pkg.version
 const distDir = path.join(root, 'dist')
 const guidePath = path.join(root, 'build', '처음 실행 안내.html')
-const helperPath = path.join(root, 'build', 'Open Markwand.command')
 const stageRoot = path.join(distDir, '.free-zip')
 
 const targets = [
@@ -32,9 +31,6 @@ for (const target of targets) {
   const stagedApp = path.join(bundleDir, `${productName}.app`)
   execFileSync('ditto', [target.appDir, stagedApp], { stdio: 'inherit' })
   fs.copyFileSync(guidePath, path.join(bundleDir, 'First Run Guide.html'))
-  const stagedHelper = path.join(bundleDir, 'Open Markwand.command')
-  fs.copyFileSync(helperPath, stagedHelper)
-  fs.chmodSync(stagedHelper, 0o755)
 
   const zipName = `${productName}-${version}-${target.arch}-free.zip`
   const zipPath = path.join(distDir, zipName)
