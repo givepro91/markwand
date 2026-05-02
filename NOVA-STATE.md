@@ -2,15 +2,15 @@
 
 ## Current
 - **Goal**: Project Wiki를 "경고 도구"에서 "문서 역할과 현재 상황을 판단하는 프로젝트 이해 레이어"로 진화.
-- **Phase**: **building** — Project Wiki/Git Pulse dogfood UX 개선 완료, 다음 제품화 backlog 선별 준비.
+- **Phase**: **building** — Project Wiki/Git Pulse dogfood UX + Electron dev runtime 검증 완료, 다음 제품화 backlog 선별 준비.
 - **Blocker**: none
-- **Last Activity**: Git Pulse dogfood UX — role-sensitive 인사이트는 기본 노출, raw Git 세부정보는 접힘 처리, 인사이트에서 관련 문서 바로 열기 추가. QA: targeted 22 PASS · typecheck PASS · full test 443 PASS · build PASS (2026-05-02).
+- **Last Activity**: Runtime QA — `pnpm dev` 실제 부팅에서 execa ESM main-load 오류를 발견해 Git Pulse IPC를 dynamic import로 수정. QA: dev boot PASS · targeted 19 PASS · typecheck PASS · full test 443 PASS · build PASS (2026-05-02).
 - **Remote**: `origin/main` = `21c0f9e`; tag `v0.4.0-beta.10` = `deacb77`; Release: https://github.com/givepro91/markwand/releases/tag/v0.4.0-beta.10
 
 ## Recently Done
-1. Git Pulse dogfood UX — 비개발자 인지부하 완화를 위해 개발자 세부정보 접기와 문서 바로 열기 액션 추가.
-2. Project Context Signal Sprint 3 — Docs x Git Interpretation: 무조건 갱신 경고 대신 role-sensitive Git 해석과 AI Handoff Git context 추가.
-3. Project Context Signal Sprint 2 — 로컬 Git branch/recent commits/changed areas/dirty/tag summary를 Project Wiki에 추가.
+1. Runtime QA — 실제 `pnpm dev` 부팅에서 Git Pulse IPC의 ESM import 오류 수정, 고아 프로세스 없음 확인.
+2. Git Pulse dogfood UX — 비개발자 인지부하 완화를 위해 개발자 세부정보 접기와 문서 바로 열기 액션 추가.
+3. Project Context Signal Sprint 3 — Docs x Git Interpretation: 무조건 갱신 경고 대신 role-sensitive Git 해석과 AI Handoff Git context 추가.
 
 ## Release Artifacts
 | Artifact | SHA256 |

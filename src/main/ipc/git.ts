@@ -1,5 +1,4 @@
 import { ipcMain } from 'electron'
-import { execa } from 'execa'
 import path from 'path'
 import { getStore } from '../services/store'
 import { assertInWorkspace, parseGitSummaryInput } from '../security/validators'
@@ -32,6 +31,8 @@ function isSshWorkspaceRoot(projectRoot: string, workspaces: Workspace[]): boole
 }
 
 async function git(args: string[], cwd: string): Promise<string> {
+  // execa is ESM-only; dynamic import keeps Electron's CommonJS main bundle loadable.
+  const { execa } = await import('execa')
   const result = await execa('git', args, {
     cwd,
     timeout: GIT_TIMEOUT_MS,
