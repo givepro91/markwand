@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 import { fireEvent, renderWithProviders, screen, waitFor } from '../__test-utils__/render'
 import type { Doc } from '../../preload/types'
 import type { ProjectWikiSummary } from '../lib/projectWiki'
+import type { ProjectWikiBrief } from '../lib/projectWikiBrief'
 import { ProjectWikiPanel } from './ProjectWikiPanel'
 
 let writeText: MockInstance<(data: string) => Promise<void>>
@@ -92,6 +93,17 @@ const summary: ProjectWikiSummary = {
     staleRefs: 1,
     docsWithRisk: [{ path: doc.path, name: doc.name, missing: 1, stale: 1 }],
   },
+}
+
+const brief: ProjectWikiBrief = {
+  headline: 'Markwand',
+  overview: ['Markwand turns scattered markdown into a project map.'],
+  evidence: [{
+    path: doc.path,
+    name: doc.name,
+    title: 'Markwand',
+    excerpt: 'Markwand turns scattered markdown into a project map.',
+  }],
 }
 
 beforeEach(() => {
@@ -187,6 +199,28 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
 
     await waitFor(() => expect(writeText).toHaveBeenCalledOnce())
     expect(writeText.mock.calls[0][0]).toContain('# AI Task: Repair risky document references')
+  })
+
+  it('copies a lightweight onboarding brief from the project brief card', async () => {
+    renderWithProviders(
+      <ProjectWikiPanel
+        projectName="markwand"
+        summary={summary}
+        brief={brief}
+        briefLoading={false}
+        docsByPath={new Map([[doc.path, doc]])}
+        onOpenDoc={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'projectWiki.copyOnboardingBriefAria' }))
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce())
+    const copied = writeText.mock.calls[0][0]
+    expect(copied).toContain('# Onboarding Brief: markwand')
+    expect(copied).toContain('## Read This First')
+    expect(copied).toContain('1. risky.md - /project/risky.md')
+    expect(copied).toContain('## Suggested First Actions')
   })
 
   it('opens the source document from a risky link graph row', () => {

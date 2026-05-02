@@ -4,6 +4,7 @@ import {
   buildProjectWikiBrief,
   extractProjectWikiEvidence,
   formatProjectWikiHandoffBrief,
+  formatProjectWikiOnboardingBrief,
   formatProjectWikiTaskPrompt,
 } from './projectWikiBrief'
 import type { ProjectWikiSummary } from './projectWiki'
@@ -197,6 +198,65 @@ describe('formatProjectWikiHandoffBrief', () => {
     expect(text).toContain('- Markwand: /project/README.md')
     expect(text).toContain('- risky.md: 1 broken, 1 stale refs (/project/risky.md)')
     expect(text).toContain('## Recommended AI Task')
+  })
+})
+
+describe('formatProjectWikiOnboardingBrief', () => {
+  it('formats a lighter starter brief with reading order, checks, and first actions', () => {
+    const onboardingSummary = summary({
+      unreadDocs: 4,
+      recentDocs: 2,
+      onboardingPath: [
+        { path: doc.path, name: doc.name, reason: 'entrypoint', score: 100 },
+        { path: '/project/docs/plan.md', name: 'docs/plan.md', reason: 'recent', score: 80 },
+      ],
+      risks: {
+        missingRefs: 1,
+        staleRefs: 2,
+        docsWithRisk: [{ path: '/project/docs/plan.md', name: 'docs/plan.md', missing: 1, stale: 2 }],
+      },
+      docDebt: [{
+        path: '/project/docs/plan.md',
+        name: 'docs/plan.md',
+        score: 44,
+        ageDays: 17,
+        missing: 1,
+        stale: 2,
+        reasons: ['risk'],
+      }],
+      suggestedTasks: [{
+        id: 'build-onboarding-brief',
+        intent: 'buildOnboardingBrief',
+        priority: 'medium',
+        docs: [{ path: doc.path, name: doc.name, reason: 'entrypoint', score: 100 }],
+      }],
+      trust: {
+        score: 81,
+        level: 'strong',
+        penalties: { riskRefs: 1, staleRefs: 2, staleDocs: 0, missingMetaDocs: 0, unreadDocs: 4 },
+        signals: [],
+      },
+    })
+    const brief = buildProjectWikiBrief('markwand', onboardingSummary, [{
+      path: doc.path,
+      name: doc.name,
+      title: 'Markwand',
+      excerpt: 'Markwand turns scattered markdown into a project map.',
+    }])
+
+    const text = formatProjectWikiOnboardingBrief('markwand', onboardingSummary, brief)
+
+    expect(text).toContain('# Onboarding Brief: markwand')
+    expect(text).toContain('## What This Project Is')
+    expect(text).toContain('- Markwand turns scattered markdown into a project map.')
+    expect(text).toContain('1. README.md - /project/README.md')
+    expect(text).toContain('2. docs/plan.md - /project/docs/plan.md')
+    expect(text).toContain('- Reference status: 1 broken links, 2 stale refs to review')
+    expect(text).toContain('## Documents That May Need Cleanup')
+    expect(text).toContain('- docs/plan.md: score 44, reasons risk (/project/docs/plan.md)')
+    expect(text).toContain('## Suggested First Actions')
+    expect(text).toContain('- Create an onboarding brief (medium)')
+    expect(text).toContain('## Evidence Used')
   })
 })
 

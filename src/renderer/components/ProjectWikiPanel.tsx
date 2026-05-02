@@ -4,6 +4,7 @@ import { Badge, Button, EmptyState, toast } from './ui'
 import type { Doc } from '../../preload/types'
 import {
   formatProjectWikiHandoffBrief,
+  formatProjectWikiOnboardingBrief,
   formatProjectWikiTaskPrompt,
   type ProjectWikiBrief,
 } from '../lib/projectWikiBrief'
@@ -923,13 +924,27 @@ function ProjectBriefCard({
 }) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
+  const [onboardingCopied, setOnboardingCopied] = useState(false)
+
+  const handleCopyOnboarding = async () => {
+    try {
+      await navigator.clipboard.writeText(formatProjectWikiOnboardingBrief(projectName, summary, brief))
+      setOnboardingCopied(true)
+      toast.success(t('projectWiki.copyOnboardingBriefSuccess'))
+    } catch {
+      setOnboardingCopied(false)
+      toast.error(t('projectWiki.copyOnboardingBriefError'))
+    }
+  }
 
   const handleCopyHandoff = async () => {
     try {
       await navigator.clipboard.writeText(formatProjectWikiHandoffBrief(projectName, summary, brief))
       setCopied(true)
+      toast.success(t('projectWiki.copyHandoffSuccess'))
     } catch {
       setCopied(false)
+      toast.error(t('projectWiki.copyHandoffError'))
     }
   }
 
@@ -960,8 +975,16 @@ function ProjectBriefCard({
         >
           {t('projectWiki.briefTitle')}
         </h2>
-        <span style={{ display: 'inline-flex', gap: 'var(--sp-2)', alignItems: 'center' }}>
+        <span style={{ display: 'inline-flex', gap: 'var(--sp-2)', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {loading && <Badge variant="default" size="sm">{t('projectWiki.briefLoading')}</Badge>}
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleCopyOnboarding}
+            aria-label={t('projectWiki.copyOnboardingBriefAria')}
+          >
+            {onboardingCopied ? t('projectWiki.copyOnboardingBriefDone') : t('projectWiki.copyOnboardingBrief')}
+          </Button>
           <Button
             variant="ghost"
             size="sm"

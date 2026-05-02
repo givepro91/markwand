@@ -4,13 +4,13 @@
 - **Goal**: 다음 라운드 제품 매력 강화 — Project Wiki를 "읽는 지도"에서 "다음 행동을 제안하는 지도"로 진화.
 - **Phase**: **building** — 비개발자 친화 UX 카피 정리 완료, Ask This Project 기반 확장 준비.
 - **Blocker**: none
-- **Last Activity**: Trust & Drift false-positive hardening — Markwand 실제 문서 63개로 drift-audit 실행 후 missing 77→55로 감소. 워크스페이스 밖 절대경로, npm scoped package subpath, placeholder `@/path/to/...`, 확장자 없는 경로형 토큰, 디렉토리형 참조를 더 보수적으로 처리. QA: typecheck PASS · drift-smoke 22/22 PASS · targeted vitest 67 PASS (2026-05-01). lint는 로컬 eslint 바이너리 부재로 실행 불가.
+- **Last Activity**: Onboarding Brief export 추가 — Project Brief 카드에서 새 협업자용 입문 브리프를 클립보드로 복사. SSH 워크스페이스에서도 쓰기 없이 동작하는 렌더러 전용 경로. QA: targeted vitest 15 PASS · typecheck PASS · full test 407 PASS · build PASS (2026-05-02).
 - **Remote**: `origin/main` = `21c0f9e`; tag `v0.4.0-beta.10` = `deacb77`; Release: https://github.com/givepro91/markwand/releases/tag/v0.4.0-beta.10
 
 ## Recently Done
-1. Trust & Drift false-positive hardening — 실제 Markwand 문서 기준 감사로 경로/디렉토리/패키지/placeholder 오탐을 줄임.
-2. Plain-language + product-language UX pass — 비개발자도 이해하기 쉽게 쉬운 설명을 앞에 두고, Markwand 내부 개념명은 함께 보여 학습 가능한 제품 언어로 유지.
-3. Markwand Guide — 사용자가 기능을 단순 문서 뷰어로 오해하지 않도록 상단 가이드와 핵심 기능 설명 모달 추가.
+1. Onboarding Brief export — Project Wiki 요약에서 새 협업자용 입문 브리프를 즉시 복사 가능하게 함.
+2. Trust & Drift false-positive hardening — 실제 Markwand 문서 기준 감사로 경로/디렉토리/패키지/placeholder 오탐을 줄임.
+3. Plain-language + product-language UX pass — 비개발자도 이해하기 쉽게 쉬운 설명을 앞에 두고, Markwand 내부 개념명은 함께 보여 학습 가능한 제품 언어로 유지.
 
 ## Release Artifacts
 | Artifact | SHA256 |
@@ -20,5 +20,5 @@
 
 ## Open Product Work
 - Project Wiki dogfood: 실제 Markwand workspace에서 Pulse/Timeline 카피와 우선순위가 사람에게 설득력 있는지 확인.
-- 다음 후보: Ask This Project answer mode, semantic facets, onboarding brief export, timeline detail extraction.
+- 다음 후보: Ask This Project answer mode, semantic facets, timeline detail extraction.
 - Apple Developer ID notarization remains the cleanest install path, but current goal is free distribution without paid Developer Program.

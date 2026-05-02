@@ -312,3 +312,71 @@ export function formatProjectWikiHandoffBrief(
 
   return lines.join('\n').trimEnd()
 }
+
+export function formatProjectWikiOnboardingBrief(
+  projectName: string,
+  summary: ProjectWikiSummary,
+  brief: ProjectWikiBrief | null
+): string {
+  const issueCount = summary.risks.missingRefs + summary.risks.staleRefs
+  const lines: string[] = [
+    `# Onboarding Brief: ${projectName}`,
+    '',
+    '## What This Project Is',
+  ]
+
+  if (brief?.overview.length) {
+    for (const item of brief.overview.slice(0, 3)) {
+      lines.push(`- ${item}`)
+    }
+  } else {
+    lines.push(`- ${projectName} has ${summary.markdownDocs} markdown documents available for project context.`)
+  }
+
+  lines.push(
+    '',
+    '## Read This First'
+  )
+
+  if (summary.onboardingPath.length > 0) {
+    for (const [index, item] of summary.onboardingPath.entries()) {
+      lines.push(`${index + 1}. ${item.name} - ${item.path}`)
+    }
+  } else {
+    lines.push('1. No clear starting document was detected yet. Start from the most recent overview or README-style document.')
+  }
+
+  lines.push(
+    '',
+    '## Check Before Acting',
+    `- Trust score: ${summary.trust.score}/100 (${summary.trust.level})`,
+    `- Reference status: ${summary.risks.missingRefs} broken links, ${summary.risks.staleRefs} stale refs to review`,
+    `- Unread docs: ${summary.unreadDocs}`,
+    `- Recent activity: ${summary.recentDocs} docs changed in the last 7 days`
+  )
+
+  if (summary.docDebt.length > 0) {
+    lines.push('', '## Documents That May Need Cleanup')
+    for (const item of summary.docDebt.slice(0, 3)) {
+      lines.push(`- ${item.name}: score ${item.score}, reasons ${item.reasons.join(', ')} (${item.path})`)
+    }
+  }
+
+  if (summary.suggestedTasks.length > 0) {
+    lines.push('', '## Suggested First Actions')
+    for (const task of summary.suggestedTasks.slice(0, 3)) {
+      lines.push(`- ${taskTitles[task.intent]} (${task.priority})`)
+    }
+  } else if (issueCount === 0) {
+    lines.push('', '## Suggested First Action', '- Follow the reading order and capture any missing assumptions before changing code.')
+  }
+
+  if (brief?.evidence.length) {
+    lines.push('', '## Evidence Used')
+    for (const item of brief.evidence.slice(0, 5)) {
+      lines.push(`- ${item.title || item.name}: ${item.path}`)
+    }
+  }
+
+  return lines.join('\n').trimEnd()
+}
