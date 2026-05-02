@@ -223,7 +223,8 @@
       "weak": "Docs are stale or risky enough that cleanup should come before major decisions."
     },
     "trustSignal": {
-      "riskRefs": "{{count}} ref issues",
+      "riskRefs": "{{count}} broken refs",
+      "staleRefs": "{{count}} stale refs to review",
       "staleDocs": "{{count}} stale docs",
       "missingMetaDocs": "{{count}} missing metadata",
       "unreadDocs": "{{count}} unread docs",
@@ -236,7 +237,8 @@
         "attention": "Triage first"
       },
       "reason": {
-        "riskRefs": "Ref issues",
+        "riskRefs": "Broken refs",
+        "staleRefs": "Refs need review",
         "staleDocs": "Stale docs",
         "missingMetaDocs": "Missing metadata",
         "unreadDocs": "Unread",
@@ -348,7 +350,7 @@
     "riskTitle": "Issues to Check · Risk Board",
     "riskEmpty": "No document reference issues detected right now.",
     "riskMissing": "Broken",
-    "riskStale": "Stale",
+    "riskStale": "Needs review",
     "openTopRisk": "Open highest-risk doc",
     "decisionsTitle": "Decision History · Decision Log",
     "decisionsEmpty": "No plan, design, or review docs found yet.",
@@ -448,7 +450,10 @@
     "analyzing": "Analyzing",
     "docCount": "{{count}} documents",
     "docCountShort": "{{count}}",
-    "driftTitle": "{{missing}} missing · {{stale}} stale — document references don't match code"
+    "driftTitle": "{{missing}} broken links · {{stale}} stale refs to review — document references need attention",
+    "driftBadgeMixed": "Broken {{missing}} · Review {{stale}}",
+    "driftBadgeMissing": "Broken {{count}}",
+    "driftBadgeStale": "Review {{count}}"
   },
 
   "fileTree": {
@@ -602,18 +607,18 @@
     "ariaToggle": "Toggle drift report",
     "totalRefs": "{{count}} doc↔code references",
     "statusMissing": "Missing",
-    "statusStale": "Stale",
+    "statusStale": "Stale · needs review",
     "statusOk": "In sync",
     "badgeMissingText": "{{count}} missing",
-    "badgeStaleText": "{{count}} stale",
+    "badgeStaleText": "{{count}} to review",
     "openInFinder": "Open in Finder",
     "sizeSkippedCount": "{{count}} skipped (>2MB)",
     "missingTitle": "{{count}} missing — file not found",
-    "staleTitle": "{{count}} stale — modified after document",
+    "staleTitle": "{{count}} to review — referenced file changed after the document",
     "ok": "All OK",
     "ignoredTitle": "{{count}} references are ignored",
     "ignoredLabel": "Ignored {{count}}",
-    "copyIssuesTitle": "Copy missing/stale issues as an AI prompt (includes doc path, line number, and instructions)",
+    "copyIssuesTitle": "Copy broken links / stale review items as an AI prompt (includes doc path, line number, and instructions)",
     "copyIssuesAria": "Copy issues",
     "copyIssuesLabel": "📋 Copy issues",
     "copyIssuesDone": "Copied",
@@ -621,7 +626,7 @@
     "revalidating": "Validating…",
     "revalidateFailed": "Revalidation failed: {{err}}",
     "missingDetail": " — the file referenced in the document is missing. It may be a typo, rename, or deletion. Use <1>Jump to location</1> to find and fix the reference in the document, or choose <3>Ignore</3> if unsolvable.",
-    "staleDetail": " — the referenced <1>file</1> was modified after the document. Open the file to review changes and update the document. If it's fine, choose <3>Ignore</3>. (Folder paths are excluded from stale checks because their mtime changes frequently.)",
+    "staleDetail": " — this is a review signal, not necessarily an error: the referenced <1>file</1> changed after the document. Review the change and update the document, or choose <3>Ignore</3> if it is still fine. (Folder paths are excluded from stale checks because their mtime changes frequently.)",
     "ignoredReset": "Unignore all ({{count}})",
     "folderLabel": "folder",
     "folderTitle": "This path is a directory — folders are excluded from stale checks because mtime changes with internal edits.",

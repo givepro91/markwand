@@ -223,7 +223,8 @@
       "weak": "문서가 오래되었거나 참조 위험이 큽니다. 의사결정 전에 정리 작업이 필요합니다."
     },
     "trustSignal": {
-      "riskRefs": "참조 이슈 {{count}}개",
+      "riskRefs": "깨진 참조 {{count}}개",
+      "staleRefs": "stale · 확인 필요한 참조 {{count}}개",
       "staleDocs": "오래된 문서 {{count}}개",
       "missingMetaDocs": "메타 부족 {{count}}개",
       "unreadDocs": "안읽은 문서 {{count}}개",
@@ -236,7 +237,8 @@
         "attention": "먼저 정리"
       },
       "reason": {
-        "riskRefs": "참조 이슈",
+        "riskRefs": "깨진 참조",
+        "staleRefs": "참조 확인 필요",
         "staleDocs": "오래된 문서",
         "missingMetaDocs": "메타 부족",
         "unreadDocs": "안읽음",
@@ -348,7 +350,7 @@
     "riskTitle": "확인할 문제 · Risk Board",
     "riskEmpty": "현재 감지된 문서 참조 이슈가 없습니다.",
     "riskMissing": "깨짐",
-    "riskStale": "오래됨",
+    "riskStale": "확인 필요",
     "openTopRisk": "가장 위험한 문서 열기",
     "decisionsTitle": "결정 기록 · Decision Log",
     "decisionsEmpty": "계획, 설계, 리뷰 문서를 아직 찾지 못했습니다.",
@@ -448,7 +450,10 @@
     "analyzing": "분석 중",
     "docCount": "문서 {{count}}개",
     "docCountShort": "{{count}}개",
-    "driftTitle": "{{missing}}개 missing · {{stale}}개 stale — 문서 내 참조가 실제 코드와 불일치"
+    "driftTitle": "{{missing}}개 깨진 링크 · {{stale}}개 stale 확인 필요 — 문서 내 참조를 점검해야 합니다",
+    "driftBadgeMixed": "깨짐 {{missing}} · 확인 {{stale}}",
+    "driftBadgeMissing": "깨짐 {{count}}",
+    "driftBadgeStale": "확인 {{count}}"
   },
 
   "fileTree": {
@@ -602,18 +607,18 @@
     "ariaToggle": "drift 리포트 토글",
     "totalRefs": "문서↔코드 참조 {{count}}개",
     "statusMissing": "깨진 링크",
-    "statusStale": "오래된 참조",
+    "statusStale": "stale · 확인 필요",
     "statusOk": "동기화됨",
     "badgeMissingText": "깨진 링크 {{count}}개",
-    "badgeStaleText": "오래된 참조 {{count}}개",
+    "badgeStaleText": "확인 필요 {{count}}개",
     "openInFinder": "Finder에서 열기",
     "sizeSkippedCount": "크기 한도 초과로 {{count}}개 건너뜀 (2MB)",
     "missingTitle": "{{count}}개 깨진 링크 — 파일 없음",
-    "staleTitle": "{{count}}개 오래된 참조 — 문서 이후 수정됨",
+    "staleTitle": "{{count}}개 확인 필요 — 참조 파일이 문서 이후 수정됨",
     "ok": "전부 OK",
     "ignoredTitle": "{{count}}개 참조가 무시 목록에 있음",
     "ignoredLabel": "무시 {{count}}",
-    "copyIssuesTitle": "missing/stale 이슈를 AI 프롬프트 형식으로 클립보드에 복사 (문서 경로·줄번호·지시문 포함)",
+    "copyIssuesTitle": "깨진 링크/stale 확인 항목을 AI 프롬프트 형식으로 클립보드에 복사 (문서 경로·줄번호·지시문 포함)",
     "copyIssuesAria": "이슈 복사",
     "copyIssuesLabel": "📋 이슈 복사",
     "copyIssuesDone": "복사됨",
@@ -621,7 +626,7 @@
     "revalidating": "검증 중…",
     "revalidateFailed": "재검증 실패: {{err}}",
     "missingDetail": " — 문서가 언급한 파일이 실제로 없습니다. 경로 오타·이름 변경·삭제일 수 있어요. <1>위치로 이동</1>으로 문서에서 해당 참조를 찾아 고치거나, 해결이 어려우면 <3>무시</3>로 제외하세요.",
-    "staleDetail": " — 참조 <1>파일</1>이 문서 이후 수정됐습니다. 파일을 열어 바뀐 내용을 확인한 뒤 문서를 갱신하세요. 문제없으면 <3>무시</3>. (폴더 경로는 내부 변경이 잦아 stale 판정 대상이 아닙니다.)",
+    "staleDetail": " — 오류라기보다 참조 <1>파일</1>이 문서 이후 바뀌었을 수 있다는 신호입니다. 바뀐 내용을 확인해 문서를 갱신하거나, 문제없으면 <3>무시</3>하세요. (폴더 경로는 내부 변경이 잦아 stale 판정 대상이 아닙니다.)",
     "ignoredReset": "무시 전체 해제 ({{count}})",
     "folderLabel": "폴더",
     "folderTitle": "이 경로는 디렉토리입니다 — 폴더는 내부 변경으로 mtime 이 계속 바뀌기 때문에 stale 판정에서 제외됩니다.",

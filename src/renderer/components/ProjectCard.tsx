@@ -133,7 +133,11 @@ export const ProjectCard = memo(function ProjectCard({ project, onOpen }: Projec
                   lineHeight: 1.3,
                 }}
               >
-                {driftCounts.missing > 0 ? `⚠ ${driftCounts.missing + driftCounts.stale}` : `${driftCounts.stale} stale`}
+                {driftCounts.missing > 0 && driftCounts.stale > 0
+                  ? t('project.driftBadgeMixed', { missing: driftCounts.missing, stale: driftCounts.stale })
+                  : driftCounts.missing > 0
+                    ? t('project.driftBadgeMissing', { count: driftCounts.missing })
+                    : t('project.driftBadgeStale', { count: driftCounts.stale })}
               </span>
             )}
           </div>

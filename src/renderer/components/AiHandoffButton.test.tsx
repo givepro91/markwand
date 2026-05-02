@@ -38,7 +38,7 @@ const summary: ProjectWikiSummary = {
   trust: {
     score: 88,
     level: 'strong',
-    penalties: { riskRefs: 0, staleDocs: 0, missingMetaDocs: 0, unreadDocs: 1 },
+    penalties: { riskRefs: 0, staleRefs: 0, staleDocs: 0, missingMetaDocs: 0, unreadDocs: 1 },
     signals: [],
   },
   pulse: {

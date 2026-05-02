@@ -95,6 +95,7 @@ describe('buildProjectWikiSummary', () => {
       level: 'strong',
       penalties: {
         riskRefs: 0,
+        staleRefs: 0,
         staleDocs: 0,
         missingMetaDocs: 1,
         unreadDocs: 3,
@@ -150,8 +151,9 @@ describe('buildProjectWikiSummary', () => {
       reasons: ['risk', 'missingMeta', 'unread'],
     })
     expect(summary.trust.level).toBe('watch')
-    expect(summary.trust.penalties.riskRefs).toBe(3)
-    expect(summary.trust.signals[0]).toEqual({ key: 'riskRefs', count: 3, impact: -30, tone: 'danger' })
+    expect(summary.trust.penalties).toMatchObject({ riskRefs: 2, staleRefs: 1 })
+    expect(summary.trust.signals[0]).toEqual({ key: 'riskRefs', count: 2, impact: -20, tone: 'danger' })
+    expect(summary.trust.signals[1]).toEqual({ key: 'staleRefs', count: 1, impact: -3, tone: 'warning' })
     expect(summary.suggestedTasks[0]).toMatchObject({
       id: 'repair-references',
       intent: 'repairReferences',
@@ -161,9 +163,52 @@ describe('buildProjectWikiSummary', () => {
     expect(summary.pulse).toMatchObject({
       tone: 'attention',
       focus: 'repairReferences',
-      reasons: ['riskRefs', 'missingMetaDocs', 'unreadDocs'],
+      reasons: ['riskRefs', 'staleRefs', 'missingMetaDocs'],
       primaryDoc: { path: risky.path, name: risky.name },
       actionTaskId: 'repair-references',
+    })
+  })
+
+  it('treats stale-only references as review work instead of broken-link repair', () => {
+    const staleOnly = doc('docs/implementation.md', {
+      frontmatter: { source: 'design', status: 'published' },
+    })
+
+    const summary = buildProjectWikiSummary(
+      [staleOnly],
+      { [staleOnly.path]: drift(staleOnly.path, 0, 3) },
+      { [staleOnly.path]: NOW },
+      NOW
+    )
+
+    expect(summary.risks).toMatchObject({
+      missingRefs: 0,
+      staleRefs: 3,
+    })
+    expect(summary.trust).toMatchObject({
+      level: 'strong',
+      penalties: {
+        riskRefs: 0,
+        staleRefs: 3,
+        staleDocs: 0,
+        missingMetaDocs: 0,
+        unreadDocs: 0,
+      },
+    })
+    expect(summary.trust.signals).toEqual([
+      { key: 'staleRefs', count: 3, impact: -9, tone: 'warning' },
+      { key: 'recentDocs', count: 1, impact: 2, tone: 'positive' },
+    ])
+    expect(summary.suggestedTasks.map((item) => ({ intent: item.intent, priority: item.priority }))).toEqual([
+      { intent: 'refreshStaleDocs', priority: 'medium' },
+      { intent: 'buildOnboardingBrief', priority: 'low' },
+    ])
+    expect(summary.suggestedTasks.some((item) => item.intent === 'repairReferences')).toBe(false)
+    expect(summary.pulse).toMatchObject({
+      tone: 'active',
+      focus: 'refreshStaleDocs',
+      reasons: ['staleRefs', 'recentDocs'],
+      actionTaskId: 'refresh-stale-docs',
     })
   })
 
@@ -299,6 +344,7 @@ describe('buildProjectWikiSummary', () => {
       level: 'watch',
       penalties: {
         riskRefs: 2,
+        staleRefs: 0,
         staleDocs: 1,
         missingMetaDocs: 0,
         unreadDocs: 0,

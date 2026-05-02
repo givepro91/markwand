@@ -43,7 +43,7 @@ function summary(overrides: Partial<ProjectWikiSummary> = {}): ProjectWikiSummar
     trust: {
       score: 90,
       level: 'strong',
-      penalties: { riskRefs: 0, staleDocs: 0, missingMetaDocs: 0, unreadDocs: 0 },
+      penalties: { riskRefs: 0, staleRefs: 0, staleDocs: 0, missingMetaDocs: 0, unreadDocs: 0 },
       signals: [],
     },
     pulse: {
@@ -147,7 +147,7 @@ describe('formatProjectWikiHandoffBrief', () => {
       trust: {
         score: 74,
         level: 'watch',
-        penalties: { riskRefs: 2, staleDocs: 1, missingMetaDocs: 0, unreadDocs: 0 },
+        penalties: { riskRefs: 2, staleRefs: 0, staleDocs: 1, missingMetaDocs: 0, unreadDocs: 0 },
         signals: [
           { key: 'riskRefs', count: 2, impact: -20, tone: 'danger' },
           { key: 'staleDocs', count: 1, impact: -8, tone: 'warning' },
@@ -220,7 +220,7 @@ describe('formatProjectWikiTaskPrompt', () => {
         trust: {
           score: 61,
           level: 'watch',
-          penalties: { riskRefs: 3, staleDocs: 0, missingMetaDocs: 0, unreadDocs: 3 },
+          penalties: { riskRefs: 3, staleRefs: 0, staleDocs: 0, missingMetaDocs: 0, unreadDocs: 3 },
           signals: [
             { key: 'riskRefs', count: 3, impact: -30, tone: 'danger' },
             { key: 'unreadDocs', count: 3, impact: -6, tone: 'neutral' },

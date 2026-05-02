@@ -57,7 +57,7 @@ const summary: ProjectWikiSummary = {
   trust: {
     score: 70,
     level: 'watch',
-    penalties: { riskRefs: 2, staleDocs: 0, missingMetaDocs: 0, unreadDocs: 1 },
+    penalties: { riskRefs: 2, staleRefs: 0, staleDocs: 0, missingMetaDocs: 0, unreadDocs: 1 },
     signals: [
       { key: 'riskRefs', count: 2, impact: -20, tone: 'danger' },
       { key: 'recentDocs', count: 1, impact: 2, tone: 'positive' },

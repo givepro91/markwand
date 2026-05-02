@@ -46,7 +46,7 @@ function makeSummary(items: WikiDocLink[], overrides: Partial<ProjectWikiSummary
     trust: {
       score: 90,
       level: 'strong',
-      penalties: { riskRefs: 0, staleDocs: 0, missingMetaDocs: 0, unreadDocs: 0 },
+      penalties: { riskRefs: 0, staleRefs: 0, staleDocs: 0, missingMetaDocs: 0, unreadDocs: 0 },
       signals: [],
     },
     pulse: {

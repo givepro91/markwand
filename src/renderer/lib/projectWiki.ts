@@ -56,7 +56,7 @@ export interface WikiDecisionEvent {
 
 export type WikiTrustLevel = 'strong' | 'watch' | 'weak'
 
-export type WikiTrustSignalKey = 'riskRefs' | 'staleDocs' | 'missingMetaDocs' | 'unreadDocs' | 'recentDocs'
+export type WikiTrustSignalKey = 'riskRefs' | 'staleRefs' | 'staleDocs' | 'missingMetaDocs' | 'unreadDocs' | 'recentDocs'
 export type WikiTrustSignalTone = 'danger' | 'warning' | 'neutral' | 'positive'
 
 export interface WikiTrustSignal {
@@ -71,6 +71,7 @@ export interface WikiTrustScore {
   level: WikiTrustLevel
   penalties: {
     riskRefs: number
+    staleRefs: number
     staleDocs: number
     missingMetaDocs: number
     unreadDocs: number
@@ -125,7 +126,7 @@ export interface WikiSuggestedTask {
 
 export type WikiPulseTone = 'healthy' | 'active' | 'attention'
 export type WikiPulseFocus = WikiSuggestedTaskIntent | 'readFirst'
-export type WikiPulseReason = 'riskRefs' | 'staleDocs' | 'missingMetaDocs' | 'unreadDocs' | 'recentDocs' | 'healthy'
+export type WikiPulseReason = 'riskRefs' | 'staleRefs' | 'staleDocs' | 'missingMetaDocs' | 'unreadDocs' | 'recentDocs' | 'healthy'
 
 export interface WikiProjectPulse {
   tone: WikiPulseTone
@@ -462,7 +463,7 @@ function buildDocDebt(
       }
       if (missing > 0 || stale > 0) {
         reasons.push('risk')
-        score += missing * 25 + stale * 15
+        score += missing * 25 + stale * 5
       }
       if (!doc.frontmatter?.source || !doc.frontmatter?.status) {
         reasons.push('missingMeta')
@@ -500,20 +501,22 @@ function buildTrustScore(
   missingRefs: number,
   staleRefs: number
 ): WikiTrustScore {
-  const riskRefs = missingRefs + staleRefs
+  const riskRefs = missingRefs
   const staleDocs = docDebt.filter((item) => item.reasons.includes('stale')).length
   const missingMetaDocs = docs.filter((doc) => !doc.frontmatter?.source || !doc.frontmatter?.status).length
   const riskImpact = Math.min(45, riskRefs * 10)
+  const staleRefImpact = Math.min(15, staleRefs * 3)
   const staleImpact = Math.min(25, staleDocs * 8)
   const missingMetaImpact = Math.min(20, missingMetaDocs * 4)
   const unreadImpact = Math.min(10, unreadDocs * 2)
   const recentBoost = Math.min(10, recentDocs * 2)
   const score = clampScore(
-    100 - riskImpact - staleImpact - missingMetaImpact - unreadImpact + recentBoost
+    100 - riskImpact - staleRefImpact - staleImpact - missingMetaImpact - unreadImpact + recentBoost
   )
   const level: WikiTrustLevel = score >= 80 ? 'strong' : score >= 55 ? 'watch' : 'weak'
   const allSignals: WikiTrustSignal[] = [
     { key: 'riskRefs', count: riskRefs, impact: -riskImpact, tone: 'danger' },
+    { key: 'staleRefs', count: staleRefs, impact: -staleRefImpact, tone: 'warning' },
     { key: 'staleDocs', count: staleDocs, impact: -staleImpact, tone: 'warning' },
     { key: 'missingMetaDocs', count: missingMetaDocs, impact: -missingMetaImpact, tone: 'neutral' },
     { key: 'unreadDocs', count: unreadDocs, impact: -unreadImpact, tone: 'neutral' },
@@ -526,6 +529,7 @@ function buildTrustScore(
     level,
     penalties: {
       riskRefs,
+      staleRefs,
       staleDocs,
       missingMetaDocs,
       unreadDocs,
@@ -556,27 +560,41 @@ function buildSuggestedTasks(
     tasks.push(task)
   }
 
-  if (docsWithRisk.length > 0) {
+  const docsWithMissingRefs = docsWithRisk.filter((doc) => doc.missing > 0)
+  if (docsWithMissingRefs.length > 0) {
     addTask({
       id: 'repair-references',
       intent: 'repairReferences',
       priority: 'high',
-      docs: docsWithRisk.slice(0, 3).map((doc) => ({
+      docs: docsWithMissingRefs.slice(0, 3).map((doc) => ({
         path: doc.path,
         name: doc.name,
         reason: 'risk',
-        score: doc.missing * 25 + doc.stale * 15,
+        score: doc.missing * 25 + doc.stale * 5,
       })),
     })
   }
 
-  const staleDocs = docDebt.filter((item) => item.reasons.includes('stale'))
-  if (staleDocs.length > 0) {
+  const staleRefDocs = docsWithRisk
+    .filter((doc) => doc.stale > 0 && doc.missing === 0)
+    .map((doc) => ({
+      path: doc.path,
+      name: doc.name,
+      reason: 'risk' as const,
+      score: doc.stale * 5,
+    }))
+  const staleDocs = docDebt
+    .filter((item) => item.reasons.includes('stale'))
+    .map(docDebtToLink)
+  const refreshDocs = [...staleRefDocs, ...staleDocs]
+    .filter((doc, index, docs) => docs.findIndex((item) => item.path === doc.path) === index)
+    .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+  if (refreshDocs.length > 0) {
     addTask({
       id: 'refresh-stale-docs',
       intent: 'refreshStaleDocs',
       priority: trust.level === 'weak' ? 'high' : 'medium',
-      docs: staleDocs.slice(0, 3).map(docDebtToLink),
+      docs: refreshDocs.slice(0, 3),
     })
   }
 
@@ -667,19 +685,21 @@ function buildProjectPulse(
 ): WikiProjectPulse {
   const topTask = suggestedTasks[0]
   const riskRefs = trust.penalties.riskRefs
+  const staleRefs = trust.penalties.staleRefs
   const staleDocs = trust.penalties.staleDocs
   const missingMetaDocs = trust.penalties.missingMetaDocs
   const unreadDocs = trust.penalties.unreadDocs
   const reasons: WikiPulseReason[] = []
 
   if (riskRefs > 0) reasons.push('riskRefs')
+  if (staleRefs > 0) reasons.push('staleRefs')
   if (staleDocs > 0) reasons.push('staleDocs')
   if (missingMetaDocs > 0) reasons.push('missingMetaDocs')
   if (unreadDocs > 0) reasons.push('unreadDocs')
   if (recentDocs > 0) reasons.push('recentDocs')
   if (reasons.length === 0) reasons.push('healthy')
 
-  if (riskRefs === 0 && staleDocs === 0 && missingMetaDocs === 0 && unreadDocs === 0 && trust.level === 'strong') {
+  if (riskRefs === 0 && staleRefs === 0 && staleDocs === 0 && missingMetaDocs === 0 && unreadDocs === 0 && trust.level === 'strong') {
     return {
       tone: 'healthy',
       focus: 'readFirst',
@@ -769,7 +789,7 @@ export function buildProjectWikiSummary(
       })
     }
   }
-  docsWithRisk.sort((a, b) => (b.missing + b.stale) - (a.missing + a.stale) || a.name.localeCompare(b.name))
+  docsWithRisk.sort((a, b) => (b.missing * 5 + b.stale) - (a.missing * 5 + a.stale) || a.name.localeCompare(b.name))
   const unreadDocs = markdownDocs.filter((doc) => !readDocs[doc.path]).length
   const recentDocs = markdownDocs.filter((doc) => doc.mtime >= recentCutoff).length
   const docDebt = buildDocDebt(markdownDocs, driftReports, readDocs, displayNames, now)
