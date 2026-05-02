@@ -6,7 +6,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { renderWithProviders, screen, userEvent } from '../__test-utils__/render'
-import { getDocumentStickyOffset, getTocActionState, ProjectDocReturnBar } from './ProjectView'
+import { getDocumentStickyOffset, getTocActionState, ProjectDocReturnBar, ProjectFindControls } from './ProjectView'
 
 describe('ProjectDocReturnBar', () => {
   it('calls the return handler from a visible Back to Wiki action', async () => {
@@ -35,6 +35,29 @@ describe('ProjectDocReturnBar', () => {
     expect(returnBar).toContainElement(screen.getByRole('button', { name: '목차' }))
   })
 
+  it('keeps expanded document search inside the sticky reading bar', () => {
+    renderWithProviders(
+      <ProjectDocReturnBar
+        docName="README.md"
+        onReturnToWiki={vi.fn()}
+        actions={
+          <ProjectFindControls
+            value=""
+            result={null}
+            onChange={vi.fn()}
+            onPrev={vi.fn()}
+            onNext={vi.fn()}
+            onClose={vi.fn()}
+          />
+        }
+      />
+    )
+
+    const returnBar = screen.getByText('README.md').closest('[data-project-doc-return-bar]')
+    expect(returnBar).toContainElement(screen.getByRole('search', { name: 'projectView.findInDoc' }))
+    expect(screen.getByPlaceholderText('projectView.searchPlaceholder')).toBeInTheDocument()
+  })
+
   it('reserves the sticky reading bar height when jumping from the TOC', () => {
     const container = document.createElement('div')
     const returnBar = document.createElement('div')
@@ -60,18 +83,28 @@ describe('ProjectDocReturnBar', () => {
       showToc: true,
       showDocumentTools: true,
       activeDocumentTool: 'toc',
+      documentToolsMode: 'toc',
     })
 
-    expect(getTocActionState({ showTocRail: true, hasDriftTool: true })).toEqual({
+    expect(getTocActionState({ showTocRail: true, hasDriftTool: true, documentToolsMode: 'all' })).toEqual({
       showToc: false,
       showDocumentTools: true,
       activeDocumentTool: 'issues',
+      documentToolsMode: 'all',
     })
 
     expect(getTocActionState({ showTocRail: true, hasDriftTool: false })).toEqual({
       showToc: false,
       showDocumentTools: false,
       activeDocumentTool: 'toc',
+      documentToolsMode: 'toc',
+    })
+
+    expect(getTocActionState({ showTocRail: true, hasDriftTool: true, documentToolsMode: 'toc' })).toEqual({
+      showToc: false,
+      showDocumentTools: false,
+      activeDocumentTool: 'toc',
+      documentToolsMode: 'toc',
     })
   })
 })

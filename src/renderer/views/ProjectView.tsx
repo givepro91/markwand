@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo, type ReactNode } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo, type ReactNode, type Ref } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileTree } from '../components/FileTree'
 import { MarkdownViewer } from '../components/MarkdownViewer'
@@ -32,6 +32,8 @@ interface ProjectViewProps {
   /** RecentDocsPanel 의 "+N개 더" 클릭 시 호출. App 이 setViewMode('inbox') 처리. */
   onSeeMoreRecent?: () => void
 }
+
+type DocumentToolsMode = 'all' | 'toc'
 
 const TocIcon = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
@@ -78,6 +80,7 @@ export function ProjectDocReturnBar({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        flexWrap: 'wrap',
         gap: 'var(--sp-3)',
         marginBottom: 'var(--sp-4)',
         padding: 'var(--sp-3) var(--sp-4)',
@@ -105,7 +108,16 @@ export function ProjectDocReturnBar({
           {docName}
         </strong>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', flexShrink: 0 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          flexWrap: 'wrap',
+          gap: 'var(--sp-2)',
+          flexShrink: 0,
+        }}
+      >
         {actions}
         <Button
           variant="primary"
@@ -120,6 +132,87 @@ export function ProjectDocReturnBar({
   )
 }
 
+export function ProjectFindControls({
+  value,
+  result,
+  inputRef,
+  onChange,
+  onPrev,
+  onNext,
+  onClose,
+}: {
+  value: string
+  result: { active: number; total: number } | null
+  inputRef?: Ref<HTMLInputElement>
+  onChange: (value: string) => void
+  onPrev: () => void
+  onNext: () => void
+  onClose: () => void
+}) {
+  const { t } = useTranslation()
+  const hasQuery = value.trim().length > 0
+
+  return (
+    <div
+      role="search"
+      aria-label={t('projectView.findInDoc')}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 'var(--sp-1)',
+        minHeight: '32px',
+        padding: '3px',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--r-pill)',
+        background: 'var(--bg)',
+        boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--bg-elev) 80%, transparent)',
+      }}
+    >
+      <input
+        ref={inputRef}
+        type="search"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.shiftKey ? onPrev() : onNext()
+          }
+          if (e.key === 'Escape') onClose()
+        }}
+        placeholder={t('projectView.searchPlaceholder')}
+        aria-label={t('projectView.findInDoc')}
+        style={{
+          width: 'clamp(180px, 20vw, 320px)',
+          background: 'transparent',
+          border: 'none',
+          color: 'var(--text)',
+          fontSize: 'var(--fs-sm)',
+          padding: '4px 8px',
+          outline: 'none',
+          fontFamily: 'inherit',
+        }}
+      />
+      <span
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', whiteSpace: 'nowrap', paddingInline: '4px' }}
+      >
+        {result ? (result.total > 0 ? `${result.active} / ${result.total}` : t('projectView.findNoResults')) : t('projectView.findReady')}
+      </span>
+      <IconButton aria-label={t('projectView.findPrev')} size="sm" onClick={onPrev} disabled={!hasQuery}>
+        <ChevronLeftIcon />
+      </IconButton>
+      <IconButton aria-label={t('projectView.findNext')} size="sm" onClick={onNext} disabled={!hasQuery}>
+        <ChevronRightIcon />
+      </IconButton>
+      <IconButton aria-label={t('projectView.findClose')} size="sm" onClick={onClose}>
+        ✕
+      </IconButton>
+    </div>
+  )
+}
+
 export function getDocumentStickyOffset(container: HTMLElement): number {
   const returnBar = container.querySelector<HTMLElement>('[data-project-doc-return-bar]')
   if (!returnBar) return 16
@@ -129,21 +222,28 @@ export function getDocumentStickyOffset(container: HTMLElement): number {
 export function getTocActionState({
   showTocRail,
   hasDriftTool,
+  documentToolsMode = 'toc',
 }: {
   showTocRail: boolean
   hasDriftTool: boolean
+  documentToolsMode?: DocumentToolsMode
 }): {
   showToc: boolean
   showDocumentTools: boolean
   activeDocumentTool: 'issues' | 'toc'
+  documentToolsMode: DocumentToolsMode
 } {
   if (!showTocRail) {
-    return { showToc: true, showDocumentTools: true, activeDocumentTool: 'toc' }
+    return { showToc: true, showDocumentTools: true, activeDocumentTool: 'toc', documentToolsMode: 'toc' }
+  }
+  if (documentToolsMode === 'all' && hasDriftTool) {
+    return { showToc: false, showDocumentTools: true, activeDocumentTool: 'issues', documentToolsMode: 'all' }
   }
   return {
     showToc: false,
-    showDocumentTools: hasDriftTool,
-    activeDocumentTool: hasDriftTool ? 'issues' : 'toc',
+    showDocumentTools: false,
+    activeDocumentTool: 'toc',
+    documentToolsMode: 'toc',
   }
 }
 
@@ -188,6 +288,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
   const [showFind, setShowFind] = useState(false)
   const [showDocumentTools, setShowDocumentTools] = useState(true)
   const [activeDocumentTool, setActiveDocumentTool] = useState<'issues' | 'toc'>('issues')
+  const [documentToolsMode, setDocumentToolsMode] = useState<DocumentToolsMode>('all')
   const [findQuery, setFindQuery] = useState('')
   const [findResult, setFindResult] = useState<{ active: number; total: number } | null>(null)
   const [showWiki, setShowWiki] = useState(true)
@@ -215,9 +316,10 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
   const selectedDriftReport = selectedDoc ? driftReports[selectedDoc.path] : undefined
   const hasDriftTool = Boolean(!showWiki && selectedIsMarkdown && selectedDriftReport?.references.length)
   const hasTocTool = Boolean(!showWiki && selectedIsMarkdown && showToc && headings.length > 0)
-  const activeRightTool = activeDocumentTool === 'toc' && hasTocTool ? 'toc' : hasDriftTool ? 'issues' : 'toc'
-  const showRightRail = showDocumentTools && (hasDriftTool || hasTocTool)
-  const showDriftRail = showRightRail && activeRightTool === 'issues' && hasDriftTool
+  const canShowDriftTool = documentToolsMode === 'all' && hasDriftTool
+  const activeRightTool = activeDocumentTool === 'toc' && hasTocTool ? 'toc' : canShowDriftTool ? 'issues' : 'toc'
+  const showRightRail = showDocumentTools && (canShowDriftTool || hasTocTool)
+  const showDriftRail = showRightRail && activeRightTool === 'issues' && canShowDriftTool
   const showTocRail = showRightRail && activeRightTool === 'toc' && hasTocTool
   const handleReturnToWiki = useCallback(() => {
     setShowWiki(true)
@@ -229,13 +331,14 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
   useEffect(() => {
     if (!selectedDoc || !selectedIsMarkdown) return
     setShowDocumentTools(true)
+    setDocumentToolsMode('all')
     setActiveDocumentTool('issues')
   }, [selectedDoc?.path, selectedIsMarkdown])
 
   useEffect(() => {
-    if (activeDocumentTool === 'toc' && !hasTocTool && hasDriftTool) setActiveDocumentTool('issues')
-    if (activeDocumentTool === 'issues' && !hasDriftTool && hasTocTool) setActiveDocumentTool('toc')
-  }, [activeDocumentTool, hasDriftTool, hasTocTool])
+    if (activeDocumentTool === 'toc' && !hasTocTool && canShowDriftTool) setActiveDocumentTool('issues')
+    if (activeDocumentTool === 'issues' && !canShowDriftTool && hasTocTool) setActiveDocumentTool('toc')
+  }, [activeDocumentTool, canShowDriftTool, hasTocTool])
 
   // treeExpanded 복원
   useEffect(() => {
@@ -672,16 +775,38 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
 
   const documentActions = !showWiki && selectedDoc && classifyAsset(selectedDoc.path) === 'md' ? (
     <>
-      {(hasDriftTool || hasTocTool) && (
+      {showFind ? (
+        <ProjectFindControls
+          value={findQuery}
+          result={findResult}
+          inputRef={findInputRef}
+          onChange={handleFindChange}
+          onPrev={handleFindPrev}
+          onNext={handleFindNext}
+          onClose={handleCloseFind}
+        />
+      ) : (
+        <IconButton
+          aria-label={t('projectView.findInDoc')}
+          aria-pressed={false}
+          size="sm"
+          variant="ghost"
+          onClick={() => setShowFind(true)}
+        >
+          <SearchIcon />
+        </IconButton>
+      )}
+      {hasDriftTool && (
         <IconButton
           aria-label={t('projectView.documentTools')}
-          aria-pressed={showRightRail}
+          aria-pressed={showRightRail && documentToolsMode === 'all'}
           size="sm"
-          variant={showRightRail ? 'primary' : 'ghost'}
+          variant={showRightRail && documentToolsMode === 'all' ? 'primary' : 'ghost'}
           onClick={() => {
-            if (showRightRail) {
+            if (showRightRail && documentToolsMode === 'all') {
               setShowDocumentTools(false)
             } else {
+              setDocumentToolsMode('all')
               setShowDocumentTools(true)
               setActiveDocumentTool(hasDriftTool ? 'issues' : 'toc')
             }
@@ -691,24 +816,16 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
         </IconButton>
       )}
       <IconButton
-        aria-label={t('projectView.findInDoc')}
-        aria-pressed={showFind}
-        size="sm"
-        variant={showFind ? 'primary' : 'ghost'}
-        onClick={() => setShowFind((p) => !p)}
-      >
-        <SearchIcon />
-      </IconButton>
-      <IconButton
         aria-label={t('projectView.tocToggle')}
         aria-pressed={showTocRail}
         size="sm"
         variant={showTocRail ? 'primary' : 'ghost'}
         onClick={() => {
-          const next = getTocActionState({ showTocRail, hasDriftTool })
+          const next = getTocActionState({ showTocRail, hasDriftTool, documentToolsMode })
           setShowToc(next.showToc)
           setShowDocumentTools(next.showDocumentTools)
           setActiveDocumentTool(next.activeDocumentTool)
+          setDocumentToolsMode(next.documentToolsMode)
         }}
       >
         <TocIcon />
@@ -720,67 +837,6 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {/* FilterBar */}
       <FilterBar docs={docs} />
-      {/* 검색 toolbar */}
-      {showFind && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--sp-2)',
-            padding: 'var(--sp-2) var(--sp-4)',
-            background: 'var(--bg-elev)',
-            borderBottom: '1px solid var(--border)',
-            flexShrink: 0,
-          }}
-        >
-          <input
-            ref={findInputRef}
-            type="search"
-            value={findQuery}
-            onChange={(e) => handleFindChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.shiftKey ? handleFindPrev() : handleFindNext()
-              }
-              if (e.key === 'Escape') handleCloseFind()
-            }}
-            placeholder={t('projectView.searchPlaceholder')}
-            aria-label={t('projectView.findInDoc')}
-            style={{
-              flex: 1,
-              maxWidth: '280px',
-              background: 'var(--bg)',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--r-sm)',
-              color: 'var(--text)',
-              fontSize: 'var(--fs-sm)',
-              padding: 'var(--sp-1) var(--sp-2)',
-              outline: 'none',
-              fontFamily: 'inherit',
-            }}
-          />
-          {findResult && (
-            <span
-              role="status"
-              aria-live="polite"
-              aria-atomic="true"
-              style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}
-            >
-              {findResult.total > 0 ? `${findResult.active} / ${findResult.total}` : t('projectView.findNoResults')}
-            </span>
-          )}
-          <IconButton aria-label={t('projectView.findPrev')} size="sm" onClick={handleFindPrev} disabled={!findQuery.trim()}>
-            <ChevronLeftIcon />
-          </IconButton>
-          <IconButton aria-label={t('projectView.findNext')} size="sm" onClick={handleFindNext} disabled={!findQuery.trim()}>
-            <ChevronRightIcon />
-          </IconButton>
-          <IconButton aria-label={t('projectView.findClose')} size="sm" onClick={handleCloseFind}>
-            ✕
-          </IconButton>
-        </div>
-      )}
-
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
         {/* F1: 좌측 파일 트리 — flex column + minHeight:0 체인 완전 보장 */}
         <div
@@ -1039,7 +1095,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
                   flex: 1,
                   minWidth: 0,
                   display: 'grid',
-                  gridTemplateColumns: hasDriftTool && hasTocTool ? '1fr 1fr' : '1fr',
+                  gridTemplateColumns: canShowDriftTool && hasTocTool ? '1fr 1fr' : '1fr',
                   gap: '4px',
                   padding: '3px',
                   border: '1px solid var(--border)',
@@ -1047,7 +1103,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
                   background: 'var(--bg)',
                 }}
               >
-                {hasDriftTool && (
+                {canShowDriftTool && (
                   <button
                     type="button"
                     role="tab"
@@ -1095,6 +1151,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
                 onClick={() => {
                   if (activeRightTool === 'toc') setShowToc(false)
                   setShowDocumentTools(false)
+                  setDocumentToolsMode('all')
                 }}
               >
                 ✕
