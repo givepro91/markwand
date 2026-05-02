@@ -51,6 +51,11 @@ describe('projectWikiGit context', () => {
       'currentGuideCheck',
       'decisionTrace',
     ])
+    expect(context?.situation).toMatchObject({
+      kind: 'needsTriage',
+      priority: 'high',
+      focusDoc: { name: 'docs/ops/deploy.md' },
+    })
     expect(context?.insights.find((item) => item.kind === 'operationalCheck')).toMatchObject({
       priority: 'high',
       doc: { name: 'docs/ops/deploy.md', role: 'operational', ageDays: 20 },
@@ -75,6 +80,7 @@ describe('projectWikiGit context', () => {
 
     expect(lines).toContain('- Branch: main')
     expect(lines).toContain('- Uncommitted changes: 2')
+    expect(lines).toContain('- Situation: workInProgress')
     expect(lines.join('\n')).toContain('Role-sensitive interpretation')
     expect(lines.join('\n')).toContain('current guide')
     expect(lines.join('\n')).toContain('Uncommitted local work exists')

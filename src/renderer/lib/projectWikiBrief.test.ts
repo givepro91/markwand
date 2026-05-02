@@ -183,6 +183,12 @@ describe('formatProjectWikiHandoffBrief', () => {
       changedFileCount: 4,
       dirtyCount: 1,
       changedAreas: ['src/renderer', 'scripts/deploy'],
+      situation: {
+        kind: 'workInProgress',
+        priority: 'medium',
+        changedArea: 'src/renderer',
+        focusDoc: { path: doc.path, name: doc.name, role: 'currentGuide', ageDays: 45 },
+      },
       insights: [{
         kind: 'currentGuideCheck',
         priority: 'medium',

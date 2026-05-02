@@ -215,7 +215,33 @@
       "detailsHide": "Hide developer details",
       "openInsightDoc": "Open document",
       "openInsightDocAria": "Open {{doc}} document",
+      "openSituationDoc": "Open related doc",
+      "openSituationDocAria": "Open related doc {{doc}}",
       "insightsTitle": "Interpreted by document role",
+      "situation": {
+        "note": "This does not mean old plans must be updated. It only asks whether a doc is still current guidance.",
+        "priority": {
+          "high": "Check first",
+          "medium": "Check context",
+          "low": "Safe to read"
+        },
+        "workInProgress": {
+          "title": "Work is currently in progress",
+          "detail": "There are uncommitted changes. Before handing {{area}} to AI, capture the current intent briefly."
+        },
+        "needsTriage": {
+          "title": "Check the execution guide first",
+          "detail": "{{area}} changed and connects to {{doc}}. Confirm whether this doc still guides current execution before relying on it."
+        },
+        "activeBuild": {
+          "title": "Implementation is moving quickly",
+          "detail": "{{area}} is changing actively. Lightly check only current-facing docs such as README or active guides."
+        },
+        "quiet": {
+          "title": "No strong change signal",
+          "detail": "Recent Git flow is quiet. It is reasonable to start from the document wiki and reading path."
+        }
+      },
       "priority": {
         "high": "Check first",
         "medium": "Worth checking",

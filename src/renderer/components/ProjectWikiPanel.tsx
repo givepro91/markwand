@@ -21,7 +21,7 @@ import type {
   WikiSuggestedTask,
   WikiTrustSignal,
 } from '../lib/projectWiki'
-import { buildProjectWikiGitContext, type ProjectWikiGitContext, type WikiGitInsight } from '../lib/projectWikiGit'
+import { buildProjectWikiGitContext, type ProjectWikiGitContext, type WikiGitInsight, type WikiGitSituation } from '../lib/projectWikiGit'
 
 interface ProjectWikiPanelProps {
   projectName: string
@@ -32,6 +32,67 @@ interface ProjectWikiPanelProps {
   briefLoading: boolean
   docsByPath: Map<string, Doc>
   onOpenDoc: (doc: Doc) => void
+}
+
+function GitSituationCard({
+  situation,
+  docsByPath,
+  onOpenDoc,
+}: {
+  situation: WikiGitSituation
+  docsByPath: Map<string, Doc>
+  onOpenDoc: (doc: Doc) => void
+}) {
+  const { t } = useTranslation()
+  const focusDoc = situation.focusDoc ? docsByPath.get(situation.focusDoc.path) : undefined
+  const variant = situation.priority === 'high' ? 'danger' : situation.priority === 'medium' ? 'marker' : 'default'
+
+  return (
+    <div
+      style={{
+        border: '1px solid color-mix(in srgb, var(--accent) 24%, var(--border))',
+        borderRadius: 'var(--r-lg)',
+        padding: 'var(--sp-4)',
+        background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent) 0%, color-mix(in srgb, var(--bg-elev) 92%, transparent) 100%)',
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr) auto',
+        gap: 'var(--sp-3)',
+        alignItems: 'center',
+        minWidth: 0,
+      }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
+          <Badge variant={variant} size="sm">{t(`projectWiki.git.situation.priority.${situation.priority}`)}</Badge>
+          {situation.changedArea && <Badge variant="default" size="sm">{situation.changedArea}</Badge>}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-1)', minWidth: 0 }}>
+          <strong style={{ color: 'var(--text)', fontSize: 'var(--fs-md)', fontWeight: 'var(--fw-semibold)' }}>
+            {t(`projectWiki.git.situation.${situation.kind}.title`)}
+          </strong>
+          <span style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-sm)', lineHeight: 'var(--lh-relaxed)' }}>
+            {t(`projectWiki.git.situation.${situation.kind}.detail`, {
+              doc: situation.focusDoc?.name ?? '',
+              area: situation.changedArea ?? '',
+            })}
+          </span>
+          <span style={{ color: 'var(--text-muted)', opacity: 0.82, fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-relaxed)' }}>
+            {t('projectWiki.git.situation.note')}
+          </span>
+        </div>
+      </div>
+      {focusDoc && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onOpenDoc(focusDoc)}
+          aria-label={t('projectWiki.git.openSituationDocAria', { doc: focusDoc.name })}
+        >
+          {t('projectWiki.git.openSituationDoc')}
+        </Button>
+      )}
+    </div>
+  )
 }
 
 function GitPulseCard({
@@ -107,6 +168,14 @@ function GitPulseCard({
         )}
         {pulse.latestTag && <Badge variant="success" size="sm">{t('projectWiki.git.latestTag', { tag: pulse.latestTag })}</Badge>}
       </div>
+
+      {context?.situation && (
+        <GitSituationCard
+          situation={context.situation}
+          docsByPath={docsByPath}
+          onOpenDoc={onOpenDoc}
+        />
+      )}
 
       {(context?.insights.length ?? 0) > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>

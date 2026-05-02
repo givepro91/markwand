@@ -9,6 +9,7 @@ export type WikiGitInsightKind =
   | 'decisionTrace'
 
 export type WikiGitInsightPriority = 'high' | 'medium' | 'low'
+export type WikiGitSituationKind = 'workInProgress' | 'needsTriage' | 'activeBuild' | 'quiet'
 
 export interface WikiGitInsight {
   kind: WikiGitInsightKind
@@ -22,12 +23,20 @@ export interface WikiGitInsight {
   changedFile?: string
 }
 
+export interface WikiGitSituation {
+  kind: WikiGitSituationKind
+  priority: WikiGitInsightPriority
+  changedArea?: string
+  focusDoc?: WikiGitInsight['doc']
+}
+
 export interface ProjectWikiGitContext {
   branch?: string
   recentCommitCount: number
   changedFileCount: number
   dirtyCount: number
   changedAreas: string[]
+  situation: WikiGitSituation
   insights: WikiGitInsight[]
 }
 
@@ -75,6 +84,47 @@ function oldestRoleDoc(docs: Doc[], role: WikiDocRole, now: number): WikiGitInsi
 
 function firstMatchingFile(files: string[], pattern: RegExp): string | undefined {
   return files.find((file) => pattern.test(file))
+}
+
+function buildSituation(
+  pulse: GitPulseSummary,
+  activeCodeFlow: boolean,
+  insights: WikiGitInsight[]
+): WikiGitSituation {
+  const highInsight = insights.find((insight) => insight.priority === 'high' && insight.doc)
+  if ((pulse.dirtyCount ?? 0) > 0) {
+    return {
+      kind: 'workInProgress',
+      priority: highInsight ? 'high' : 'medium',
+      changedArea: pulse.changedAreas?.[0],
+      focusDoc: highInsight?.doc,
+    }
+  }
+
+  if (highInsight) {
+    return {
+      kind: 'needsTriage',
+      priority: 'high',
+      changedArea: highInsight.changedFile,
+      focusDoc: highInsight.doc,
+    }
+  }
+
+  if (activeCodeFlow) {
+    return {
+      kind: 'activeBuild',
+      priority: 'medium',
+      changedArea: pulse.changedAreas?.[0] ?? pulse.changedFiles?.[0],
+      focusDoc: insights.find((insight) => insight.doc)?.doc,
+    }
+  }
+
+  return {
+    kind: 'quiet',
+    priority: 'low',
+    changedArea: pulse.changedAreas?.[0] ?? pulse.changedFiles?.[0],
+    focusDoc: insights.find((insight) => insight.doc)?.doc,
+  }
 }
 
 export function buildProjectWikiGitContext(
@@ -150,6 +200,7 @@ export function buildProjectWikiGitContext(
     changedFileCount: pulse.changedFileCount ?? 0,
     dirtyCount: pulse.dirtyCount ?? 0,
     changedAreas: pulse.changedAreas ?? [],
+    situation: buildSituation(pulse, activeCodeFlow, insights),
     insights: insights.slice(0, 3),
   }
 }
@@ -164,12 +215,14 @@ const handoffInsightText: Record<WikiGitInsightKind, string> = {
 
 export function formatProjectWikiGitContext(context: ProjectWikiGitContext | null | undefined): string[] {
   if (!context) return []
+  const situation = context.situation ?? { kind: 'quiet' }
 
   const lines = [
     `- Branch: ${context.branch ?? 'HEAD'}`,
     `- Recent commits: ${context.recentCommitCount}`,
     `- Changed files: ${context.changedFileCount}`,
     `- Uncommitted changes: ${context.dirtyCount}`,
+    `- Situation: ${situation.kind}`,
   ]
 
   if (context.changedAreas.length > 0) {

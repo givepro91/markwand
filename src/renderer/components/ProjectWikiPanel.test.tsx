@@ -202,13 +202,15 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
 
     expect(screen.getByText('projectWiki.git.title')).toBeInTheDocument()
     expect(screen.getByText('projectWiki.git.branch')).toBeInTheDocument()
+    expect(screen.getByText('projectWiki.git.situation.workInProgress.title')).toBeInTheDocument()
+    expect(screen.getByText('projectWiki.git.situation.note')).toBeInTheDocument()
     expect(screen.getByText('projectWiki.git.insightsTitle')).toBeInTheDocument()
     expect(screen.getByText('projectWiki.git.insight.dirtyWork.title')).toBeInTheDocument()
-    expect(screen.queryByText('src/renderer')).not.toBeInTheDocument()
+    expect(screen.queryByText('feat: add wiki trust signals')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'projectWiki.git.detailsShow' }))
 
-    expect(screen.getByText('src/renderer')).toBeInTheDocument()
+    expect(screen.getAllByText('src/renderer').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('feat: add wiki trust signals')).toBeInTheDocument()
   })
 
@@ -242,6 +244,40 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'projectWiki.git.openInsightDocAria' }))
 
+    expect(onOpenDoc).toHaveBeenCalledWith(readme)
+  })
+
+  it('opens the situation focus document without forcing historical plans to refresh', () => {
+    const onOpenDoc = vi.fn()
+    const readme: Doc = {
+      path: '/project/README.md',
+      projectId: 'p1',
+      name: 'README.md',
+      mtime: Date.parse('2026-03-01T00:00:00Z'),
+    }
+
+    renderWithProviders(
+      <ProjectWikiPanel
+        projectName="markwand"
+        summary={summary}
+        gitPulse={{
+          ...gitPulse,
+          dirtyCount: 0,
+          recentCommitCount: 5,
+          changedFiles: ['src/renderer/ProjectView.tsx'],
+          changedAreas: ['src/renderer'],
+        }}
+        gitPulseLoading={false}
+        brief={null}
+        briefLoading={false}
+        docsByPath={new Map([[doc.path, doc], [readme.path, readme]])}
+        onOpenDoc={onOpenDoc}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'projectWiki.git.openSituationDocAria' }))
+
+    expect(screen.getByText('projectWiki.git.situation.note')).toBeInTheDocument()
     expect(onOpenDoc).toHaveBeenCalledWith(readme)
   })
 
