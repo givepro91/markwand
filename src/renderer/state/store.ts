@@ -84,7 +84,7 @@ interface AppState {
 
   // Drift Verifier (v0.2) — docPath → 최신 리포트. 영속화 X, 세션 스코프.
   driftReports: Record<string, DriftReport>
-  // docPath → 해당 문서에서 "무시" 처리된 참조 resolvedPath 배열. 세션 스코프.
+  // docPath → 해당 문서에서 "무시" 처리된 참조 occurrence key 배열. 세션 스코프.
   ignoredDriftRefs: Record<string, string[]>
 
   setWorkspaces: (workspaces: Workspace[]) => void
@@ -127,7 +127,7 @@ interface AppState {
   setDriftReport: (docPath: string, report: DriftReport) => void
   clearDriftReport: (docPath: string) => void
   pruneDriftReports: (availablePaths: Set<string>) => void
-  toggleIgnoredRef: (docPath: string, resolvedPath: string) => void
+  toggleIgnoredRef: (docPath: string, refKey: string) => void
   clearIgnoredRefs: (docPath: string) => void
 
   // M3 S2 — Transport 상태 (workspaceId 별). 값 없음 = 'idle'(UI 미표시).
@@ -361,11 +361,11 @@ export const useAppStore = create<AppState>((set) => ({
       }
       return changed ? { driftReports: next } : {}
     }),
-  toggleIgnoredRef: (docPath, resolvedPath) =>
+  toggleIgnoredRef: (docPath, refKey) =>
     set((s) => {
       const current = s.ignoredDriftRefs[docPath] ?? []
-      const has = current.includes(resolvedPath)
-      const next = has ? current.filter((p) => p !== resolvedPath) : [...current, resolvedPath]
+      const has = current.includes(refKey)
+      const next = has ? current.filter((p) => p !== refKey) : [...current, refKey]
       return { ignoredDriftRefs: { ...s.ignoredDriftRefs, [docPath]: next } }
     }),
   clearIgnoredRefs: (docPath) =>

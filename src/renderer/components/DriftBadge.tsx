@@ -1,6 +1,7 @@
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppStore } from '../state/store'
+import { isDriftRefIgnored } from '../lib/driftRefKey'
 import type { DriftReport } from '../../preload/types'
 
 interface DriftBadgeProps {
@@ -24,7 +25,7 @@ export const DriftBadge = memo(function DriftBadge({ report, compact = false }: 
     let missing = 0
     let stale = 0
     for (const r of report.references) {
-      if (ignored.has(r.resolvedPath)) continue
+      if (isDriftRefIgnored(ignored, r)) continue
       if (r.status === 'missing') missing++
       else if (r.status === 'stale') stale++
     }

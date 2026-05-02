@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { useAppStore } from '../state/store'
+import { driftRefKey, isDriftRefIgnored } from '../lib/driftRefKey'
 import { Button } from './ui'
 import type { DriftStatus, VerifiedReference } from '../../preload/types'
 
@@ -67,7 +68,7 @@ export function buildCopyIssuesPrompt(params: {
   t: TFunction
 }): string {
   const { docPath, projectRoot, references, ignored, t } = params
-  const active = references.filter((r) => !ignored.has(r.resolvedPath))
+  const active = references.filter((r) => !isDriftRefIgnored(ignored, r))
   const missing = active.filter((r) => r.status === 'missing')
   const stale = active.filter((r) => r.status === 'stale')
   if (missing.length === 0 && stale.length === 0) return ''
@@ -144,7 +145,7 @@ export function DriftPanel({ docPath, projectRoot, variant = 'inline', onJumpToR
     if (ignored.size === 0) return report.counts
     let ok = 0, missing = 0, stale = 0
     for (const r of report.references) {
-      if (ignored.has(r.resolvedPath)) continue
+      if (isDriftRefIgnored(ignored, r)) continue
       if (r.status === 'ok') ok++
       else if (r.status === 'missing') missing++
       else stale++
@@ -395,8 +396,8 @@ export function DriftPanel({ docPath, projectRoot, variant = 'inline', onJumpToR
                 key={`${ref.resolvedPath}:${ref.line}:${ref.col}`}
                 ref_={ref}
                 projectRoot={projectRoot}
-                ignored={ignored.has(ref.resolvedPath)}
-                onToggleIgnore={() => toggleIgnoredRef(docPath, ref.resolvedPath)}
+                ignored={isDriftRefIgnored(ignored, ref)}
+                onToggleIgnore={() => toggleIgnoredRef(docPath, driftRefKey(ref))}
                 variant={variant}
                 onJump={onJumpToRef ? () => onJumpToRef({
                   raw: getSearchText(ref.raw, ref.kind),

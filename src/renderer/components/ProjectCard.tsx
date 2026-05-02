@@ -2,6 +2,7 @@ import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Card, StatusMessage } from './ui'
 import { useAppStore } from '../state/store'
+import { isDriftRefIgnored } from '../lib/driftRefKey'
 import type { Project } from '../../../src/preload/types'
 
 interface ProjectCardProps {
@@ -40,7 +41,7 @@ export const ProjectCard = memo(function ProjectCard({ project, onOpen }: Projec
       }
       const ignoredSet = new Set(ignored)
       for (const ref of r.references) {
-        if (ignoredSet.has(ref.resolvedPath)) continue
+        if (isDriftRefIgnored(ignoredSet, ref)) continue
         if (ref.status === 'missing') missing++
         else if (ref.status === 'stale') stale++
       }

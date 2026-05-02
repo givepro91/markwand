@@ -33,6 +33,20 @@ function report(): DriftReport {
   }
 }
 
+function duplicatePathReport(): DriftReport {
+  const base = report()
+  return {
+    ...base,
+    references: [
+      { ...base.references[0], line: 170, col: 12 },
+      { ...base.references[0], line: 327, col: 12 },
+      { ...base.references[0], line: 337, col: 12 },
+      { ...base.references[0], line: 771, col: 12 },
+    ],
+    counts: { ok: 0, missing: 4, stale: 0 },
+  }
+}
+
 beforeEach(() => {
   installApiMock()
   useAppStore.setState({
@@ -66,5 +80,24 @@ describe('DriftPanel', () => {
     expect(screen.getByRole('button', { name: 'drift.ariaToggle' })).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByRole('button', { name: 'drift.jumpLabel' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'drift.ignore' })).toBeInTheDocument()
+  })
+
+  it('ignores only the clicked occurrence when the same path appears multiple times', () => {
+    useAppStore.setState({
+      driftReports: { [docPath]: duplicatePathReport() },
+      ignoredDriftRefs: {},
+    })
+
+    renderWithProviders(
+      <DriftPanel docPath={docPath} projectRoot={projectRoot} variant="side" onJumpToRef={vi.fn()} />,
+    )
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'drift.ignore' })[1])
+
+    const ignored = useAppStore.getState().ignoredDriftRefs[docPath]
+    expect(ignored).toHaveLength(1)
+    expect(ignored[0]).toContain('\u001f327\u001f12\u001fat\u001f')
+    expect(screen.getAllByRole('button', { name: 'drift.ignore' })).toHaveLength(3)
+    expect(screen.getByRole('button', { name: 'drift.unignore' })).toBeInTheDocument()
   })
 })
