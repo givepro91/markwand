@@ -27,6 +27,7 @@ export function createApiMock(overrides: Record<string, unknown> = {}) {
       scan: vi.fn(() => ok([])),
       scanDocs: vi.fn(() => ok([])),
       getDocCount: vi.fn(() => ok(0)),
+      gitSummary: vi.fn(() => ok({ available: false, reason: 'not-git' })),
     },
     fs: {
       readDoc: vi.fn(() => ok({ text: '', frontmatter: null })),

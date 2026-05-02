@@ -37,6 +37,7 @@ contextBridge.exposeInMainWorld('api', {
         ...(opts?.force ? { force: true } : {}),
       }),
     getDocCount: (projectId: string) => ipcRenderer.invoke('project:get-doc-count', { projectId }),
+    gitSummary: (projectRoot: string) => ipcRenderer.invoke('project:git-summary', { projectRoot }),
     // raw IpcRendererEvent 노출 차단 — data-only wrapper
     onDocsChunk: (cb: (data: Doc[]) => void) => {
       const wrapper = (_event: Electron.IpcRendererEvent, data: Doc[]) => cb(data)

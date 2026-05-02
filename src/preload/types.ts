@@ -51,6 +51,27 @@ export interface Project {
   lastModified: number
 }
 
+export interface GitPulseCommit {
+  hash: string
+  subject: string
+  author?: string
+  relativeTime?: string
+}
+
+export interface GitPulseSummary {
+  available: boolean
+  reason?: 'not-git' | 'ssh-unsupported' | 'timeout' | 'error'
+  branch?: string
+  head?: string
+  dirtyCount?: number
+  recentCommitCount?: number
+  changedFileCount?: number
+  changedAreas?: string[]
+  latestTag?: string
+  commits?: GitPulseCommit[]
+  cachedAt?: number
+}
+
 export interface DocFrontmatter {
   tags?: string[]
   status?: string
@@ -261,6 +282,7 @@ export interface WindowApi {
      */
     scanDocs: (projectId: string, opts?: { force?: boolean }) => Promise<Doc[]>
     getDocCount: (projectId: string) => Promise<number>
+    gitSummary: (projectRoot: string) => Promise<GitPulseSummary>
     onDocsChunk: (cb: (data: Doc[]) => void) => () => void
   }
   fs: {

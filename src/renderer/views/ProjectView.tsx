@@ -12,6 +12,7 @@ import { I18nErrorBoundary } from '../components/ErrorBoundary'
 import { RecentDocsPanel } from '../components/RecentDocsPanel'
 import { Button, EmptyState, IconButton } from '../components/ui'
 import { useDocs } from '../hooks/useDocs'
+import { useGitPulse } from '../hooks/useGitPulse'
 import { useProjectWikiBrief } from '../hooks/useProjectWikiBrief'
 import { useReloadOnRefresh } from '../hooks/useReloadOnRefresh'
 import { useAppStore } from '../state/store'
@@ -318,6 +319,7 @@ const ChevronRightIcon = () => (
 export function ProjectView({ projectId, projectRoot, projectName, initialDocPath, onSeeMoreRecent }: ProjectViewProps) {
   const { t } = useTranslation()
   const { docs, isScanning } = useDocs(projectId)
+  const gitPulse = useGitPulse(projectRoot)
   const metaFilter = useAppStore((s) => s.metaFilter)
   // FS9-B — 현재 프로젝트가 속한 workspace id. SSH 이면 MarkdownViewer 가 이미지 IPC 경유.
   const currentWorkspaceId = useAppStore((s) => {
@@ -1067,6 +1069,8 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
             <ProjectWikiPanel
               projectName={projectName}
               summary={wikiSummary}
+              gitPulse={gitPulse.summary}
+              gitPulseLoading={gitPulse.loading}
               brief={wikiBrief}
               briefLoading={wikiBriefLoading}
               docsByPath={docsByPath}

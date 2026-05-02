@@ -4,7 +4,7 @@
 > 작성일: 2026-05-02
 > 작성자: Codex
 > Mode: product-design + implementation plan
-> Status: ready for Sprint 1
+> Status: Sprint 2 complete, Sprint 3 ready
 
 ---
 
@@ -179,4 +179,3 @@ Done:
 3. Sprint 1 완료 전에는 Git Pulse 구현을 시작하지 않는다.
 4. 구현 전 핵심 원칙을 재확인한다: “오래된 문서 = 무조건 갱신 필요”가 아니다.
 5. 사용자 승인 없이 릴리스/태그/GitHub Release를 진행하지 않는다.
-

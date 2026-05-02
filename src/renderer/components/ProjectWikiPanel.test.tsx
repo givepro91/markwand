@@ -7,7 +7,7 @@
  */
 import { beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 import { fireEvent, renderWithProviders, screen, waitFor } from '../__test-utils__/render'
-import type { Doc } from '../../preload/types'
+import type { Doc, GitPulseSummary } from '../../preload/types'
 import type { ProjectWikiSummary } from '../lib/projectWiki'
 import type { ProjectWikiBrief } from '../lib/projectWikiBrief'
 import { ProjectWikiPanel } from './ProjectWikiPanel'
@@ -106,6 +106,22 @@ const brief: ProjectWikiBrief = {
   }],
 }
 
+const gitPulse: GitPulseSummary = {
+  available: true,
+  branch: 'main',
+  head: 'abc123',
+  dirtyCount: 1,
+  recentCommitCount: 4,
+  changedFileCount: 6,
+  changedAreas: ['src/renderer', 'docs'],
+  latestTag: 'v0.4.0-beta.10',
+  commits: [
+    { hash: 'abc123', subject: 'feat: add wiki trust signals', author: 'jay', relativeTime: '2 hours ago' },
+    { hash: 'def456', subject: 'fix: keep side panel usable', author: 'jay', relativeTime: '1 day ago' },
+  ],
+  cachedAt: Date.now(),
+}
+
 beforeEach(() => {
   if (!navigator.clipboard) {
     Object.defineProperty(navigator, 'clipboard', {
@@ -167,6 +183,43 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
     expect(copied).toContain('Project: markwand')
     expect(copied).toContain('- risky.md: /project/risky.md')
     expect(copied).toContain('## Completion Criteria')
+  })
+
+  it('shows local Git Pulse when a repository summary is available', () => {
+    renderWithProviders(
+      <ProjectWikiPanel
+        projectName="markwand"
+        summary={summary}
+        gitPulse={gitPulse}
+        gitPulseLoading={false}
+        brief={null}
+        briefLoading={false}
+        docsByPath={new Map([[doc.path, doc]])}
+        onOpenDoc={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText('projectWiki.git.title')).toBeInTheDocument()
+    expect(screen.getByText('projectWiki.git.branch')).toBeInTheDocument()
+    expect(screen.getByText('src/renderer')).toBeInTheDocument()
+    expect(screen.getByText('feat: add wiki trust signals')).toBeInTheDocument()
+  })
+
+  it('hides Git Pulse for unsupported projects such as SSH workspaces', () => {
+    renderWithProviders(
+      <ProjectWikiPanel
+        projectName="markwand"
+        summary={summary}
+        gitPulse={{ available: false, reason: 'ssh-unsupported' }}
+        gitPulseLoading={false}
+        brief={null}
+        briefLoading={false}
+        docsByPath={new Map([[doc.path, doc]])}
+        onOpenDoc={vi.fn()}
+      />
+    )
+
+    expect(screen.queryByText('projectWiki.git.title')).not.toBeInTheDocument()
   })
 
   it('opens the first related document from a suggested task card', async () => {

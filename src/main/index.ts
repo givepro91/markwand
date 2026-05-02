@@ -14,6 +14,7 @@ import { registerComposerHandlers } from './ipc/composer'
 import { registerDriftHandlers } from './ipc/drift'
 import { registerAnnotationHandlers } from './ipc/annotation'
 import { registerSearchHandlers } from './ipc/search'
+import { registerGitHandlers } from './ipc/git'
 import { registerSshIpcHandlers } from './ipc/ssh'
 import { setActiveWebContents as setSshActiveWebContents } from './transport/ssh/hostKeyPromptBridge'
 import { getStore } from './services/store'
@@ -100,6 +101,7 @@ async function initializeApp(): Promise<void> {
   registerDriftHandlers()
   registerAnnotationHandlers()
   registerSearchHandlers()
+  registerGitHandlers()
   registerShellHandlers()
   registerSshIpcHandlers()
 

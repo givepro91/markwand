@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useState, type ReactNode } from 'react'
 import { Badge, Button, EmptyState, toast } from './ui'
-import type { Doc } from '../../preload/types'
+import type { Doc, GitPulseSummary } from '../../preload/types'
 import {
   formatProjectWikiHandoffBrief,
   formatProjectWikiOnboardingBrief,
@@ -25,10 +25,120 @@ import type {
 interface ProjectWikiPanelProps {
   projectName: string
   summary: ProjectWikiSummary
+  gitPulse?: GitPulseSummary | null
+  gitPulseLoading?: boolean
   brief: ProjectWikiBrief | null
   briefLoading: boolean
   docsByPath: Map<string, Doc>
   onOpenDoc: (doc: Doc) => void
+}
+
+function GitPulseCard({
+  pulse,
+  loading = false,
+}: {
+  pulse?: GitPulseSummary | null
+  loading?: boolean
+}) {
+  const { t } = useTranslation()
+
+  if (loading) {
+    return (
+      <section
+        style={{
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--r-xl)',
+          padding: 'var(--sp-4)',
+          background: 'var(--bg-elev)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
+        <Badge variant="default" size="sm">{t('projectWiki.git.loading')}</Badge>
+      </section>
+    )
+  }
+
+  if (!pulse || !pulse.available) return null
+
+  const active = (pulse.recentCommitCount ?? 0) > 0 || (pulse.dirtyCount ?? 0) > 0
+
+  return (
+    <section
+      id="project-wiki-git-pulse"
+      style={{
+        border: '1px solid color-mix(in srgb, var(--accent) 18%, var(--border))',
+        borderRadius: 'var(--r-xl)',
+        padding: 'var(--sp-4)',
+        background:
+          'linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent) 0%, var(--bg-elev) 70%)',
+        boxShadow: 'var(--shadow-sm)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 'var(--sp-3)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--sp-3)', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-1)', minWidth: 0 }}>
+          <h2 style={{ margin: 0, fontSize: 'var(--fs-md)', fontWeight: 'var(--fw-semibold)', color: 'var(--text)' }}>
+            {t('projectWiki.git.title')}
+          </h2>
+          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--fs-sm)', lineHeight: 'var(--lh-relaxed)' }}>
+            {active ? t('projectWiki.git.activeSummary') : t('projectWiki.git.quietSummary')}
+          </p>
+        </div>
+        <Badge variant={active ? 'marker' : 'default'} size="sm">
+          {t('projectWiki.git.branch', { branch: pulse.branch ?? 'HEAD' })}
+        </Badge>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
+        <Badge variant="default" size="sm">{t('projectWiki.git.commits', { count: pulse.recentCommitCount ?? 0 })}</Badge>
+        <Badge variant="default" size="sm">{t('projectWiki.git.files', { count: pulse.changedFileCount ?? 0 })}</Badge>
+        {(pulse.dirtyCount ?? 0) > 0 && (
+          <Badge variant="danger" size="sm">{t('projectWiki.git.dirty', { count: pulse.dirtyCount ?? 0 })}</Badge>
+        )}
+        {pulse.latestTag && <Badge variant="success" size="sm">{t('projectWiki.git.latestTag', { tag: pulse.latestTag })}</Badge>}
+      </div>
+
+      {(pulse.changedAreas?.length ?? 0) > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-1)' }}>
+          <strong style={{ color: 'var(--text)', fontSize: 'var(--fs-xs)', fontWeight: 'var(--fw-semibold)' }}>
+            {t('projectWiki.git.areasTitle')}
+          </strong>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-1)' }}>
+            {pulse.changedAreas?.map((area) => (
+              <Badge key={area} variant="default" size="sm">{area}</Badge>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(pulse.commits?.length ?? 0) > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-1)' }}>
+          <strong style={{ color: 'var(--text)', fontSize: 'var(--fs-xs)', fontWeight: 'var(--fw-semibold)' }}>
+            {t('projectWiki.git.latestCommits')}
+          </strong>
+          {pulse.commits?.slice(0, 3).map((commit) => (
+            <div
+              key={commit.hash}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+                gap: 'var(--sp-2)',
+                alignItems: 'center',
+                color: 'var(--text-muted)',
+                fontSize: 'var(--fs-xs)',
+              }}
+            >
+              <code style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>{commit.hash}</code>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{commit.subject}</span>
+              <span>{commit.relativeTime}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
 }
 
 function Metric({ label, value }: { label: string; value: number | string }) {
@@ -1222,6 +1332,8 @@ function WikiSectionNav() {
 export function ProjectWikiPanel({
   projectName,
   summary,
+  gitPulse,
+  gitPulseLoading,
   brief,
   briefLoading,
   docsByPath,
@@ -1304,6 +1416,8 @@ export function ProjectWikiPanel({
         docsByPath={docsByPath}
         onOpenDoc={onOpenDoc}
       />
+
+      <GitPulseCard pulse={gitPulse} loading={gitPulseLoading} />
 
       <ProjectBriefCard
         projectName={projectName}

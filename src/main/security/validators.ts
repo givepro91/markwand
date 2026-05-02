@@ -73,6 +73,10 @@ export function parseScanDocsInput(raw: unknown): { projectId: string; force?: b
     .parse(raw)
 }
 
+export function parseGitSummaryInput(raw: unknown): { projectRoot: string } {
+  return z.object({ projectRoot: PathInput }).parse(raw)
+}
+
 export function parseSearchQueryInput(raw: unknown): {
   query: string
   limit: number
