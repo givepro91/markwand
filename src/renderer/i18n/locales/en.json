@@ -98,9 +98,9 @@
 
   "aiHandoff": {
     "copy": "Send to AI",
-    "copied": "Copied",
-    "copyAria": "Copy the current project summary for an AI tool",
-    "copySuccess": "Copied the project summary for AI.",
+    "copied": "Paste into Claude/Codex",
+    "copyAria": "Copy project context to paste into Claude or Codex",
+    "copySuccess": "Copied AI-ready context. Paste it into Claude or Codex next.",
     "copyError": "Could not copy the project summary."
   },
 
@@ -322,10 +322,10 @@
     "briefLoading": "Reading document evidence",
     "briefEmpty": "No useful document body found for a brief yet.",
     "evidenceTitle": "Evidence docs",
-    "copyHandoff": "Copy AI summary · Handoff",
-    "copyHandoffDone": "Copied",
-    "copyHandoffAria": "Copy project summary for AI",
-    "copyHandoffSuccess": "Copied the AI summary.",
+    "copyHandoff": "Hand off to AI · Handoff",
+    "copyHandoffDone": "Paste into Claude/Codex",
+    "copyHandoffAria": "Copy project context to paste into Claude or Codex",
+    "copyHandoffSuccess": "Copied AI-ready context. Paste it into Claude or Codex next.",
     "copyHandoffError": "Could not copy the AI summary.",
     "copyOnboardingBrief": "Copy starter brief · Onboarding",
     "copyOnboardingBriefDone": "Copied",

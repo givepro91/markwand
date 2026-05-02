@@ -90,7 +90,9 @@ describe('AiHandoffButton', () => {
 
     await waitFor(() => expect(writeText).toHaveBeenCalledOnce())
     const copied = writeText.mock.calls[0][0]
-    expect(copied).toContain('# Handoff Brief: markwand')
+    expect(copied).toContain('# AI Handoff: markwand')
+    expect(copied).toContain('Paste this into Claude, Codex, Cursor, or another AI tool')
+    expect(copied).toContain('## What I Need From You')
     expect(copied).toContain('Markdown docs: 2')
     expect(copied).toContain('Markwand makes docs easier to understand')
     expect(screen.getByRole('button', { name: 'aiHandoff.copyAria' })).toHaveTextContent('aiHandoff.copied')

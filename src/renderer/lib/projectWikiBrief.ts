@@ -222,6 +222,27 @@ function formatSuggestedTask(task: WikiSuggestedTask): string[] {
   return lines
 }
 
+const pulseFocusText: Record<ProjectWikiSummary['pulse']['focus'], string> = {
+  repairReferences: 'Repair broken or stale document references before relying on summaries.',
+  refreshStaleDocs: 'Review only documents that are used as current guidance; preserve old plans as records.',
+  completeMetadata: 'Normalize document source/status metadata so the wiki can classify docs reliably.',
+  buildOnboardingBrief: 'Turn the first reading path into a short onboarding brief.',
+  extractDecisionTimeline: 'Extract decisions, rationale, and unresolved questions from planning/design docs.',
+  readFirst: 'Start from the suggested reading path; no major blocker is visible.',
+}
+
+const taskSituationText: Record<WikiSuggestedTaskIntent, string> = {
+  repairReferences: 'Repair broken or stale document references before relying on summaries.',
+  refreshStaleDocs: 'Review only freshness-sensitive current guides and operational docs.',
+  completeMetadata: 'Clarify document source/status metadata before trusting automated classification.',
+  buildOnboardingBrief: 'Turn the first reading path into a short onboarding brief.',
+  extractDecisionTimeline: 'Extract decisions, rationale, and unresolved questions from planning/design docs.',
+}
+
+function formatDocLine(doc: { name: string; path: string }): string {
+  return `- ${doc.name}: ${doc.path}`
+}
+
 export function formatProjectWikiHandoffBrief(
   projectName: string,
   summary: ProjectWikiSummary,
@@ -229,21 +250,56 @@ export function formatProjectWikiHandoffBrief(
   gitContext?: ProjectWikiGitContext | null
 ): string {
   const issueCount = summary.risks.missingRefs + summary.risks.staleRefs
+  const recommendedTask = summary.suggestedTasks[0]
+  const markwandReading = recommendedTask ? taskSituationText[recommendedTask.intent] : pulseFocusText[summary.pulse.focus]
   const lines: string[] = [
-    `# Handoff Brief: ${projectName}`,
+    `# AI Handoff: ${projectName}`,
     '',
-    '## Snapshot',
-    `- Markdown docs: ${summary.markdownDocs}`,
-    `- Recently changed docs: ${summary.recentDocs}`,
-    `- Unread docs: ${summary.unreadDocs}`,
-    `- Reference issues: ${issueCount} (${summary.risks.missingRefs} broken, ${summary.risks.staleRefs} stale)`,
+    '> Paste this into Claude, Codex, Cursor, or another AI tool as project context before asking it to act.',
+    '',
+    '## What I Need From You',
+    recommendedTask
+      ? `- Primary task: ${taskTitles[recommendedTask.intent]} (${recommendedTask.priority}).`
+      : '- Primary task: understand the project, identify the safest next action, and avoid acting on stale assumptions.',
+    recommendedTask
+      ? `- Task instruction: ${taskPrompts[recommendedTask.intent]}`
+      : '- Task instruction: explain the current direction, flag risky or outdated docs, then propose one concrete next step.',
+    '- Output format: findings, recommended actions, open questions, and confidence/evidence notes.',
+    '',
+    '## Current Situation',
+    `- Project: ${projectName}`,
+    `- Markwand reading: ${markwandReading}`,
     `- Trust score: ${summary.trust.score}/100 (${summary.trust.level})`,
+    `- Reference issues: ${issueCount} (${summary.risks.missingRefs} broken, ${summary.risks.staleRefs} stale)`,
+    `- Activity: ${summary.recentDocs} docs changed in the last 7 days; ${summary.unreadDocs} unread docs.`,
+    '',
+    '## Guardrails',
+    '- Do not treat old plans, work logs, or archived notes as docs that must be updated automatically.',
+    '- Current guides and operational docs are the highest-risk docs to verify before implementation, deploy, migration, or incident work.',
+    '- Separate verified facts from assumptions. Ask for confirmation when a reference is broken, ambiguous, or missing from the loaded docs.',
+    '- Keep actions small and evidence-linked; do not rewrite broad documentation unless the task explicitly asks for it.',
+    '',
+    '## Project Snapshot',
+    `- Markdown docs: ${summary.markdownDocs}`,
+    `- Image/docs assets: ${summary.imageDocs}`,
+    `- Relationship graph: ${summary.relationships.checkedDocs} checked docs, ${summary.relationships.totalRefs} references.`,
     '',
   ]
 
+  if (summary.onboardingPath.length > 0 || summary.risks.docsWithRisk.length > 0) {
+    lines.push('## Open These First')
+    for (const item of summary.risks.docsWithRisk.slice(0, 3)) {
+      lines.push(`- Check issue doc: ${item.name}: ${item.path} (${item.missing} broken, ${item.stale} stale)`)
+    }
+    for (const item of summary.onboardingPath.slice(0, 5)) {
+      lines.push(`- Read start doc: ${item.name}: ${item.path}`)
+    }
+    lines.push('')
+  }
+
   if (summary.trust.signals.length > 0) {
     lines.push('## Trust Signals')
-    for (const signal of summary.trust.signals) {
+    for (const signal of summary.trust.signals.slice(0, 6)) {
       const impact = signal.impact > 0 ? `+${signal.impact}` : String(signal.impact)
       lines.push(`- ${signal.key}: ${signal.count} (${impact} pts)`)
     }
@@ -259,7 +315,7 @@ export function formatProjectWikiHandoffBrief(
 
   if (brief) {
     lines.push('## Project Brief', brief.headline)
-    for (const item of brief.overview) {
+    for (const item of brief.overview.slice(0, 4)) {
       lines.push(`- ${item}`)
     }
     lines.push('')
@@ -267,19 +323,11 @@ export function formatProjectWikiHandoffBrief(
     if (brief.evidence.length > 0) {
       lines.push('## Evidence Docs')
       for (const item of brief.evidence) {
-        lines.push(`- ${item.title || item.name}: ${item.path}`)
+        lines.push(formatDocLine({ name: item.title || item.name, path: item.path }))
         if (item.excerpt) lines.push(`  - ${item.excerpt}`)
       }
       lines.push('')
     }
-  }
-
-  if (summary.onboardingPath.length > 0) {
-    lines.push('## Suggested Reading Order')
-    for (const item of summary.onboardingPath) {
-      lines.push(`- ${item.name}: ${item.path}`)
-    }
-    lines.push('')
   }
 
   if (summary.roleGroups?.length) {
@@ -287,7 +335,7 @@ export function formatProjectWikiHandoffBrief(
     for (const group of summary.roleGroups) {
       lines.push(`- ${roleTitles[group.role]}: ${group.count} docs`)
       lines.push(`  - Guidance: ${roleGuidance[group.role]}`)
-      for (const item of group.docs.slice(0, 3)) {
+      for (const item of group.docs.slice(0, 2)) {
         lines.push(`  - ${item.name}: ${item.path}`)
       }
     }
@@ -298,7 +346,7 @@ export function formatProjectWikiHandoffBrief(
     lines.push('## Knowledge Map')
     for (const cluster of summary.clusters) {
       lines.push(`- ${cluster.key}: ${cluster.count} docs`)
-      for (const item of cluster.docs) {
+      for (const item of cluster.docs.slice(0, 3)) {
         lines.push(`  - ${item.name}: ${item.path}`)
       }
     }
@@ -307,7 +355,7 @@ export function formatProjectWikiHandoffBrief(
 
   if (summary.docDebt.length > 0) {
     lines.push('## Doc Debt Radar')
-    for (const item of summary.docDebt) {
+    for (const item of summary.docDebt.slice(0, 8)) {
       const rolePart = item.role ? `, role ${item.role}` : ''
       lines.push(`- ${item.name}: score ${item.score}${rolePart}, ${item.ageDays}d old (${item.reasons.join(', ')})`)
       lines.push(`  - ${item.path}`)
@@ -321,18 +369,18 @@ export function formatProjectWikiHandoffBrief(
       `- Checked docs: ${summary.relationships.checkedDocs}`,
       `- References: ${summary.relationships.totalRefs} (${summary.relationships.okRefs} ok, ${summary.relationships.missingRefs} broken, ${summary.relationships.staleRefs} stale)`
     )
-    for (const hub of summary.relationships.hubs.slice(0, 3)) {
+    for (const hub of summary.relationships.hubs.slice(0, 5)) {
       lines.push(`- Hub: ${hub.name}: ${hub.inbound} inbound, ${hub.outbound} outbound, ${hub.riskRefs} risky (${hub.path})`)
     }
-    for (const link of summary.relationships.riskyLinks.slice(0, 3)) {
+    for (const link of summary.relationships.riskyLinks.slice(0, 5)) {
       lines.push(`- Risk link: ${link.sourceName} -> ${link.targetName} (${link.status}, line ${link.line}, ${link.raw})`)
     }
     lines.push('')
   }
 
   if (summary.suggestedTasks.length > 0) {
-    lines.push('## AI Task Suggestions')
-    for (const task of summary.suggestedTasks) {
+    lines.push('## Additional AI Task Suggestions')
+    for (const task of summary.suggestedTasks.slice(0, 4)) {
       lines.push(...formatSuggestedTask(task))
     }
     lines.push('')
@@ -340,15 +388,14 @@ export function formatProjectWikiHandoffBrief(
 
   if (summary.risks.docsWithRisk.length > 0) {
     lines.push('## Risk Board')
-    for (const item of summary.risks.docsWithRisk) {
+    for (const item of summary.risks.docsWithRisk.slice(0, 8)) {
       lines.push(`- ${item.name}: ${item.missing} broken, ${item.stale} stale refs (${item.path})`)
     }
     lines.push('')
   }
 
-  const recommendedTask = summary.suggestedTasks[0]
   lines.push(
-    '## Recommended AI Task',
+    '## If You Only Do One Thing',
     recommendedTask
       ? taskPrompts[recommendedTask.intent]
       : 'Use this context to explain the current project direction, identify risky or outdated docs, and propose the next concrete action.'

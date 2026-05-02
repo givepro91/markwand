@@ -178,7 +178,8 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
     fireEvent.click(screen.getByRole('button', { name: 'projectWiki.aha.copyHandoffAria' }))
 
     await waitFor(() => expect(writeText).toHaveBeenCalledOnce())
-    expect(writeText.mock.calls[0][0]).toContain('# Handoff Brief: markwand')
+    expect(writeText.mock.calls[0][0]).toContain('# AI Handoff: markwand')
+    expect(writeText.mock.calls[0][0]).toContain('## What I Need From You')
   })
 
   it('keeps wiki section navigation collapsed until the user asks for it', async () => {
