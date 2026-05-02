@@ -4,13 +4,13 @@
 - **Goal**: 다음 라운드 제품 매력 강화 — Project Wiki를 "읽는 지도"에서 "다음 행동을 제안하는 지도"로 진화.
 - **Phase**: **building** — 비개발자 친화 UX 카피 정리 완료, Ask This Project 기반 확장 준비.
 - **Blocker**: none
-- **Last Activity**: Comfortable actions + collapsed wiki nav — 문서 액션을 아이콘-only에서 검색/문제/목차 라벨 버튼으로 바꾸고, Wiki 섹션 이동은 기본 접힘 상태로 전환해 본문 시야 경쟁을 줄임. QA: targeted vitest 17 PASS · typecheck PASS · full test 429 PASS · build PASS (2026-05-02).
+- **Last Activity**: Wiki section nav placement — 위키 섹션 버튼을 Pulse/Brief 사이 standalone 위치에서 Project Wiki 헤더 우측 액션으로 이동해 소속과 목적을 명확화. QA: targeted vitest 11 PASS · typecheck PASS · full test 429 PASS · build PASS (2026-05-02).
 - **Remote**: `origin/main` = `21c0f9e`; tag `v0.4.0-beta.10` = `deacb77`; Release: https://github.com/givepro91/markwand/releases/tag/v0.4.0-beta.10
 
 ## Recently Done
-1. Comfortable actions + collapsed wiki nav — 문서 액션 라벨 버튼화, Wiki 섹션 이동 기본 접힘 처리.
-2. UX audit polish — 아이콘-only 버튼 hover title 기본화, 목차 전용 rail 중복 라벨 제거.
-3. Search-in-bar + TOC-only rail — 문서 검색은 읽기 바 안에서 펼치고, 목차 아이콘은 목차 전용 rail만 열도록 분리.
+1. Wiki section nav placement — 위키 섹션 버튼을 Project Wiki 헤더 액션으로 이동해 위치 모호성 해소.
+2. Comfortable actions + collapsed wiki nav — 문서 액션 라벨 버튼화, Wiki 섹션 이동 기본 접힘 처리.
+3. UX audit polish — 아이콘-only 버튼 hover title 기본화, 목차 전용 rail 중복 라벨 제거.
 
 ## Release Artifacts
 | Artifact | SHA256 |

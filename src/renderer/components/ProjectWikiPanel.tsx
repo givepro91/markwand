@@ -1091,9 +1091,6 @@ function WikiSectionNav() {
     <nav
       aria-label={t('projectWiki.navAria')}
       style={{
-        position: 'sticky',
-        top: 'var(--sp-3)',
-        zIndex: 'var(--z-sticky)',
         display: 'flex',
         flexDirection: 'column',
         gap: 'var(--sp-2)',
@@ -1105,6 +1102,7 @@ function WikiSectionNav() {
         boxShadow: 'var(--shadow-sm)',
         width: 'fit-content',
         maxWidth: '100%',
+        flexShrink: 0,
       }}
     >
       <Button
@@ -1181,13 +1179,16 @@ export function ProjectWikiPanel({
           boxShadow: 'var(--shadow-sm)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
-          <Badge variant="default" size="sm">{t('projectWiki.badge')}</Badge>
-          <Badge variant={summary.trust.level === 'weak' ? 'danger' : summary.trust.level === 'strong' ? 'success' : 'default'} size="sm">
-            {t('projectWiki.trustBadge', { score: summary.trust.score })}
-          </Badge>
-          {primarySource && <Badge variant="marker" size="sm">{primarySource.source}</Badge>}
-          {primaryStatus && <Badge variant="success" size="sm">{primaryStatus.status}</Badge>}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--sp-3)', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', flexWrap: 'wrap', minWidth: 0 }}>
+            <Badge variant="default" size="sm">{t('projectWiki.badge')}</Badge>
+            <Badge variant={summary.trust.level === 'weak' ? 'danger' : summary.trust.level === 'strong' ? 'success' : 'default'} size="sm">
+              {t('projectWiki.trustBadge', { score: summary.trust.score })}
+            </Badge>
+            {primarySource && <Badge variant="marker" size="sm">{primarySource.source}</Badge>}
+            {primaryStatus && <Badge variant="success" size="sm">{primaryStatus.status}</Badge>}
+          </div>
+          <WikiSectionNav />
         </div>
         <h1
           style={{
@@ -1216,8 +1217,6 @@ export function ProjectWikiPanel({
         docsByPath={docsByPath}
         onOpenDoc={onOpenDoc}
       />
-
-      <WikiSectionNav />
 
       <ProjectBriefCard
         projectName={projectName}

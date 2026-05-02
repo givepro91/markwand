@@ -137,6 +137,8 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
       />
     )
 
+    const header = screen.getByRole('banner')
+    expect(header).toContainElement(screen.getByRole('button', { name: 'projectWiki.navToggle' }))
     expect(screen.queryByRole('button', { name: 'projectWiki.navBrief' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'projectWiki.navToggle' }))
