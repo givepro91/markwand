@@ -352,6 +352,8 @@
     "linkGraphInbound": "받음 {{count}}",
     "linkGraphOutbound": "보냄 {{count}}",
     "linkGraphRiskShort": "위험 {{count}}",
+    "linkGraphOpenHubAria": "문서 허브 {{doc}} 열기",
+    "linkGraphOpenRiskAria": "{{doc}} {{line}}행 위험 링크 열기",
     "linkGraphLine": "{{line}}행",
     "linkGraphStatus": {
       "missing": "깨짐",

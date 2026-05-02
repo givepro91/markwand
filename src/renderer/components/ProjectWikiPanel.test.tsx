@@ -280,6 +280,26 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
     expect(onOpenDoc).toHaveBeenCalledWith(doc)
   })
 
+  it('opens Link Graph hub and risky-link source documents', () => {
+    const onOpenDoc = vi.fn()
+    renderWithProviders(
+      <ProjectWikiPanel
+        projectName="markwand"
+        summary={summary}
+        brief={null}
+        briefLoading={false}
+        docsByPath={new Map([[doc.path, doc]])}
+        onOpenDoc={onOpenDoc}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'projectWiki.linkGraphOpenHubAria' }))
+    fireEvent.click(screen.getByRole('button', { name: 'projectWiki.linkGraphOpenRiskAria' }))
+
+    expect(onOpenDoc).toHaveBeenNthCalledWith(1, doc)
+    expect(onOpenDoc).toHaveBeenNthCalledWith(2, doc)
+  })
+
   it('opens the Project Pulse focus document', async () => {
     const onOpenDoc = vi.fn()
     renderWithProviders(

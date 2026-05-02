@@ -305,6 +305,38 @@ describe('buildProjectWikiSummary', () => {
     ])
   })
 
+  it('excludes internal tooling docs from relationship risk totals and hubs', () => {
+    const readme = doc('README.md')
+    const tooling = doc('.agents/skills/vercel-react-best-practices/README.md')
+    const missingTarget = '/project/.agents/skills/vercel-react-best-practices/rules/_template.md'
+
+    const summary = buildProjectWikiSummary(
+      [readme, tooling],
+      {
+        [readme.path]: drift(readme.path, 0, 0, [
+          ref(readme.path, 'ok', { raw: '@README.md', line: 1 }),
+        ]),
+        [tooling.path]: drift(tooling.path, 3, 0, [
+          ref(missingTarget, 'missing', { raw: '`rules/_template.md`', kind: 'inline', line: 48 }),
+        ]),
+      },
+      {},
+      NOW
+    )
+
+    expect(summary.risks.missingRefs).toBe(0)
+    expect(summary.relationships).toMatchObject({
+      checkedDocs: 1,
+      totalRefs: 1,
+      okRefs: 1,
+      missingRefs: 0,
+      staleRefs: 0,
+    })
+    expect(summary.relationships.hubs.map((hub) => hub.name)).toEqual(['README.md'])
+    expect(summary.relationships.riskyLinks).toEqual([])
+    expect(summary.suggestedTasks.some((task) => task.intent === 'repairReferences')).toBe(false)
+  })
+
   it('clusters docs into a knowledge map by document role', () => {
     const docs: Doc[] = [
       doc('README.md'),

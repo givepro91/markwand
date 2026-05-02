@@ -1002,6 +1002,7 @@ function RelationshipGraph({
               <button
                 key={hub.path}
                 type="button"
+                aria-label={t('projectWiki.linkGraphOpenHubAria', { doc: hub.name })}
                 onClick={() => openPath(hub.path)}
                 disabled={!docsByPath.has(hub.path)}
                 style={{
@@ -1017,6 +1018,9 @@ function RelationshipGraph({
                   flexDirection: 'column',
                   gap: 'var(--sp-2)',
                   minWidth: 0,
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  overflow: 'hidden',
                 }}
               >
                 <span style={{ display: 'block', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hub.name}</span>
@@ -1041,6 +1045,7 @@ function RelationshipGraph({
               <button
                 key={`${link.sourcePath}:${link.line}:${link.raw}`}
                 type="button"
+                aria-label={t('projectWiki.linkGraphOpenRiskAria', { doc: link.sourceName, line: link.line })}
                 onClick={() => openPath(link.sourcePath)}
                 disabled={!docsByPath.has(link.sourcePath)}
                 style={{
@@ -1056,10 +1061,13 @@ function RelationshipGraph({
                   flexDirection: 'column',
                   gap: 'var(--sp-1)',
                   minWidth: 0,
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  overflow: 'hidden',
                 }}
               >
-                <span style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--sp-2)', alignItems: 'center', minWidth: 0 }}>
-                  <span style={{ display: 'block', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--sp-2)', alignItems: 'center', minWidth: 0, flexWrap: 'wrap' }}>
+                  <span style={{ display: 'block', minWidth: 0, flex: '1 1 220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {link.sourceName} → {link.targetName}
                   </span>
                   <span style={{ flexShrink: 0 }}>

@@ -612,6 +612,10 @@ function basename(path: string): string {
   return path.split(/[\\/]/).pop() || path
 }
 
+function isRelationshipGraphRole(role: WikiDocRole): boolean {
+  return role !== 'tooling'
+}
+
 function buildRelationshipMap(
   docs: Doc[],
   driftReports: Record<string, DriftReport>,
@@ -641,6 +645,7 @@ function buildRelationshipMap(
   }
 
   for (const sourceDoc of docs) {
+    if (!isRelationshipGraphRole(classifyWikiDocRole(sourceDoc))) continue
     const report = driftReports[sourceDoc.path]
     if (!report) continue
 
@@ -656,7 +661,7 @@ function buildRelationshipMap(
 
     for (const ref of report.references) {
       const targetDoc = docsByPath.get(ref.resolvedPath) ?? (ref.fallbackPath ? docsByPath.get(ref.fallbackPath) : undefined)
-      if (targetDoc) {
+      if (targetDoc && isRelationshipGraphRole(classifyWikiDocRole(targetDoc))) {
         ensureHub(targetDoc).inbound += 1
       }
 
@@ -1084,10 +1089,11 @@ export function buildProjectWikiSummary(
   for (const doc of markdownDocs) {
     const report = driftReports[doc.path]
     if (!report) continue
+    const role = classifyWikiDocRole(doc)
+    if (role === 'tooling') continue
     missingRefs += report.counts.missing
     staleRefs += report.counts.stale
     if (report.counts.missing > 0 || report.counts.stale > 0) {
-      const role = classifyWikiDocRole(doc)
       const policy = ROLE_POLICY[role]
       docsWithRisk.push({
         path: doc.path,

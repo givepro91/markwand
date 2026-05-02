@@ -352,6 +352,8 @@
     "linkGraphInbound": "{{count}} in",
     "linkGraphOutbound": "{{count}} out",
     "linkGraphRiskShort": "{{count}} risky",
+    "linkGraphOpenHubAria": "Open document hub {{doc}}",
+    "linkGraphOpenRiskAria": "Open risky link in {{doc}} line {{line}}",
     "linkGraphLine": "line {{line}}",
     "linkGraphStatus": {
       "missing": "Broken",
