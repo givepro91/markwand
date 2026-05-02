@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Button, IconButton } from './ui'
 import { WorkspaceManageModal } from './WorkspaceManageModal'
@@ -126,35 +127,40 @@ export function WorkspacePicker({
   const [showManage, setShowManage] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
+  const menuRef = useRef<HTMLDivElement | null>(null)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null)
 
+  const syncMenuPosition = () => {
+    const rect = triggerRef.current?.getBoundingClientRect()
+    if (!rect) return
+    setMenuPosition({
+      top: Math.round(rect.bottom + 8),
+      left: Math.round(rect.left),
+    })
+  }
+
   useEffect(() => {
     if (!menuOpen) return
-    const syncPosition = () => {
-      const rect = triggerRef.current?.getBoundingClientRect()
-      if (!rect) return
-      setMenuPosition({
-        top: Math.round(rect.bottom + 8),
-        left: Math.round(rect.left),
-      })
-    }
-    syncPosition()
+    syncMenuPosition()
     const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setMenuOpen(false)
+      const target = event.target as Node
+      if (!rootRef.current?.contains(target) && !menuRef.current?.contains(target)) {
+        setMenuOpen(false)
+      }
     }
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setMenuOpen(false)
     }
     document.addEventListener('pointerdown', onPointerDown)
     document.addEventListener('keydown', onKeyDown)
-    window.addEventListener('resize', syncPosition)
-    window.addEventListener('scroll', syncPosition, true)
+    window.addEventListener('resize', syncMenuPosition)
+    window.addEventListener('scroll', syncMenuPosition, true)
     return () => {
       document.removeEventListener('pointerdown', onPointerDown)
       document.removeEventListener('keydown', onKeyDown)
-      window.removeEventListener('resize', syncPosition)
-      window.removeEventListener('scroll', syncPosition, true)
+      window.removeEventListener('resize', syncMenuPosition)
+      window.removeEventListener('scroll', syncMenuPosition, true)
     }
   }, [menuOpen])
 
@@ -182,7 +188,10 @@ export function WorkspacePicker({
           aria-label={t('picker.select')}
           aria-haspopup="listbox"
           aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((open) => !open)}
+          onClick={() => {
+            if (!menuOpen) syncMenuPosition()
+            setMenuOpen((open) => !open)
+          }}
           style={{
             display: 'grid',
             gridTemplateColumns: 'minmax(0, 1fr) auto',
@@ -213,13 +222,15 @@ export function WorkspacePicker({
           </span>
         </button>
 
-        {menuOpen && (
+        {menuOpen && createPortal(
           <div
+            ref={menuRef}
+            data-workspace-picker-menu=""
             role="listbox"
             aria-label={t('picker.select')}
             style={{
               position: 'fixed',
-              top: menuPosition ? `${menuPosition.top}px` : 'calc(100% + var(--sp-2))',
+              top: menuPosition ? `${menuPosition.top}px` : 0,
               left: menuPosition ? `${menuPosition.left}px` : 0,
               zIndex: 'calc(var(--z-modal) + 40)',
               width: 'min(360px, calc(100vw - 24px))',
@@ -282,7 +293,8 @@ export function WorkspacePicker({
                 />
               )}
             </div>
-          </div>
+          </div>,
+          document.body
         )}
         <IconButton
           aria-label={t('picker.manage')}

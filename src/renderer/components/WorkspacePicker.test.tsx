@@ -41,6 +41,8 @@ describe('WorkspacePicker', () => {
     fireEvent.click(screen.getByRole('button', { name: 'picker.select' }))
 
     const listbox = screen.getByRole('listbox', { name: 'picker.select' })
+    expect(listbox.parentElement).toBe(document.body)
+    expect(listbox).toHaveAttribute('data-workspace-picker-menu')
     expect(listbox).toHaveStyle({
       position: 'fixed',
       zIndex: 'calc(var(--z-modal) + 40)',
