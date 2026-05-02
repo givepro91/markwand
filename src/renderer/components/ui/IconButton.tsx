@@ -70,7 +70,7 @@ export function IconButton({
       disabled={disabled}
       aria-label={ariaLabel}
       aria-pressed={ariaPressed}
-      title={title}
+      title={title ?? ariaLabel}
       onMouseEnter={(e) => {
         if (disabled) return
         const el = e.currentTarget

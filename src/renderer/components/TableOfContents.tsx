@@ -62,9 +62,11 @@ interface TableOfContentsProps {
   headings: Heading[]
   /** 커스텀 스크롤 핸들러. 미전달 시 document.getElementById fallback 사용. */
   onHeadingClick?: (id: string) => void
+  /** 주변 패널이 이미 제목을 제공할 때 중복 heading 을 숨긴다. */
+  showTitle?: boolean
 }
 
-export function TableOfContents({ headings, onHeadingClick }: TableOfContentsProps) {
+export function TableOfContents({ headings, onHeadingClick, showTitle = true }: TableOfContentsProps) {
   const { t } = useTranslation()
   // id 중복 처리: 같은 slug가 여러 번 등장하면 -1, -2 suffix 추가
   const items = useMemo(() => {
@@ -93,20 +95,22 @@ export function TableOfContents({ headings, onHeadingClick }: TableOfContentsPro
 
   return (
     <nav aria-label={t('toc.aria')} style={{ width: '100%' }}>
-      <div
-        style={{
-          fontSize: 'var(--fs-xs)',
-          fontWeight: 'var(--fw-semibold)',
-          color: 'var(--text-muted)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-          marginBottom: 'var(--sp-2)',
-          paddingBottom: 'var(--sp-2)',
-          borderBottom: '1px solid var(--border)',
-        }}
-      >
-        {t('toc.title')}
-      </div>
+      {showTitle && (
+        <div
+          style={{
+            fontSize: 'var(--fs-xs)',
+            fontWeight: 'var(--fw-semibold)',
+            color: 'var(--text-muted)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            marginBottom: 'var(--sp-2)',
+            paddingBottom: 'var(--sp-2)',
+            borderBottom: '1px solid var(--border)',
+          }}
+        >
+          {t('toc.title')}
+        </div>
+      )}
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
         {items.map((h, idx) => (
           <li key={`${h.id}-${idx}`}>

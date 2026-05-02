@@ -40,4 +40,16 @@ describe('TableOfContents', () => {
 
     expect(onHeadingClick).toHaveBeenCalledWith('nova-state')
   })
+
+  it('can hide its internal title when the surrounding rail already labels the section', () => {
+    renderWithProviders(
+      <TableOfContents
+        headings={[{ level: 1, id: 'nova-state', text: 'Nova State' }]}
+        showTitle={false}
+      />
+    )
+
+    expect(screen.queryByText('toc.title')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Nova State' })).toBeInTheDocument()
+  })
 })

@@ -1088,22 +1088,22 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
                 background: 'color-mix(in srgb, var(--bg-elev) 92%, var(--bg))',
               }}
             >
-              <div
-                role="tablist"
-                aria-label={t('projectView.documentTools')}
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  display: 'grid',
-                  gridTemplateColumns: canShowDriftTool && hasTocTool ? '1fr 1fr' : '1fr',
-                  gap: '4px',
-                  padding: '3px',
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--r-pill)',
-                  background: 'var(--bg)',
-                }}
-              >
-                {canShowDriftTool && (
+              {canShowDriftTool && hasTocTool ? (
+                <div
+                  role="tablist"
+                  aria-label={t('projectView.documentTools')}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '4px',
+                    padding: '3px',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--r-pill)',
+                    background: 'var(--bg)',
+                  }}
+                >
                   <button
                     type="button"
                     role="tab"
@@ -1122,8 +1122,6 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
                   >
                     {t('projectView.issuesTab')}
                   </button>
-                )}
-                {hasTocTool && (
                   <button
                     type="button"
                     role="tab"
@@ -1142,8 +1140,23 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
                   >
                     {t('projectView.tocTab')}
                   </button>
-                )}
-              </div>
+                </div>
+              ) : (
+                <strong
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    fontSize: 'var(--fs-md)',
+                    fontWeight: 'var(--fw-semibold)',
+                    color: 'var(--text)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {showTocRail ? t('projectView.tocTab') : t('projectView.issuesTab')}
+                </strong>
+              )}
               <IconButton
                 aria-label={t('projectView.closeDocumentTools')}
                 size="sm"
@@ -1177,17 +1190,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
                   boxShadow: 'var(--shadow-sm)',
                 }}
               >
-                <div
-                  style={{
-                    fontSize: 'var(--fs-sm)',
-                    fontWeight: 'var(--fw-semibold)',
-                    color: 'var(--text)',
-                    marginBottom: 'var(--sp-2)',
-                  }}
-                >
-                  {t('toc.title')}
-                </div>
-                <TableOfContents headings={headings} onHeadingClick={handleTocClick} />
+                <TableOfContents headings={headings} onHeadingClick={handleTocClick} showTitle={false} />
               </section>
             )}
           </aside>
