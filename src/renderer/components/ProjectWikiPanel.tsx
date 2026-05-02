@@ -37,13 +37,18 @@ interface ProjectWikiPanelProps {
 function GitPulseCard({
   pulse,
   context,
+  docsByPath,
+  onOpenDoc,
   loading = false,
 }: {
   pulse?: GitPulseSummary | null
   context?: ProjectWikiGitContext | null
+  docsByPath: Map<string, Doc>
+  onOpenDoc: (doc: Doc) => void
   loading?: boolean
 }) {
   const { t } = useTranslation()
+  const [detailsOpen, setDetailsOpen] = useState(false)
 
   if (loading) {
     return (
@@ -103,19 +108,6 @@ function GitPulseCard({
         {pulse.latestTag && <Badge variant="success" size="sm">{t('projectWiki.git.latestTag', { tag: pulse.latestTag })}</Badge>}
       </div>
 
-      {(pulse.changedAreas?.length ?? 0) > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-1)' }}>
-          <strong style={{ color: 'var(--text)', fontSize: 'var(--fs-xs)', fontWeight: 'var(--fw-semibold)' }}>
-            {t('projectWiki.git.areasTitle')}
-          </strong>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-1)' }}>
-            {pulse.changedAreas?.map((area) => (
-              <Badge key={area} variant="default" size="sm">{area}</Badge>
-            ))}
-          </div>
-        </div>
-      )}
-
       {(context?.insights.length ?? 0) > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
           <strong style={{ color: 'var(--text)', fontSize: 'var(--fs-xs)', fontWeight: 'var(--fw-semibold)' }}>
@@ -123,41 +115,92 @@ function GitPulseCard({
           </strong>
           <div style={{ display: 'grid', gap: 'var(--sp-2)' }}>
             {context?.insights.map((insight) => (
-              <GitInsightRow key={`${insight.kind}:${insight.doc?.path ?? insight.changedFile ?? 'work'}`} insight={insight} />
+              <GitInsightRow
+                key={`${insight.kind}:${insight.doc?.path ?? insight.changedFile ?? 'work'}`}
+                insight={insight}
+                doc={insight.doc ? docsByPath.get(insight.doc.path) : undefined}
+                onOpenDoc={onOpenDoc}
+              />
             ))}
           </div>
         </div>
       )}
 
-      {(pulse.commits?.length ?? 0) > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-1)' }}>
-          <strong style={{ color: 'var(--text)', fontSize: 'var(--fs-xs)', fontWeight: 'var(--fw-semibold)' }}>
-            {t('projectWiki.git.latestCommits')}
-          </strong>
-          {pulse.commits?.slice(0, 3).map((commit) => (
+      {((pulse.changedAreas?.length ?? 0) > 0 || (pulse.commits?.length ?? 0) > 0) && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setDetailsOpen((prev) => !prev)}
+            aria-expanded={detailsOpen}
+            aria-controls="project-wiki-git-details"
+          >
+            {detailsOpen ? t('projectWiki.git.detailsHide') : t('projectWiki.git.detailsShow')}
+          </Button>
+          {detailsOpen && (
             <div
-              key={commit.hash}
+              id="project-wiki-git-details"
               style={{
-                display: 'grid',
-                gridTemplateColumns: 'auto minmax(0, 1fr) auto',
-                gap: 'var(--sp-2)',
-                alignItems: 'center',
-                color: 'var(--text-muted)',
-                fontSize: 'var(--fs-xs)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 'var(--sp-3)',
+                borderTop: '1px solid var(--border)',
+                paddingTop: 'var(--sp-3)',
               }}
             >
-              <code style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>{commit.hash}</code>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{commit.subject}</span>
-              <span>{commit.relativeTime}</span>
+              {(pulse.changedAreas?.length ?? 0) > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-1)' }}>
+                  <strong style={{ color: 'var(--text)', fontSize: 'var(--fs-xs)', fontWeight: 'var(--fw-semibold)' }}>
+                    {t('projectWiki.git.areasTitle')}
+                  </strong>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-1)' }}>
+                    {pulse.changedAreas?.map((area) => (
+                      <Badge key={area} variant="default" size="sm">{area}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {(pulse.commits?.length ?? 0) > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-1)' }}>
+                  <strong style={{ color: 'var(--text)', fontSize: 'var(--fs-xs)', fontWeight: 'var(--fw-semibold)' }}>
+                    {t('projectWiki.git.latestCommits')}
+                  </strong>
+                  {pulse.commits?.slice(0, 3).map((commit) => (
+                    <div
+                      key={commit.hash}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+                        gap: 'var(--sp-2)',
+                        alignItems: 'center',
+                        color: 'var(--text-muted)',
+                        fontSize: 'var(--fs-xs)',
+                      }}
+                    >
+                      <code style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>{commit.hash}</code>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{commit.subject}</span>
+                      <span>{commit.relativeTime}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          ))}
+          )}
         </div>
       )}
     </section>
   )
 }
 
-function GitInsightRow({ insight }: { insight: WikiGitInsight }) {
+function GitInsightRow({
+  insight,
+  doc,
+  onOpenDoc,
+}: {
+  insight: WikiGitInsight
+  doc?: Doc
+  onOpenDoc: (doc: Doc) => void
+}) {
   const { t } = useTranslation()
   const title = t(`projectWiki.git.insight.${insight.kind}.title`)
   const detail = t(`projectWiki.git.insight.${insight.kind}.detail`, {
@@ -181,9 +224,21 @@ function GitInsightRow({ insight }: { insight: WikiGitInsight }) {
         minWidth: 0,
       }}
     >
-      <span style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-1)', minWidth: 0 }}>
-        <strong style={{ color: 'var(--text)', fontSize: 'var(--fs-sm)', fontWeight: 'var(--fw-semibold)' }}>{title}</strong>
-        <span style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-relaxed)' }}>{detail}</span>
+      <span style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', minWidth: 0 }}>
+        <span style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-1)', minWidth: 0 }}>
+          <strong style={{ color: 'var(--text)', fontSize: 'var(--fs-sm)', fontWeight: 'var(--fw-semibold)' }}>{title}</strong>
+          <span style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-relaxed)' }}>{detail}</span>
+        </span>
+        {doc && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onOpenDoc(doc)}
+            aria-label={t('projectWiki.git.openInsightDocAria', { doc: doc.name })}
+          >
+            {t('projectWiki.git.openInsightDoc')}
+          </Button>
+        )}
       </span>
       <Badge variant={variant} size="sm">{t(`projectWiki.git.priority.${insight.priority}`)}</Badge>
     </div>
@@ -1469,7 +1524,13 @@ export function ProjectWikiPanel({
         onOpenDoc={onOpenDoc}
       />
 
-      <GitPulseCard pulse={gitPulse} context={gitContext} loading={gitPulseLoading} />
+      <GitPulseCard
+        pulse={gitPulse}
+        context={gitContext}
+        docsByPath={docsByPath}
+        onOpenDoc={onOpenDoc}
+        loading={gitPulseLoading}
+      />
 
       <ProjectBriefCard
         projectName={projectName}

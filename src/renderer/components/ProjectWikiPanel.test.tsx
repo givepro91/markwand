@@ -202,10 +202,47 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
 
     expect(screen.getByText('projectWiki.git.title')).toBeInTheDocument()
     expect(screen.getByText('projectWiki.git.branch')).toBeInTheDocument()
-    expect(screen.getByText('src/renderer')).toBeInTheDocument()
     expect(screen.getByText('projectWiki.git.insightsTitle')).toBeInTheDocument()
     expect(screen.getByText('projectWiki.git.insight.dirtyWork.title')).toBeInTheDocument()
+    expect(screen.queryByText('src/renderer')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'projectWiki.git.detailsShow' }))
+
+    expect(screen.getByText('src/renderer')).toBeInTheDocument()
     expect(screen.getByText('feat: add wiki trust signals')).toBeInTheDocument()
+  })
+
+  it('opens the document behind a role-sensitive Git insight', () => {
+    const onOpenDoc = vi.fn()
+    const readme: Doc = {
+      path: '/project/README.md',
+      projectId: 'p1',
+      name: 'README.md',
+      mtime: Date.parse('2026-03-01T00:00:00Z'),
+    }
+
+    renderWithProviders(
+      <ProjectWikiPanel
+        projectName="markwand"
+        summary={summary}
+        gitPulse={{
+          ...gitPulse,
+          dirtyCount: 0,
+          recentCommitCount: 5,
+          changedFiles: ['src/renderer/ProjectView.tsx'],
+          changedAreas: ['src/renderer'],
+        }}
+        gitPulseLoading={false}
+        brief={null}
+        briefLoading={false}
+        docsByPath={new Map([[doc.path, doc], [readme.path, readme]])}
+        onOpenDoc={onOpenDoc}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'projectWiki.git.openInsightDocAria' }))
+
+    expect(onOpenDoc).toHaveBeenCalledWith(readme)
   })
 
   it('hides Git Pulse for unsupported projects such as SSH workspaces', () => {

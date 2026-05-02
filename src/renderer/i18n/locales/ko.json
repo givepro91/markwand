@@ -211,6 +211,10 @@
       "latestTag": "최근 태그 {{tag}}",
       "areasTitle": "많이 바뀐 영역",
       "latestCommits": "최근 커밋",
+      "detailsShow": "개발자 세부 정보 보기",
+      "detailsHide": "개발자 세부 정보 숨기기",
+      "openInsightDoc": "문서 열기",
+      "openInsightDocAria": "{{doc}} 문서 열기",
       "insightsTitle": "문서 역할로 해석",
       "priority": {
         "high": "먼저 확인",

@@ -211,6 +211,10 @@
       "latestTag": "Latest tag {{tag}}",
       "areasTitle": "Areas changing most",
       "latestCommits": "Latest commits",
+      "detailsShow": "Show developer details",
+      "detailsHide": "Hide developer details",
+      "openInsightDoc": "Open document",
+      "openInsightDocAria": "Open {{doc}} document",
       "insightsTitle": "Interpreted by document role",
       "priority": {
         "high": "Check first",
