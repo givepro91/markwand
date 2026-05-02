@@ -109,6 +109,7 @@ describe('formatProjectWikiHandoffBrief', () => {
       docDebt: [{
         path: '/project/risky.md',
         name: 'risky.md',
+        role: 'reference',
         score: 52,
         ageDays: 45,
         missing: 1,
@@ -186,7 +187,7 @@ describe('formatProjectWikiHandoffBrief', () => {
     expect(text).toContain('## Knowledge Map')
     expect(text).toContain('- overview: 1 docs')
     expect(text).toContain('## Doc Debt Radar')
-    expect(text).toContain('- risky.md: score 52, 45d old (stale, risk)')
+    expect(text).toContain('- risky.md: score 52, role reference, 45d old (stale, risk)')
     expect(text).toContain('## Link Graph')
     expect(text).toContain('- References: 4 (2 ok, 1 broken, 1 stale)')
     expect(text).toContain('- Hub: README.md: 2 inbound, 1 outbound, 0 risky (/project/README.md)')
@@ -218,6 +219,7 @@ describe('formatProjectWikiOnboardingBrief', () => {
       docDebt: [{
         path: '/project/docs/plan.md',
         name: 'docs/plan.md',
+        role: 'workLog',
         score: 44,
         ageDays: 17,
         missing: 1,
@@ -253,7 +255,7 @@ describe('formatProjectWikiOnboardingBrief', () => {
     expect(text).toContain('2. docs/plan.md - /project/docs/plan.md')
     expect(text).toContain('- Reference status: 1 broken links, 2 stale refs to review')
     expect(text).toContain('## Documents That May Need Cleanup')
-    expect(text).toContain('- docs/plan.md: score 44, reasons risk (/project/docs/plan.md)')
+    expect(text).toContain('- docs/plan.md: score 44, role workLog, reasons risk (/project/docs/plan.md)')
     expect(text).toContain('## Suggested First Actions')
     expect(text).toContain('- Create an onboarding brief (medium)')
     expect(text).toContain('## Evidence Used')

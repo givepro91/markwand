@@ -288,6 +288,7 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
       docDebt: [{
         path: '/project/overflow.md',
         name: longName,
+        role: 'reference',
         score: 1667,
         missing: 42,
         stale: 7,

@@ -1,5 +1,5 @@
 import type { Doc } from '../../preload/types'
-import type { ProjectWikiSummary, WikiSuggestedTask, WikiSuggestedTaskIntent } from './projectWiki'
+import type { ProjectWikiSummary, WikiDocRole, WikiSuggestedTask, WikiSuggestedTaskIntent } from './projectWiki'
 
 export interface ProjectWikiEvidence {
   path: string
@@ -85,7 +85,7 @@ export function buildProjectWikiBrief(
 
 const taskTitles: Record<WikiSuggestedTaskIntent, string> = {
   repairReferences: 'Repair risky document references',
-  refreshStaleDocs: 'Refresh stale project documents',
+  refreshStaleDocs: 'Review freshness-sensitive documents',
   completeMetadata: 'Normalize document metadata',
   buildOnboardingBrief: 'Create an onboarding brief',
   extractDecisionTimeline: 'Extract the decision timeline',
@@ -95,7 +95,7 @@ const taskPrompts: Record<WikiSuggestedTaskIntent, string> = {
   repairReferences:
     'Review the listed documents, identify broken or stale references, and propose exact edits that restore trust in the project docs.',
   refreshStaleDocs:
-    'Read the listed stale documents, compare them against newer project context, and propose what should be updated, archived, or confirmed.',
+    'Read the listed freshness-sensitive documents, decide whether each should be updated, archived, or preserved as historical context, and explain why.',
   completeMetadata:
     'Inspect the listed documents and propose consistent frontmatter source/status metadata so the wiki can classify them reliably.',
   buildOnboardingBrief:
@@ -111,8 +111,8 @@ const taskCompletionCriteria: Record<WikiSuggestedTaskIntent, string[]> = {
     'Call out references that need human confirmation.',
   ],
   refreshStaleDocs: [
-    'Identify outdated claims and the newer context that conflicts with them.',
-    'Recommend update, archive, or keep-as-is for each document.',
+    'Identify which documents are active guides versus historical records.',
+    'Recommend update, archive, preserve, or confirm for each document.',
     'Separate verified facts from assumptions.',
   ],
   completeMetadata: [
@@ -130,6 +130,26 @@ const taskCompletionCriteria: Record<WikiSuggestedTaskIntent, string[]> = {
     'Capture rationale, status, and unresolved questions.',
     'Flag contradictions or stale decisions that need review.',
   ],
+}
+
+const roleTitles: Record<WikiDocRole, string> = {
+  currentGuide: 'Current guides',
+  operational: 'Operational docs',
+  reference: 'Reference docs',
+  decisionRecord: 'Decision records',
+  workLog: 'Work logs',
+  archive: 'Past records',
+  ideaDraft: 'Idea drafts',
+}
+
+const roleGuidance: Record<WikiDocRole, string> = {
+  currentGuide: 'Treat these as the active map. Verify freshness before handing work to AI.',
+  operational: 'Treat these as high-risk execution docs. Confirm before deploy, migration, or incident work.',
+  reference: 'Use these for structure and API context, but verify if related code changed recently.',
+  decisionRecord: 'Preserve these as rationale. Do not rewrite just because later code changed.',
+  workLog: 'Read these as historical project flow. They usually do not need forced updates.',
+  archive: 'Keep these low priority unless someone explicitly needs the archived context.',
+  ideaDraft: 'Treat these as proposals or early thinking, not current implementation truth.',
 }
 
 export function formatProjectWikiTaskPrompt(
@@ -251,6 +271,18 @@ export function formatProjectWikiHandoffBrief(
     lines.push('')
   }
 
+  if (summary.roleGroups?.length) {
+    lines.push('## Document Roles')
+    for (const group of summary.roleGroups) {
+      lines.push(`- ${roleTitles[group.role]}: ${group.count} docs`)
+      lines.push(`  - Guidance: ${roleGuidance[group.role]}`)
+      for (const item of group.docs.slice(0, 3)) {
+        lines.push(`  - ${item.name}: ${item.path}`)
+      }
+    }
+    lines.push('')
+  }
+
   if (summary.clusters.length > 0) {
     lines.push('## Knowledge Map')
     for (const cluster of summary.clusters) {
@@ -265,7 +297,8 @@ export function formatProjectWikiHandoffBrief(
   if (summary.docDebt.length > 0) {
     lines.push('## Doc Debt Radar')
     for (const item of summary.docDebt) {
-      lines.push(`- ${item.name}: score ${item.score}, ${item.ageDays}d old (${item.reasons.join(', ')})`)
+      const rolePart = item.role ? `, role ${item.role}` : ''
+      lines.push(`- ${item.name}: score ${item.score}${rolePart}, ${item.ageDays}d old (${item.reasons.join(', ')})`)
       lines.push(`  - ${item.path}`)
     }
     lines.push('')
@@ -358,7 +391,15 @@ export function formatProjectWikiOnboardingBrief(
   if (summary.docDebt.length > 0) {
     lines.push('', '## Documents That May Need Cleanup')
     for (const item of summary.docDebt.slice(0, 3)) {
-      lines.push(`- ${item.name}: score ${item.score}, reasons ${item.reasons.join(', ')} (${item.path})`)
+      const rolePart = item.role ? `, role ${item.role}` : ''
+      lines.push(`- ${item.name}: score ${item.score}${rolePart}, reasons ${item.reasons.join(', ')} (${item.path})`)
+    }
+  }
+
+  if (summary.roleGroups?.length) {
+    lines.push('', '## How to Read Older Docs')
+    for (const group of summary.roleGroups.filter((item) => ['workLog', 'decisionRecord', 'archive', 'ideaDraft'].includes(item.role)).slice(0, 3)) {
+      lines.push(`- ${roleTitles[group.role]}: ${roleGuidance[group.role]}`)
     }
   }
 

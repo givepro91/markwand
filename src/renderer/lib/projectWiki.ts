@@ -13,6 +13,8 @@ export interface WikiRiskDoc {
   name: string
   missing: number
   stale: number
+  role?: WikiDocRole
+  score?: number
 }
 
 export type WikiClusterKey =
@@ -32,9 +34,25 @@ export interface WikiDocCluster {
 
 export type WikiDocDebtReason = 'stale' | 'risk' | 'missingMeta' | 'unread'
 
+export type WikiDocRole =
+  | 'currentGuide'
+  | 'operational'
+  | 'reference'
+  | 'decisionRecord'
+  | 'workLog'
+  | 'archive'
+  | 'ideaDraft'
+
+export interface WikiDocRoleGroup {
+  role: WikiDocRole
+  count: number
+  docs: WikiDocLink[]
+}
+
 export interface WikiDocDebt {
   path: string
   name: string
+  role: WikiDocRole
   score: number
   ageDays: number
   missing: number
@@ -144,6 +162,7 @@ export interface ProjectWikiSummary {
   unreadDocs: number
   sourceCounts: Array<{ source: string; count: number }>
   statusCounts: Array<{ status: string; count: number }>
+  roleGroups?: WikiDocRoleGroup[]
   clusters: WikiDocCluster[]
   docDebt: WikiDocDebt[]
   trust: WikiTrustScore
@@ -162,7 +181,82 @@ export interface ProjectWikiSummary {
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000
 const DAY_MS = 24 * 60 * 60 * 1000
-const STALE_DOC_DAYS = 30
+
+interface WikiDocRolePolicy {
+  staleAfterDays: number
+  staleDocImpact: number
+  missingRefImpact: number
+  staleRefImpact: number
+  missingMetaImpact: number
+  unreadImpact: number
+  maintenanceSensitivity: number
+}
+
+const ROLE_POLICY: Record<WikiDocRole, WikiDocRolePolicy> = {
+  currentGuide: {
+    staleAfterDays: 30,
+    staleDocImpact: 8,
+    missingRefImpact: 12,
+    staleRefImpact: 4,
+    missingMetaImpact: 4,
+    unreadImpact: 2,
+    maintenanceSensitivity: 1,
+  },
+  operational: {
+    staleAfterDays: 14,
+    staleDocImpact: 12,
+    missingRefImpact: 15,
+    staleRefImpact: 5,
+    missingMetaImpact: 4,
+    unreadImpact: 2,
+    maintenanceSensitivity: 1.2,
+  },
+  reference: {
+    staleAfterDays: 45,
+    staleDocImpact: 6,
+    missingRefImpact: 10,
+    staleRefImpact: 3,
+    missingMetaImpact: 3,
+    unreadImpact: 1.5,
+    maintenanceSensitivity: 0.85,
+  },
+  decisionRecord: {
+    staleAfterDays: 90,
+    staleDocImpact: 3,
+    missingRefImpact: 7,
+    staleRefImpact: 1.5,
+    missingMetaImpact: 2,
+    unreadImpact: 1,
+    maintenanceSensitivity: 0.55,
+  },
+  workLog: {
+    staleAfterDays: Number.POSITIVE_INFINITY,
+    staleDocImpact: 0,
+    missingRefImpact: 3,
+    staleRefImpact: 0.5,
+    missingMetaImpact: 1,
+    unreadImpact: 0,
+    maintenanceSensitivity: 0.2,
+  },
+  archive: {
+    staleAfterDays: Number.POSITIVE_INFINITY,
+    staleDocImpact: 0,
+    missingRefImpact: 1,
+    staleRefImpact: 0,
+    missingMetaImpact: 0,
+    unreadImpact: 0,
+    maintenanceSensitivity: 0.05,
+  },
+  ideaDraft: {
+    staleAfterDays: Number.POSITIVE_INFINITY,
+    staleDocImpact: 0,
+    missingRefImpact: 2,
+    staleRefImpact: 0.5,
+    missingMetaImpact: 1,
+    unreadImpact: 0,
+    maintenanceSensitivity: 0.15,
+  },
+}
 
 function sortSourceCounts(counts: Map<string, number>): Array<{ source: string; count: number }> {
   return Array.from(counts.entries())
@@ -270,6 +364,99 @@ function isDecisionDoc(doc: Doc): boolean {
   )
 }
 
+export function classifyWikiDocRole(doc: Doc): WikiDocRole {
+  const p = doc.path.toLowerCase()
+  const n = doc.name.toLowerCase()
+  const base = basename(doc.path).toLowerCase()
+  const source = String(doc.frontmatter?.source ?? '').toLowerCase()
+  const status = String(doc.frontmatter?.status ?? '').toLowerCase()
+
+  if (
+    p.includes('/archive/') ||
+    p.includes('/archived/') ||
+    p.includes('/legacy/') ||
+    n.includes('archive') ||
+    n.includes('archived') ||
+    n.includes('legacy') ||
+    base.startsWith('old-')
+  ) {
+    return 'archive'
+  }
+
+  if (
+    source === 'ops' ||
+    source === 'operation' ||
+    source === 'runbook' ||
+    status === 'runbook' ||
+    n.includes('deploy') ||
+    n.includes('runbook') ||
+    n.includes('migration') ||
+    n.includes('incident') ||
+    n.includes('oncall') ||
+    p.includes('/docs/ops/') ||
+    p.includes('/ops/') ||
+    p.includes('/runbook') ||
+    p.includes('/migration')
+  ) {
+    return 'operational'
+  }
+
+  if (
+    isEntrypointDoc(doc) ||
+    n.includes('setup') ||
+    n.includes('install') ||
+    n.includes('getting-started') ||
+    n.includes('manual') ||
+    p.includes('/docs/start') ||
+    p.includes('/docs/onboarding')
+  ) {
+    return 'currentGuide'
+  }
+
+  if (
+    n.includes('brief') ||
+    n.includes('brainstorm') ||
+    n.includes('proposal') ||
+    n.includes('idea') ||
+    n.includes('concept') ||
+    source === 'proposal' ||
+    source === 'idea'
+  ) {
+    return 'ideaDraft'
+  }
+
+  if (
+    n.includes('plan') ||
+    n.includes('sprint') ||
+    n.includes('retrospective') ||
+    n.includes('log') ||
+    p.includes('/docs/plan') ||
+    p.includes('/docs/plans') ||
+    p.includes('/sprint') ||
+    p.includes('/retrospective')
+  ) {
+    return 'workLog'
+  }
+
+  if (
+    source === 'design' ||
+    source === 'review' ||
+    source === 'release' ||
+    source === 'decision' ||
+    n.includes('adr') ||
+    n.includes('decision') ||
+    n.includes('design') ||
+    n.includes('review') ||
+    n.includes('release') ||
+    p.includes('/docs/design') ||
+    p.includes('/docs/release')
+  ) {
+    return 'decisionRecord'
+  }
+
+  return 'reference'
+}
+
 function classifyDecisionKind(doc: Doc): WikiDecisionKind {
   const p = doc.path.toLowerCase()
   const n = doc.name.toLowerCase()
@@ -347,6 +534,42 @@ function buildClusters(docs: Doc[], displayNames: Map<string, string>): WikiDocC
         .map((doc) => ({ path: doc.path, name: displayNameFor(displayNames, doc), reason: 'recent' as const, score: doc.mtime })),
     }))
     .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key))
+}
+
+function buildRoleGroups(docs: Doc[], displayNames: Map<string, string>): WikiDocRoleGroup[] {
+  const buckets = new Map<WikiDocRole, Doc[]>()
+  for (const doc of docs) {
+    const role = classifyWikiDocRole(doc)
+    const bucket = buckets.get(role) ?? []
+    bucket.push(doc)
+    buckets.set(role, bucket)
+  }
+
+  const roleOrder: Record<WikiDocRole, number> = {
+    currentGuide: 0,
+    operational: 1,
+    reference: 2,
+    decisionRecord: 3,
+    workLog: 4,
+    archive: 5,
+    ideaDraft: 6,
+  }
+
+  return Array.from(buckets.entries())
+    .map(([role, bucket]) => ({
+      role,
+      count: bucket.length,
+      docs: bucket
+        .sort((a, b) => b.mtime - a.mtime || a.name.localeCompare(b.name))
+        .slice(0, 3)
+        .map((doc) => ({
+          path: doc.path,
+          name: displayNameFor(displayNames, doc),
+          reason: isEntrypointDoc(doc) ? 'entrypoint' as const : 'recent' as const,
+          score: doc.mtime,
+        })),
+    }))
+    .sort((a, b) => roleOrder[a.role] - roleOrder[b.role] || b.count - a.count)
 }
 
 function basename(path: string): string {
@@ -450,6 +673,8 @@ function buildDocDebt(
 ): WikiDocDebt[] {
   return docs
     .map((doc) => {
+      const role = classifyWikiDocRole(doc)
+      const policy = ROLE_POLICY[role]
       const report = driftReports[doc.path]
       const missing = report?.counts.missing ?? 0
       const stale = report?.counts.stale ?? 0
@@ -457,27 +682,28 @@ function buildDocDebt(
       const reasons: WikiDocDebtReason[] = []
       let score = 0
 
-      if (ageDays >= STALE_DOC_DAYS) {
+      if (ageDays >= policy.staleAfterDays && policy.staleDocImpact > 0) {
         reasons.push('stale')
-        score += Math.min(40, Math.floor(ageDays / 7) * 4)
+        score += Math.min(40, Math.floor(ageDays / 7) * policy.maintenanceSensitivity * 4)
       }
       if (missing > 0 || stale > 0) {
         reasons.push('risk')
-        score += missing * 25 + stale * 5
+        score += missing * policy.missingRefImpact + stale * policy.staleRefImpact
       }
       if (!doc.frontmatter?.source || !doc.frontmatter?.status) {
         reasons.push('missingMeta')
-        score += 12
+        score += policy.missingMetaImpact
       }
       if (!readDocs[doc.path]) {
         reasons.push('unread')
-        score += 5
+        score += policy.unreadImpact
       }
 
       return {
         path: doc.path,
         name: displayNameFor(displayNames, doc),
-        score,
+        role,
+        score: Math.round(score),
         ageDays,
         missing,
         stale,
@@ -486,7 +712,6 @@ function buildDocDebt(
     })
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score || b.ageDays - a.ageDays || a.name.localeCompare(b.name))
-    .slice(0, 5)
 }
 
 function clampScore(score: number): number {
@@ -499,16 +724,56 @@ function buildTrustScore(
   unreadDocs: number,
   recentDocs: number,
   missingRefs: number,
-  staleRefs: number
+  staleRefs: number,
+  docsWithRisk: WikiRiskDoc[]
 ): WikiTrustScore {
   const riskRefs = missingRefs
   const staleDocs = docDebt.filter((item) => item.reasons.includes('stale')).length
   const missingMetaDocs = docs.filter((doc) => !doc.frontmatter?.source || !doc.frontmatter?.status).length
-  const riskImpact = Math.min(45, riskRefs * 10)
-  const staleRefImpact = Math.min(15, staleRefs * 3)
-  const staleImpact = Math.min(25, staleDocs * 8)
-  const missingMetaImpact = Math.min(20, missingMetaDocs * 4)
-  const unreadImpact = Math.min(10, unreadDocs * 2)
+  const riskImpact = Math.min(
+    45,
+    Math.round(
+      docsWithRisk.reduce((total, doc) => {
+        const role = doc.role ?? 'reference'
+        return total + doc.missing * ROLE_POLICY[role].missingRefImpact
+      }, 0)
+    )
+  )
+  const staleRefImpact = Math.min(
+    15,
+    Math.round(
+      docsWithRisk.reduce((total, doc) => {
+        const role = doc.role ?? 'reference'
+        return total + doc.stale * ROLE_POLICY[role].staleRefImpact
+      }, 0)
+    )
+  )
+  const staleImpact = Math.min(
+    25,
+    Math.round(
+      docDebt
+        .filter((item) => item.reasons.includes('stale'))
+        .reduce((total, item) => total + ROLE_POLICY[item.role].staleDocImpact, 0)
+    )
+  )
+  const missingMetaImpact = Math.min(
+    20,
+    Math.round(
+      docs.reduce((total, doc) => {
+        if (doc.frontmatter?.source && doc.frontmatter?.status) return total
+        return total + ROLE_POLICY[classifyWikiDocRole(doc)].missingMetaImpact
+      }, 0)
+    )
+  )
+  const unreadImpact = Math.min(
+    10,
+    Math.round(
+      docs.reduce((total, doc) => {
+        if (!docDebt.some((item) => item.path === doc.path && item.reasons.includes('unread'))) return total
+        return total + ROLE_POLICY[classifyWikiDocRole(doc)].unreadImpact
+      }, 0)
+    )
+  )
   const recentBoost = Math.min(10, recentDocs * 2)
   const score = clampScore(
     100 - riskImpact - staleRefImpact - staleImpact - missingMetaImpact - unreadImpact + recentBoost
@@ -561,27 +826,28 @@ function buildSuggestedTasks(
   }
 
   const docsWithMissingRefs = docsWithRisk.filter((doc) => doc.missing > 0)
-  if (docsWithMissingRefs.length > 0) {
+  const actionableMissingRefs = docsWithMissingRefs.filter((doc) => (doc.score ?? 0) >= 8 && doc.role !== 'archive')
+  if (actionableMissingRefs.length > 0) {
     addTask({
       id: 'repair-references',
       intent: 'repairReferences',
       priority: 'high',
-      docs: docsWithMissingRefs.slice(0, 3).map((doc) => ({
+      docs: actionableMissingRefs.slice(0, 3).map((doc) => ({
         path: doc.path,
         name: doc.name,
         reason: 'risk',
-        score: doc.missing * 25 + doc.stale * 5,
+        score: doc.score ?? doc.missing * 10 + doc.stale * 3,
       })),
     })
   }
 
   const staleRefDocs = docsWithRisk
-    .filter((doc) => doc.stale > 0 && doc.missing === 0)
+    .filter((doc) => doc.stale > 0 && doc.missing === 0 && (doc.score ?? 0) >= 5 && doc.role !== 'archive' && doc.role !== 'workLog')
     .map((doc) => ({
       path: doc.path,
       name: doc.name,
       reason: 'risk' as const,
-      score: doc.stale * 5,
+      score: doc.score ?? doc.stale * 3,
     }))
   const staleDocs = docDebt
     .filter((item) => item.reasons.includes('stale'))
@@ -759,7 +1025,11 @@ export function buildProjectWikiSummary(
     addUniqueDoc(onboardingPath, onboardingSeen, doc, 'entrypoint', scoreEntrypoint(doc), displayNameFor(displayNames, doc))
     if (onboardingPath.length >= 5) break
   }
-  for (const doc of recentSorted) {
+  const onboardingFallbackDocs = recentSorted.filter((doc) => {
+    const role = classifyWikiDocRole(doc)
+    return role !== 'archive' && role !== 'ideaDraft' && role !== 'workLog'
+  })
+  for (const doc of onboardingFallbackDocs) {
     addUniqueDoc(onboardingPath, onboardingSeen, doc, 'recent', Math.max(1, Math.round(doc.mtime / 1_000_000)), displayNameFor(displayNames, doc))
     if (onboardingPath.length >= 5) break
   }
@@ -781,21 +1051,25 @@ export function buildProjectWikiSummary(
     missingRefs += report.counts.missing
     staleRefs += report.counts.stale
     if (report.counts.missing > 0 || report.counts.stale > 0) {
+      const role = classifyWikiDocRole(doc)
+      const policy = ROLE_POLICY[role]
       docsWithRisk.push({
         path: doc.path,
         name: displayNameFor(displayNames, doc),
         missing: report.counts.missing,
         stale: report.counts.stale,
+        role,
+        score: Math.round(report.counts.missing * policy.missingRefImpact + report.counts.stale * policy.staleRefImpact),
       })
     }
   }
-  docsWithRisk.sort((a, b) => (b.missing * 5 + b.stale) - (a.missing * 5 + a.stale) || a.name.localeCompare(b.name))
+  docsWithRisk.sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || (b.missing * 5 + b.stale) - (a.missing * 5 + a.stale) || a.name.localeCompare(b.name))
   const unreadDocs = markdownDocs.filter((doc) => !readDocs[doc.path]).length
   const recentDocs = markdownDocs.filter((doc) => doc.mtime >= recentCutoff).length
-  const docDebt = buildDocDebt(markdownDocs, driftReports, readDocs, displayNames, now)
-  const trust = buildTrustScore(markdownDocs, docDebt, unreadDocs, recentDocs, missingRefs, staleRefs)
+  const allDocDebt = buildDocDebt(markdownDocs, driftReports, readDocs, displayNames, now)
+  const trust = buildTrustScore(markdownDocs, allDocDebt, unreadDocs, recentDocs, missingRefs, staleRefs, docsWithRisk)
   const relationships = buildRelationshipMap(markdownDocs, driftReports, displayNames)
-  const suggestedTasks = buildSuggestedTasks(onboardingPath, decisionLog, docsWithRisk, docDebt, trust)
+  const suggestedTasks = buildSuggestedTasks(onboardingPath, decisionLog, docsWithRisk, allDocDebt, trust)
 
   return {
     totalDocs: docs.length,
@@ -805,8 +1079,9 @@ export function buildProjectWikiSummary(
     unreadDocs,
     sourceCounts: sortSourceCounts(sourceCounts).slice(0, 5),
     statusCounts: sortStatusCounts(statusCounts).slice(0, 5),
+    roleGroups: buildRoleGroups(markdownDocs, displayNames),
     clusters: buildClusters([...markdownDocs, ...imageDocs], displayNames).slice(0, 6),
-    docDebt,
+    docDebt: allDocDebt.slice(0, 5),
     trust,
     pulse: buildProjectPulse(trust, suggestedTasks, onboardingPath, recentDocs),
     relationships,

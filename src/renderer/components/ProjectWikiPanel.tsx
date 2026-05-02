@@ -17,6 +17,7 @@ import type {
   WikiLinkHub,
   WikiRiskDoc,
   WikiRiskLink,
+  WikiDocRoleGroup,
   WikiSuggestedTask,
   WikiTrustSignal,
 } from '../lib/projectWiki'
@@ -336,6 +337,8 @@ function RiskList({
   staleLabel: string
   onOpenDoc: (doc: Doc) => void
 }) {
+  const { t } = useTranslation()
+
   if (items.length === 0) {
     return <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--fs-sm)' }}>{empty}</p>
   }
@@ -371,6 +374,11 @@ function RiskList({
               {item.name}
             </span>
             <span style={{ display: 'inline-flex', gap: 'var(--sp-1)', alignItems: 'center', flexShrink: 0 }}>
+              {item.role && (
+                <Badge variant={item.role === 'operational' || item.role === 'currentGuide' ? 'marker' : 'default'} size="sm">
+                  {t(`projectWiki.docRole.${item.role}`)}
+                </Badge>
+              )}
               {item.missing > 0 && <Badge variant="danger" size="sm">{missingLabel} {item.missing}</Badge>}
               {item.stale > 0 && <Badge variant="default" size="sm">{staleLabel} {item.stale}</Badge>}
             </span>
@@ -420,6 +428,82 @@ function KnowledgeMap({
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-1)' }}>
             {cluster.docs.map((item) => {
+              const doc = docsByPath.get(item.path)
+              return (
+                <button
+                  key={item.path}
+                  type="button"
+                  onClick={() => doc && onOpenDoc(doc)}
+                  disabled={!doc}
+                  style={{
+                    border: 0,
+                    background: 'transparent',
+                    color: 'var(--text-muted)',
+                    cursor: doc ? 'pointer' : 'not-allowed',
+                    fontFamily: 'inherit',
+                    fontSize: 'var(--fs-xs)',
+                    padding: 0,
+                    textAlign: 'left',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {item.name}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function RoleMap({
+  groups,
+  docsByPath,
+  onOpenDoc,
+}: {
+  groups: WikiDocRoleGroup[]
+  docsByPath: Map<string, Doc>
+  onOpenDoc: (doc: Doc) => void
+}) {
+  const { t } = useTranslation()
+
+  if (groups.length === 0) {
+    return <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--fs-sm)' }}>{t('projectWiki.roleMapEmpty')}</p>
+  }
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--sp-3)' }}>
+      {groups.map((group) => (
+        <div
+          key={group.role}
+          style={{
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--r-md)',
+            background: 'var(--bg)',
+            padding: 'var(--sp-3)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--sp-2)',
+            minWidth: 0,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--sp-2)', alignItems: 'center' }}>
+            <strong style={{ color: 'var(--text)', fontSize: 'var(--fs-sm)', fontWeight: 'var(--fw-semibold)' }}>
+              {t(`projectWiki.docRole.${group.role}`)}
+            </strong>
+            <Badge variant={group.role === 'operational' || group.role === 'currentGuide' ? 'marker' : 'default'} size="sm">
+              {group.count}
+            </Badge>
+          </div>
+          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-relaxed)' }}>
+            {t(`projectWiki.docRoleHint.${group.role}`)}
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-1)' }}>
+            {group.docs.map((item) => {
               const doc = docsByPath.get(item.path)
               return (
                 <button
@@ -505,6 +589,9 @@ function DocDebtRadar({
               </span>
             </span>
             <span style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-1)' }}>
+              <Badge variant={item.role === 'operational' || item.role === 'currentGuide' ? 'marker' : 'default'} size="sm">
+                {t(`projectWiki.docRole.${item.role}`)}
+              </Badge>
               {item.reasons.map((reason) => (
                 <Badge key={reason} variant={reason === 'risk' ? 'danger' : 'default'} size="sm">
                   {t(`projectWiki.docDebtReason.${reason}`)}
@@ -1271,6 +1358,14 @@ export function ProjectWikiPanel({
         <Section title={t('projectWiki.knowledgeTitle')}>
           <KnowledgeMap
             clusters={summary.clusters}
+            docsByPath={docsByPath}
+            onOpenDoc={onOpenDoc}
+          />
+        </Section>
+
+        <Section title={t('projectWiki.roleMapTitle')}>
+          <RoleMap
+            groups={summary.roleGroups ?? []}
             docsByPath={docsByPath}
             onOpenDoc={onOpenDoc}
           />

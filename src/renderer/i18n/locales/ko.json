@@ -223,6 +223,8 @@
     "copyOnboardingBriefError": "입문 브리프를 복사하지 못했습니다.",
     "knowledgeTitle": "문서 묶음 · Knowledge Map",
     "knowledgeEmpty": "문서 성격을 분류할 수 있는 항목이 아직 없습니다.",
+    "roleMapTitle": "문서 역할 · Role Map",
+    "roleMapEmpty": "역할을 판단할 문서가 아직 없습니다.",
     "docDebtTitle": "정리할 문서 · Doc Debt Radar",
     "docDebtEmpty": "우선 정리할 문서가 감지되지 않았습니다.",
     "docDebtScore": "점수 {{score}}",
@@ -266,8 +268,8 @@
           "desc": "AI가 요약하기 전에 링크와 참조 신뢰도를 먼저 회복하면 이후 작업 품질이 크게 좋아집니다."
         },
         "refreshStaleDocs": {
-          "title": "오래된 핵심 문서를 최신화하세요",
-          "desc": "현재 결정이나 구현과 맞지 않는 문서를 먼저 갱신하면 팀이 같은 지도를 보게 됩니다."
+          "title": "최신성이 중요한 문서만 확인하세요",
+          "desc": "과거 계획은 기록으로 두고, README·배포·운영 문서처럼 지금 따라가는 문서만 우선 점검합니다."
         },
         "completeMetadata": {
           "title": "문서 성격을 정리하면 위키가 똑똑해집니다",
@@ -330,8 +332,8 @@
         "desc": "깨지거나 오래된 참조를 먼저 정리해 문서 신뢰도를 회복합니다."
       },
       "refreshStaleDocs": {
-        "title": "오래된 문서 갱신",
-        "desc": "오래된 핵심 문서를 최신 프로젝트 흐름에 맞게 갱신하거나 보관합니다."
+        "title": "최신성 민감 문서 확인",
+        "desc": "현재 가이드와 운영 문서는 점검하고, 과거 계획·기록 문서는 보존 대상으로 분리합니다."
       },
       "completeMetadata": {
         "title": "문서 메타데이터 정리",
@@ -399,6 +401,24 @@
       "risk": "참조 위험",
       "missingMeta": "메타 부족",
       "unread": "안읽음"
+    },
+    "docRole": {
+      "currentGuide": "현재 가이드",
+      "operational": "운영 문서",
+      "reference": "참조 문서",
+      "decisionRecord": "결정 기록",
+      "workLog": "작업 기록",
+      "archive": "과거 기록",
+      "ideaDraft": "아이디어 초안"
+    },
+    "docRoleHint": {
+      "currentGuide": "지금 읽고 따라가는 문서라 최신성이 중요합니다.",
+      "operational": "배포·운영 절차라 틀리면 실제 작업 리스크가 큽니다.",
+      "reference": "구조나 사용법을 설명하므로 현실과 어긋나는지 확인합니다.",
+      "decisionRecord": "결정의 근거를 보존하는 문서라 무조건 최신화 대상은 아닙니다.",
+      "workLog": "계획·스프린트 흐름의 기록이라 과거 맥락으로 읽을 수 있습니다.",
+      "archive": "보존용 문서라 경고 우선순위를 낮게 봅니다.",
+      "ideaDraft": "초안·제안 성격이라 실행 문서와 분리해 판단합니다."
     }
   },
 

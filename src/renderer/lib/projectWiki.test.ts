@@ -70,7 +70,6 @@ describe('buildProjectWikiSummary', () => {
     expect(summary.onboardingPath.map((item) => item.name)).toEqual([
       'README.md',
       'CLAUDE.md',
-      'docs/plans/v1-plan.md',
       'docs/release-notes/v1.md',
     ])
     expect(summary.decisionLog.map((item) => item.name)).toEqual([
@@ -91,7 +90,7 @@ describe('buildProjectWikiSummary', () => {
       reasons: ['missingMeta', 'unread'],
     })
     expect(summary.trust).toMatchObject({
-      score: 98,
+      score: 100,
       level: 'strong',
       penalties: {
         riskRefs: 0,
@@ -102,9 +101,14 @@ describe('buildProjectWikiSummary', () => {
       },
     })
     expect(summary.trust.signals).toEqual([
-      { key: 'missingMetaDocs', count: 1, impact: -4, tone: 'neutral' },
-      { key: 'unreadDocs', count: 3, impact: -6, tone: 'neutral' },
+      { key: 'missingMetaDocs', count: 1, impact: -2, tone: 'neutral' },
+      { key: 'unreadDocs', count: 3, impact: -3, tone: 'neutral' },
       { key: 'recentDocs', count: 4, impact: 8, tone: 'positive' },
+    ])
+    expect(summary.roleGroups?.map((item) => ({ role: item.role, count: item.count }))).toEqual([
+      { role: 'currentGuide', count: 2 },
+      { role: 'decisionRecord', count: 1 },
+      { role: 'workLog', count: 1 },
     ])
     expect(summary.suggestedTasks.map((item) => item.intent)).toEqual([
       'completeMetadata',
@@ -126,7 +130,7 @@ describe('buildProjectWikiSummary', () => {
   })
 
   it('summarizes drift risks by document and total counts', () => {
-    const risky = doc('docs/plan.md')
+    const risky = doc('docs/api.md')
     const ok = doc('README.md')
 
     const summary = buildProjectWikiSummary(
@@ -142,7 +146,7 @@ describe('buildProjectWikiSummary', () => {
     expect(summary.risks.missingRefs).toBe(2)
     expect(summary.risks.staleRefs).toBe(1)
     expect(summary.risks.docsWithRisk).toEqual([
-      { path: risky.path, name: risky.name, missing: 2, stale: 1 },
+      { path: risky.path, name: risky.name, missing: 2, stale: 1, role: 'reference', score: 23 },
     ])
     expect(summary.docDebt[0]).toMatchObject({
       path: risky.path,
@@ -196,7 +200,7 @@ describe('buildProjectWikiSummary', () => {
       },
     })
     expect(summary.trust.signals).toEqual([
-      { key: 'staleRefs', count: 3, impact: -9, tone: 'warning' },
+      { key: 'staleRefs', count: 3, impact: -5, tone: 'warning' },
       { key: 'recentDocs', count: 1, impact: 2, tone: 'positive' },
     ])
     expect(summary.suggestedTasks.map((item) => ({ intent: item.intent, priority: item.priority }))).toEqual([
@@ -319,7 +323,7 @@ describe('buildProjectWikiSummary', () => {
   })
 
   it('prioritizes stale and under-specified docs in the doc debt radar', () => {
-    const old = doc('docs/old-overview.md', {
+    const old = doc('docs/reference/overview.md', {
       mtime: NOW - 90 * 24 * 60 * 60 * 1000,
       frontmatter: { source: 'claude', status: 'draft' },
     })
@@ -337,11 +341,11 @@ describe('buildProjectWikiSummary', () => {
       NOW
     )
 
-    expect(summary.docDebt.map((item) => item.name)).toEqual(['docs/risky.md', 'docs/old-overview.md'])
-    expect(summary.docDebt[0].reasons).toEqual(['risk'])
-    expect(summary.docDebt[1].reasons).toEqual(['stale'])
+    expect(summary.docDebt.map((item) => item.name)).toEqual(['docs/reference/overview.md', 'docs/risky.md'])
+    expect(summary.docDebt[0]).toMatchObject({ reasons: ['stale'], role: 'reference' })
+    expect(summary.docDebt[1]).toMatchObject({ reasons: ['risk'], role: 'decisionRecord' })
     expect(summary.trust).toMatchObject({
-      level: 'watch',
+      level: 'strong',
       penalties: {
         riskRefs: 2,
         staleRefs: 0,
@@ -351,8 +355,8 @@ describe('buildProjectWikiSummary', () => {
       },
     })
     expect(summary.trust.signals).toEqual([
-      { key: 'riskRefs', count: 2, impact: -20, tone: 'danger' },
-      { key: 'staleDocs', count: 1, impact: -8, tone: 'warning' },
+      { key: 'riskRefs', count: 2, impact: -14, tone: 'danger' },
+      { key: 'staleDocs', count: 1, impact: -6, tone: 'warning' },
       { key: 'recentDocs', count: 2, impact: 4, tone: 'positive' },
     ])
     expect(summary.suggestedTasks.map((item) => item.intent)).toEqual([
@@ -365,6 +369,71 @@ describe('buildProjectWikiSummary', () => {
       priority: 'medium',
       docs: [{ path: old.path, name: old.name }],
     })
+  })
+
+  it('does not force old work logs to be refreshed while operational docs stay sensitive', () => {
+    const oldPlan = doc('docs/plans/2026-04-architecture-plan.md', {
+      mtime: NOW - 120 * 24 * 60 * 60 * 1000,
+      frontmatter: { source: 'design', status: 'done' },
+    })
+    const deploy = doc('docs/ops/deploy.md', {
+      mtime: NOW - 20 * 24 * 60 * 60 * 1000,
+      frontmatter: { source: 'ops', status: 'runbook' },
+    })
+
+    const summary = buildProjectWikiSummary(
+      [oldPlan, deploy],
+      {},
+      { [oldPlan.path]: NOW, [deploy.path]: NOW },
+      NOW
+    )
+
+    expect(summary.roleGroups?.map((item) => item.role)).toEqual(['operational', 'workLog'])
+    expect(summary.docDebt.map((item) => item.path)).toEqual([deploy.path])
+    expect(summary.docDebt[0]).toMatchObject({ role: 'operational', reasons: ['stale'] })
+    expect(summary.suggestedTasks.find((item) => item.intent === 'refreshStaleDocs')).toMatchObject({
+      docs: [{ path: deploy.path, name: deploy.name }],
+    })
+    expect(summary.suggestedTasks.find((item) => item.intent === 'refreshStaleDocs')?.docs.map((doc) => doc.path)).not.toContain(oldPlan.path)
+  })
+
+  it('keeps archived broken references low priority instead of creating a repair task', () => {
+    const archive = doc('docs/archived/old-sprint-plan.md', {
+      frontmatter: { source: 'design', status: 'done' },
+    })
+
+    const summary = buildProjectWikiSummary(
+      [archive],
+      { [archive.path]: drift(archive.path, 4, 2) },
+      { [archive.path]: NOW },
+      NOW
+    )
+
+    expect(summary.risks.docsWithRisk[0]).toMatchObject({
+      path: archive.path,
+      role: 'archive',
+      score: 4,
+    })
+    expect(summary.suggestedTasks.some((item) => item.intent === 'repairReferences')).toBe(false)
+    expect(summary.suggestedTasks).toEqual([])
+    expect(summary.pulse.tone).not.toBe('attention')
+    expect(summary.docDebt[0]).toMatchObject({ role: 'archive', reasons: ['risk'] })
+  })
+
+  it('calculates trust from all risky docs even when the radar only displays the top five', () => {
+    const docs = Array.from({ length: 6 }, (_, index) => doc(`docs/designs/d${index + 1}.md`, {
+      frontmatter: { source: 'design', status: 'published' },
+    }))
+
+    const summary = buildProjectWikiSummary(
+      docs,
+      Object.fromEntries(docs.map((item) => [item.path, drift(item.path, 1, 0)])),
+      Object.fromEntries(docs.map((item) => [item.path, NOW])),
+      NOW
+    )
+
+    expect(summary.docDebt).toHaveLength(5)
+    expect(summary.trust.signals[0]).toEqual({ key: 'riskRefs', count: 6, impact: -42, tone: 'danger' })
   })
 
   it('marks low-trust projects as weak when docs are risky and under-specified', () => {

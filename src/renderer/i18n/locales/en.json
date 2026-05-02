@@ -223,6 +223,8 @@
     "copyOnboardingBriefError": "Could not copy the onboarding brief.",
     "knowledgeTitle": "Document Groups · Knowledge Map",
     "knowledgeEmpty": "No document roles to map yet.",
+    "roleMapTitle": "Document Roles · Role Map",
+    "roleMapEmpty": "No documents available for role judgment yet.",
     "docDebtTitle": "Docs to Clean Up · Doc Debt Radar",
     "docDebtEmpty": "No priority cleanup documents detected.",
     "docDebtScore": "Score {{score}}",
@@ -266,8 +268,8 @@
           "desc": "Restoring link trust before asking AI to summarize will make every downstream task sharper."
         },
         "refreshStaleDocs": {
-          "title": "Refresh the stale core docs",
-          "desc": "Bring old docs back in line with current decisions so the team is reading the same map."
+          "title": "Review only freshness-sensitive docs",
+          "desc": "Keep old plans as records, and prioritize docs people still follow now, like README, deploy, and ops guides."
         },
         "completeMetadata": {
           "title": "Clean up document shape to make the wiki smarter",
@@ -330,8 +332,8 @@
         "desc": "Fix broken or stale references first to recover document trust."
       },
       "refreshStaleDocs": {
-        "title": "Refresh stale docs",
-        "desc": "Update or archive stale core documents against the latest project direction."
+        "title": "Review freshness-sensitive docs",
+        "desc": "Check current guides and operational docs while separating old plans and records from forced updates."
       },
       "completeMetadata": {
         "title": "Normalize document metadata",
@@ -399,6 +401,24 @@
       "risk": "Ref risk",
       "missingMeta": "Missing meta",
       "unread": "Unread"
+    },
+    "docRole": {
+      "currentGuide": "Current guide",
+      "operational": "Operational doc",
+      "reference": "Reference doc",
+      "decisionRecord": "Decision record",
+      "workLog": "Work log",
+      "archive": "Past record",
+      "ideaDraft": "Idea draft"
+    },
+    "docRoleHint": {
+      "currentGuide": "People follow this now, so freshness matters.",
+      "operational": "Deploy, ops, and migration instructions carry real execution risk.",
+      "reference": "Explains structure or usage, so mismatches should be checked.",
+      "decisionRecord": "Preserves why decisions happened; it is not always meant to be rewritten.",
+      "workLog": "Plans and sprint notes can be read as historical context.",
+      "archive": "Preserved history; alerts here should stay low priority.",
+      "ideaDraft": "Early proposals or ideas are judged separately from execution docs."
     }
   },
 
