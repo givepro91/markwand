@@ -8,6 +8,7 @@ import type { GitPulseSummary, Workspace } from '../../preload/types'
 const GIT_TIMEOUT_MS = 2_000
 const CACHE_TTL_MS = 30_000
 const MAX_COMMITS = 6
+const MAX_CHANGED_FILES = 30
 
 interface GitPulseCacheEntry {
   head: string
@@ -111,6 +112,7 @@ export async function buildLocalGitPulseSummary(projectRoot: string, now = Date.
       dirtyCount: dirtyRaw.split('\n').filter(Boolean).length,
       recentCommitCount: Number.parseInt(recentCountRaw, 10) || 0,
       changedFileCount: changedFiles.length,
+      changedFiles: changedFiles.slice(0, MAX_CHANGED_FILES),
       changedAreas: changedAreasFromFiles(changedFilesRaw),
       latestTag: latestTagRaw || undefined,
       commits: parseRecentCommits(commitsRaw),

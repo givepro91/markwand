@@ -4,7 +4,7 @@
 > 작성일: 2026-05-02
 > 작성자: Codex
 > Mode: product-design + implementation plan
-> Status: Sprint 2 complete, Sprint 3 ready
+> Status: Sprint 3 complete
 
 ---
 

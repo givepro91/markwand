@@ -113,6 +113,7 @@ const gitPulse: GitPulseSummary = {
   dirtyCount: 1,
   recentCommitCount: 4,
   changedFileCount: 6,
+  changedFiles: ['src/renderer/ProjectWikiPanel.tsx', 'src/main/ipc/git.ts'],
   changedAreas: ['src/renderer', 'docs'],
   latestTag: 'v0.4.0-beta.10',
   commits: [
@@ -202,6 +203,8 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
     expect(screen.getByText('projectWiki.git.title')).toBeInTheDocument()
     expect(screen.getByText('projectWiki.git.branch')).toBeInTheDocument()
     expect(screen.getByText('src/renderer')).toBeInTheDocument()
+    expect(screen.getByText('projectWiki.git.insightsTitle')).toBeInTheDocument()
+    expect(screen.getByText('projectWiki.git.insight.dirtyWork.title')).toBeInTheDocument()
     expect(screen.getByText('feat: add wiki trust signals')).toBeInTheDocument()
   })
 

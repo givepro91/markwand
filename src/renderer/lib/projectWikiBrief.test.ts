@@ -8,6 +8,7 @@ import {
   formatProjectWikiTaskPrompt,
 } from './projectWikiBrief'
 import type { ProjectWikiSummary } from './projectWiki'
+import type { ProjectWikiGitContext } from './projectWikiGit'
 
 const doc: Doc = {
   path: '/project/README.md',
@@ -176,13 +177,31 @@ describe('formatProjectWikiHandoffBrief', () => {
       ]
     )
 
-    const text = formatProjectWikiHandoffBrief('markwand', handoffSummary, brief)
+    const gitContext: ProjectWikiGitContext = {
+      branch: 'main',
+      recentCommitCount: 6,
+      changedFileCount: 4,
+      dirtyCount: 1,
+      changedAreas: ['src/renderer', 'scripts/deploy'],
+      insights: [{
+        kind: 'currentGuideCheck',
+        priority: 'medium',
+        doc: { path: doc.path, name: doc.name, role: 'currentGuide', ageDays: 45 },
+        changedFile: 'src/renderer/ProjectView.tsx',
+      }],
+    }
+
+    const text = formatProjectWikiHandoffBrief('markwand', handoffSummary, brief, gitContext)
 
     expect(text).toContain('# Handoff Brief: markwand')
     expect(text).toContain('- Trust score: 74/100 (watch)')
     expect(text).toContain('## Trust Signals')
     expect(text).toContain('- riskRefs: 2 (-20 pts)')
     expect(text).toContain('- recentDocs: 1 (+2 pts)')
+    expect(text).toContain('## Recent Git Context')
+    expect(text).toContain('- Branch: main')
+    expect(text).toContain('- Changed areas: src/renderer, scripts/deploy')
+    expect(text).toContain('[medium] Recent code activity is high')
     expect(text).toContain('## Evidence Docs')
     expect(text).toContain('## Knowledge Map')
     expect(text).toContain('- overview: 1 docs')

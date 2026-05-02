@@ -36,6 +36,7 @@ describe('buildLocalGitPulseSummary', () => {
       expect(summary.head).toMatch(/^[a-f0-9]{7,}$/)
       expect(summary.dirtyCount).toBe(1)
       expect(summary.recentCommitCount).toBeGreaterThanOrEqual(2)
+      expect(summary.changedFiles).toEqual(expect.arrayContaining(['README.md', 'src/app.ts']))
       expect(summary.changedAreas).toContain('src/app.ts')
       expect(summary.commits?.[0]?.subject).toBe('feat: add app')
     } finally {
@@ -54,4 +55,3 @@ describe('buildLocalGitPulseSummary', () => {
     }
   })
 })
-

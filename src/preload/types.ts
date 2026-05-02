@@ -66,6 +66,7 @@ export interface GitPulseSummary {
   dirtyCount?: number
   recentCommitCount?: number
   changedFileCount?: number
+  changedFiles?: string[]
   changedAreas?: string[]
   latestTag?: string
   commits?: GitPulseCommit[]

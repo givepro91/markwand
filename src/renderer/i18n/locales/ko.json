@@ -210,7 +210,35 @@
       "dirty": "정리 안 된 변경 {{count}}개",
       "latestTag": "최근 태그 {{tag}}",
       "areasTitle": "많이 바뀐 영역",
-      "latestCommits": "최근 커밋"
+      "latestCommits": "최근 커밋",
+      "insightsTitle": "문서 역할로 해석",
+      "priority": {
+        "high": "먼저 확인",
+        "medium": "확인 권장",
+        "low": "참고"
+      },
+      "insight": {
+        "dirtyWork": {
+          "title": "아직 정리 중인 작업",
+          "detail": "커밋되지 않은 변경이 있습니다. AI에게 넘기기 전 지금 작업 의도를 한 줄로 남기면 안전합니다."
+        },
+        "operationalCheck": {
+          "title": "운영 문서 확인",
+          "detail": "{{file}} 쪽 변경이 있어 {{doc}}가 아직 실행 기준인지 확인하세요. 운영 문서는 틀리면 영향이 큽니다."
+        },
+        "currentGuideCheck": {
+          "title": "현재 가이드 확인",
+          "detail": "최근 변경이 활발한데 {{doc}}는 {{age}}일 전 문서입니다. 새 협업자가 오해할 부분만 확인하세요."
+        },
+        "referenceCheck": {
+          "title": "참조 문서 확인",
+          "detail": "{{file}} 변경이 {{doc}} 같은 참조 문서와 연결될 수 있습니다. 현재 가이드로 쓰는 문서인지 먼저 보세요."
+        },
+        "decisionTrace": {
+          "title": "계획이 실행된 흔적",
+          "detail": "최근 커밋은 {{doc}} 같은 계획/설계가 실행된 흐름일 수 있습니다. 현재 가이드가 아니라면 보존해도 됩니다."
+        }
+      }
     },
     "navAria": "프로젝트 위키 섹션 이동",
     "navToggle": "위키 섹션",

@@ -21,6 +21,7 @@ import type {
   WikiSuggestedTask,
   WikiTrustSignal,
 } from '../lib/projectWiki'
+import { buildProjectWikiGitContext, type ProjectWikiGitContext, type WikiGitInsight } from '../lib/projectWikiGit'
 
 interface ProjectWikiPanelProps {
   projectName: string
@@ -35,9 +36,11 @@ interface ProjectWikiPanelProps {
 
 function GitPulseCard({
   pulse,
+  context,
   loading = false,
 }: {
   pulse?: GitPulseSummary | null
+  context?: ProjectWikiGitContext | null
   loading?: boolean
 }) {
   const { t } = useTranslation()
@@ -113,6 +116,19 @@ function GitPulseCard({
         </div>
       )}
 
+      {(context?.insights.length ?? 0) > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
+          <strong style={{ color: 'var(--text)', fontSize: 'var(--fs-xs)', fontWeight: 'var(--fw-semibold)' }}>
+            {t('projectWiki.git.insightsTitle')}
+          </strong>
+          <div style={{ display: 'grid', gap: 'var(--sp-2)' }}>
+            {context?.insights.map((insight) => (
+              <GitInsightRow key={`${insight.kind}:${insight.doc?.path ?? insight.changedFile ?? 'work'}`} insight={insight} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {(pulse.commits?.length ?? 0) > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-1)' }}>
           <strong style={{ color: 'var(--text)', fontSize: 'var(--fs-xs)', fontWeight: 'var(--fw-semibold)' }}>
@@ -138,6 +154,39 @@ function GitPulseCard({
         </div>
       )}
     </section>
+  )
+}
+
+function GitInsightRow({ insight }: { insight: WikiGitInsight }) {
+  const { t } = useTranslation()
+  const title = t(`projectWiki.git.insight.${insight.kind}.title`)
+  const detail = t(`projectWiki.git.insight.${insight.kind}.detail`, {
+    doc: insight.doc?.name ?? '',
+    age: insight.doc?.ageDays ?? 0,
+    file: insight.changedFile ?? '',
+  })
+  const variant = insight.priority === 'high' ? 'danger' : insight.priority === 'medium' ? 'marker' : 'default'
+
+  return (
+    <div
+      style={{
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--r-lg)',
+        padding: 'var(--sp-3)',
+        background: 'color-mix(in srgb, var(--bg-elev) 84%, transparent)',
+        display: 'flex',
+        gap: 'var(--sp-2)',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        minWidth: 0,
+      }}
+    >
+      <span style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-1)', minWidth: 0 }}>
+        <strong style={{ color: 'var(--text)', fontSize: 'var(--fs-sm)', fontWeight: 'var(--fw-semibold)' }}>{title}</strong>
+        <span style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-relaxed)' }}>{detail}</span>
+      </span>
+      <Badge variant={variant} size="sm">{t(`projectWiki.git.priority.${insight.priority}`)}</Badge>
+    </div>
   )
 }
 
@@ -1107,6 +1156,7 @@ function AiTaskSuggestions({
 function ProjectBriefCard({
   projectName,
   summary,
+  gitContext,
   brief,
   loading,
   docsByPath,
@@ -1114,6 +1164,7 @@ function ProjectBriefCard({
 }: {
   projectName: string
   summary: ProjectWikiSummary
+  gitContext?: ProjectWikiGitContext | null
   brief: ProjectWikiBrief | null
   loading: boolean
   docsByPath: Map<string, Doc>
@@ -1136,7 +1187,7 @@ function ProjectBriefCard({
 
   const handleCopyHandoff = async () => {
     try {
-      await navigator.clipboard.writeText(formatProjectWikiHandoffBrief(projectName, summary, brief))
+      await navigator.clipboard.writeText(formatProjectWikiHandoffBrief(projectName, summary, brief, gitContext))
       setCopied(true)
       toast.success(t('projectWiki.copyHandoffSuccess'))
     } catch {
@@ -1355,6 +1406,7 @@ export function ProjectWikiPanel({
 
   const primarySource = summary.sourceCounts[0]
   const primaryStatus = summary.statusCounts[0]
+  const gitContext = buildProjectWikiGitContext(Array.from(docsByPath.values()), gitPulse)
 
   return (
     <div
@@ -1417,11 +1469,12 @@ export function ProjectWikiPanel({
         onOpenDoc={onOpenDoc}
       />
 
-      <GitPulseCard pulse={gitPulse} loading={gitPulseLoading} />
+      <GitPulseCard pulse={gitPulse} context={gitContext} loading={gitPulseLoading} />
 
       <ProjectBriefCard
         projectName={projectName}
         summary={summary}
+        gitContext={gitContext}
         brief={brief}
         loading={briefLoading}
         docsByPath={docsByPath}

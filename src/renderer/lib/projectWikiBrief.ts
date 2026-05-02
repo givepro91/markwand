@@ -1,5 +1,6 @@
 import type { Doc } from '../../preload/types'
 import type { ProjectWikiSummary, WikiDocRole, WikiSuggestedTask, WikiSuggestedTaskIntent } from './projectWiki'
+import { formatProjectWikiGitContext, type ProjectWikiGitContext } from './projectWikiGit'
 
 export interface ProjectWikiEvidence {
   path: string
@@ -222,7 +223,8 @@ function formatSuggestedTask(task: WikiSuggestedTask): string[] {
 export function formatProjectWikiHandoffBrief(
   projectName: string,
   summary: ProjectWikiSummary,
-  brief: ProjectWikiBrief | null
+  brief: ProjectWikiBrief | null,
+  gitContext?: ProjectWikiGitContext | null
 ): string {
   const issueCount = summary.risks.missingRefs + summary.risks.staleRefs
   const lines: string[] = [
@@ -243,6 +245,13 @@ export function formatProjectWikiHandoffBrief(
       const impact = signal.impact > 0 ? `+${signal.impact}` : String(signal.impact)
       lines.push(`- ${signal.key}: ${signal.count} (${impact} pts)`)
     }
+    lines.push('')
+  }
+
+  const gitLines = formatProjectWikiGitContext(gitContext)
+  if (gitLines.length > 0) {
+    lines.push('## Recent Git Context')
+    lines.push(...gitLines)
     lines.push('')
   }
 

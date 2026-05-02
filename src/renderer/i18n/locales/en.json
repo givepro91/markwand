@@ -210,7 +210,35 @@
       "dirty": "{{count}} uncommitted changes",
       "latestTag": "Latest tag {{tag}}",
       "areasTitle": "Areas changing most",
-      "latestCommits": "Latest commits"
+      "latestCommits": "Latest commits",
+      "insightsTitle": "Interpreted by document role",
+      "priority": {
+        "high": "Check first",
+        "medium": "Worth checking",
+        "low": "Context"
+      },
+      "insight": {
+        "dirtyWork": {
+          "title": "Work is still in progress",
+          "detail": "There are uncommitted changes. Capture the current intent before handing this to AI."
+        },
+        "operationalCheck": {
+          "title": "Check operational docs",
+          "detail": "{{file}} changed, so confirm whether {{doc}} is still the execution guide. Operational docs carry higher risk."
+        },
+        "currentGuideCheck": {
+          "title": "Check the current guide",
+          "detail": "Code is moving actively and {{doc}} is {{age}} days old. Only check newcomer-facing assumptions, not historical plans."
+        },
+        "referenceCheck": {
+          "title": "Check reference docs",
+          "detail": "{{file}} may connect to reference doc {{doc}}. Confirm only if the doc is used as current guidance."
+        },
+        "decisionTrace": {
+          "title": "Plan may have execution traces",
+          "detail": "Recent commits may be execution traces of {{doc}}. Preserve it as context unless it claims to be current guidance."
+        }
+      }
     },
     "navAria": "Project wiki section navigation",
     "navToggle": "Wiki sections",
