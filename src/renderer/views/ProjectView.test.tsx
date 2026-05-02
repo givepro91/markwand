@@ -6,7 +6,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { renderWithProviders, screen, userEvent } from '../__test-utils__/render'
-import { getDocumentStickyOffset, ProjectDocReturnBar } from './ProjectView'
+import { getDocumentStickyOffset, getTocActionState, ProjectDocReturnBar } from './ProjectView'
 
 describe('ProjectDocReturnBar', () => {
   it('calls the return handler from a visible Back to Wiki action', async () => {
@@ -20,6 +20,19 @@ describe('ProjectDocReturnBar', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'projectWiki.returnToWikiAria' }))
 
     expect(onReturnToWiki).toHaveBeenCalledOnce()
+  })
+
+  it('keeps document action icons inside the sticky reading bar so they cannot cover document text', () => {
+    renderWithProviders(
+      <ProjectDocReturnBar
+        docName="README.md"
+        onReturnToWiki={vi.fn()}
+        actions={<button type="button">목차</button>}
+      />
+    )
+
+    const returnBar = screen.getByText('README.md').closest('[data-project-doc-return-bar]')
+    expect(returnBar).toContainElement(screen.getByRole('button', { name: '목차' }))
   })
 
   it('reserves the sticky reading bar height when jumping from the TOC', () => {
@@ -40,5 +53,25 @@ describe('ProjectDocReturnBar', () => {
     container.appendChild(returnBar)
 
     expect(getDocumentStickyOffset(container)).toBe(92)
+  })
+
+  it('marks the TOC action active only when the TOC rail is actually visible', () => {
+    expect(getTocActionState({ showTocRail: false, hasDriftTool: true })).toEqual({
+      showToc: true,
+      showDocumentTools: true,
+      activeDocumentTool: 'toc',
+    })
+
+    expect(getTocActionState({ showTocRail: true, hasDriftTool: true })).toEqual({
+      showToc: false,
+      showDocumentTools: true,
+      activeDocumentTool: 'issues',
+    })
+
+    expect(getTocActionState({ showTocRail: true, hasDriftTool: false })).toEqual({
+      showToc: false,
+      showDocumentTools: false,
+      activeDocumentTool: 'toc',
+    })
   })
 })

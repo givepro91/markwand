@@ -4,13 +4,13 @@
 - **Goal**: 다음 라운드 제품 매력 강화 — Project Wiki를 "읽는 지도"에서 "다음 행동을 제안하는 지도"로 진화.
 - **Phase**: **building** — 비개발자 친화 UX 카피 정리 완료, Ask This Project 기반 확장 준비.
 - **Blocker**: none
-- **Last Activity**: TOC sticky jump + readable rail — 목차 이동 시 sticky 읽기 바 높이를 보정해 제목 가림을 방지하고, 우측 목차 레일을 넓혀 긴 제목을 2줄까지 표시. QA: targeted vitest 4 PASS · typecheck PASS · full test 421 PASS · build PASS (2026-05-02).
+- **Last Activity**: Document action bar polish — 문서 모드 아이콘을 sticky 읽기 바 내부로 이동해 본문 겹침을 제거하고, 목차 버튼 활성 상태를 실제 우측 목차 rail 표시 여부와 동기화. QA: targeted vitest 4 PASS · typecheck PASS · full test 423 PASS · build PASS (2026-05-02).
 - **Remote**: `origin/main` = `21c0f9e`; tag `v0.4.0-beta.10` = `deacb77`; Release: https://github.com/givepro91/markwand/releases/tag/v0.4.0-beta.10
 
 ## Recently Done
-1. TOC sticky jump + readable rail — 목차 이동 후 제목이 상단 읽기 바에 가려지지 않도록 보정, 긴 목차 제목 2줄 표시.
-2. Drift occurrence ignore + tool tabs — 같은 경로 반복 참조도 개별 무시, 문제/목차는 탭 전환 + 레일 닫기 가능.
-3. Drift review rail UX — 우측 상시 패널에서 참조 이동/무시/복사/재검증을 문서 읽기 중 유지.
+1. Document action bar polish — 문서 모드 아이콘을 읽기 바 안으로 넣어 본문 겹침 제거, 목차 버튼 활성 상태를 실제 rail 표시와 동기화.
+2. TOC sticky jump + readable rail — 목차 이동 후 제목이 상단 읽기 바에 가려지지 않도록 보정, 긴 목차 제목 2줄 표시.
+3. Drift occurrence ignore + tool tabs — 같은 경로 반복 참조도 개별 무시, 문제/목차는 탭 전환 + 레일 닫기 가능.
 
 ## Release Artifacts
 | Artifact | SHA256 |

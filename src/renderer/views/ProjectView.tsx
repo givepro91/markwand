@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileTree } from '../components/FileTree'
 import { MarkdownViewer } from '../components/MarkdownViewer'
@@ -60,9 +60,11 @@ const ToolsIcon = () => (
 export function ProjectDocReturnBar({
   docName,
   onReturnToWiki,
+  actions,
 }: {
   docName: string
   onReturnToWiki: () => void
+  actions?: ReactNode
 }) {
   const { t } = useTranslation()
 
@@ -103,14 +105,17 @@ export function ProjectDocReturnBar({
           {docName}
         </strong>
       </div>
-      <Button
-        variant="primary"
-        size="sm"
-        onClick={onReturnToWiki}
-        aria-label={t('projectWiki.returnToWikiAria')}
-      >
-        {t('projectWiki.returnToWiki')}
-      </Button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', flexShrink: 0 }}>
+        {actions}
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={onReturnToWiki}
+          aria-label={t('projectWiki.returnToWikiAria')}
+        >
+          {t('projectWiki.returnToWiki')}
+        </Button>
+      </div>
     </div>
   )
 }
@@ -119,6 +124,27 @@ export function getDocumentStickyOffset(container: HTMLElement): number {
   const returnBar = container.querySelector<HTMLElement>('[data-project-doc-return-bar]')
   if (!returnBar) return 16
   return Math.ceil(returnBar.getBoundingClientRect().height + 24)
+}
+
+export function getTocActionState({
+  showTocRail,
+  hasDriftTool,
+}: {
+  showTocRail: boolean
+  hasDriftTool: boolean
+}): {
+  showToc: boolean
+  showDocumentTools: boolean
+  activeDocumentTool: 'issues' | 'toc'
+} {
+  if (!showTocRail) {
+    return { showToc: true, showDocumentTools: true, activeDocumentTool: 'toc' }
+  }
+  return {
+    showToc: false,
+    showDocumentTools: hasDriftTool,
+    activeDocumentTool: hasDriftTool ? 'issues' : 'toc',
+  }
 }
 
 const ChevronLeftIcon = () => (
@@ -644,6 +670,52 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
     container.scrollTo({ top: offset, behavior: 'smooth' })
   }, [headings])
 
+  const documentActions = !showWiki && selectedDoc && classifyAsset(selectedDoc.path) === 'md' ? (
+    <>
+      {(hasDriftTool || hasTocTool) && (
+        <IconButton
+          aria-label={t('projectView.documentTools')}
+          aria-pressed={showRightRail}
+          size="sm"
+          variant={showRightRail ? 'primary' : 'ghost'}
+          onClick={() => {
+            if (showRightRail) {
+              setShowDocumentTools(false)
+            } else {
+              setShowDocumentTools(true)
+              setActiveDocumentTool(hasDriftTool ? 'issues' : 'toc')
+            }
+          }}
+        >
+          <ToolsIcon />
+        </IconButton>
+      )}
+      <IconButton
+        aria-label={t('projectView.findInDoc')}
+        aria-pressed={showFind}
+        size="sm"
+        variant={showFind ? 'primary' : 'ghost'}
+        onClick={() => setShowFind((p) => !p)}
+      >
+        <SearchIcon />
+      </IconButton>
+      <IconButton
+        aria-label={t('projectView.tocToggle')}
+        aria-pressed={showTocRail}
+        size="sm"
+        variant={showTocRail ? 'primary' : 'ghost'}
+        onClick={() => {
+          const next = getTocActionState({ showTocRail, hasDriftTool })
+          setShowToc(next.showToc)
+          setShowDocumentTools(next.showDocumentTools)
+          setActiveDocumentTool(next.activeDocumentTool)
+        }}
+      >
+        <TocIcon />
+      </IconButton>
+    </>
+  ) : null
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {/* FilterBar */}
@@ -847,19 +919,32 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
               'radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 8%, transparent) 0, transparent 32%), var(--bg)',
           }}
         >
-          {/* 우상단 아이콘 버튼 그룹 */}
-          {(selectedDoc || !showWiki) && (
+          {/* 우상단 아이콘 버튼 그룹 — 문서 모드에서는 읽기 바 내부에 넣어 본문과 겹치지 않게 한다. */}
+          {showWiki && selectedDoc && (
             <div
               style={{
                 position: 'sticky',
                 top: 0,
-                float: 'right',
                 display: 'flex',
-                gap: 'var(--sp-1)',
+                justifyContent: 'flex-end',
+                pointerEvents: 'none',
                 marginBottom: 'var(--sp-2)',
                 zIndex: 'var(--z-sticky)',
               }}
             >
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 'var(--sp-1)',
+                  padding: '3px',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--r-pill)',
+                  background: 'var(--surface-glass)',
+                  backdropFilter: 'blur(14px)',
+                  boxShadow: 'var(--shadow-sm)',
+                  pointerEvents: 'auto',
+                }}
+              >
               <IconButton
                 aria-label={t('projectWiki.toggle')}
                 aria-pressed={showWiki}
@@ -869,53 +954,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
               >
                 <WikiIcon />
               </IconButton>
-              {!showWiki && selectedDoc && classifyAsset(selectedDoc.path) === 'md' && (
-                <>
-              {(hasDriftTool || hasTocTool) && (
-                <IconButton
-                  aria-label={t('projectView.documentTools')}
-                  aria-pressed={showDocumentTools}
-                  size="sm"
-                  variant={showDocumentTools ? 'primary' : 'ghost'}
-                  onClick={() => {
-                    setShowDocumentTools((prev) => !prev)
-                    if (!showDocumentTools) setActiveDocumentTool(hasDriftTool ? 'issues' : 'toc')
-                  }}
-                >
-                  <ToolsIcon />
-                </IconButton>
-              )}
-              <IconButton
-                aria-label={t('projectView.findInDoc')}
-                aria-pressed={showFind}
-                size="sm"
-                variant={showFind ? 'primary' : 'ghost'}
-                onClick={() => setShowFind((p) => !p)}
-              >
-                <SearchIcon />
-              </IconButton>
-              <IconButton
-                aria-label={t('projectView.tocToggle')}
-                aria-pressed={showToc}
-                size="sm"
-                variant={showToc ? 'primary' : 'ghost'}
-                onClick={() => {
-                  setShowToc((prev) => {
-                    const next = !prev
-                    if (next) {
-                      setShowDocumentTools(true)
-                      setActiveDocumentTool('toc')
-                    } else if (activeDocumentTool === 'toc' && hasDriftTool) {
-                      setActiveDocumentTool('issues')
-                    }
-                    return next
-                  })
-                }}
-              >
-                <TocIcon />
-              </IconButton>
-                </>
-              )}
+              </div>
             </div>
           )}
           {showWiki ? (
@@ -929,7 +968,11 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
             />
           ) : selectedDoc ? (
             <>
-              <ProjectDocReturnBar docName={selectedDoc.name} onReturnToWiki={handleReturnToWiki} />
+              <ProjectDocReturnBar
+                docName={selectedDoc.name}
+                onReturnToWiki={handleReturnToWiki}
+                actions={documentActions}
+              />
               {classifyAsset(selectedDoc.path) === 'image' ? (
                 <I18nErrorBoundary resetKey={selectedDoc.path}>
                   <ImageViewer
@@ -1049,7 +1092,10 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
                 aria-label={t('projectView.closeDocumentTools')}
                 size="sm"
                 variant="ghost"
-                onClick={() => setShowDocumentTools(false)}
+                onClick={() => {
+                  if (activeRightTool === 'toc') setShowToc(false)
+                  setShowDocumentTools(false)
+                }}
               >
                 ✕
               </IconButton>
