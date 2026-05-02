@@ -71,17 +71,18 @@ describe('SshScannerDriver.scanDocs', () => {
     expect(docs.map((d) => d.path).sort()).toEqual(['/root/docs/a.md', '/root/docs/b.md'])
   })
 
-  it('ignore 패턴 준수 — **/node_modules/** / **/__fixtures__/**', async () => {
+  it('ignore 패턴 준수 — **/node_modules/** / **/__fixtures__/** / **/.pytest_cache/**', async () => {
     const readdir = makeTree({
       '/root': [
         entry('README.md', { size: 10 }),
         entry('node_modules', { isDir: true }),
         entry('__fixtures__', { isDir: true }),
+        entry('.pytest_cache', { isDir: true }),
       ],
     })
     const scanner = createSshScannerDriver(makeClient(readdir))
     const docs = await collect(
-      scanner.scanDocs('/root', ['**/*.md'], ['**/node_modules/**', '**/__fixtures__/**']),
+      scanner.scanDocs('/root', ['**/*.md'], ['**/node_modules/**', '**/__fixtures__/**', '**/.pytest_cache/**']),
     )
     expect(docs.map((d) => d.path)).toEqual(['/root/README.md'])
   })

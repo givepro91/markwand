@@ -122,9 +122,11 @@ describe('scanProjectsViaSftp', () => {
       '/root': [
         dirEntry('node_modules'),
         dirEntry('dist'),
+        dirEntry('.pytest_cache'),
         dirEntry('__fixtures__'),
         dirEntry('my-project'),
       ],
+      '/root/.pytest_cache': [fileEntry('README.md')],
       '/root/my-project': [fileEntry('go.mod')],
     })
     const projects = await scanProjectsViaSftp(sftp, 'ssh:xyz', '/root', 'container')

@@ -4,13 +4,13 @@
 - **Goal**: Project Wiki를 "경고 도구"에서 "문서 역할과 현재 상황을 판단하는 프로젝트 이해 레이어"로 진화.
 - **Phase**: **planning** — 제품화 backlog 선별 완료, 다음 Sprint는 First Project Aha Path 추천.
 - **Blocker**: none
-- **Last Activity**: Productization backlog — 투자자 관점으로 P0 First Project Aha Path / Shareable AI Handoff, P1 Trust Calibration / Installation Confidence, P2 Team Layer 정리. QA: dev boot PASS · targeted 19 PASS · typecheck PASS · full test 443 PASS · build PASS (2026-05-02).
+- **Last Activity**: swk-ground-control dogfood QA — `.pytest_cache/README.md`가 입문 문서로 오인되던 스캐너 누수 수정. Local/SSH ignore 정책 동기화, 실제 앱 재부팅에서 `project:scan-docs(d8e83922) 107 docs` 확인, full test 445 PASS · typecheck PASS · build PASS (2026-05-02).
 - **Remote**: `origin/main` = `21c0f9e`; tag `v0.4.0-beta.10` = `deacb77`; Release: https://github.com/givepro91/markwand/releases/tag/v0.4.0-beta.10
 
 ## Recently Done
-1. Productization backlog — `docs/plans/productization-backlog.md` 작성, 다음 Sprint로 First Project Aha Path 추천.
-2. Runtime QA — 실제 `pnpm dev` 부팅에서 Git Pulse IPC의 ESM import 오류 수정, 고아 프로세스 없음 확인.
-3. Git Pulse dogfood UX — 비개발자 인지부하 완화를 위해 개발자 세부정보 접기와 문서 바로 열기 액션 추가.
+1. swk-ground-control dogfood QA — pytest cache README 2건을 문서/위키/SSH 탐색 대상에서 제외.
+2. Productization backlog — `docs/plans/productization-backlog.md` 작성, 다음 Sprint로 First Project Aha Path 추천.
+3. Runtime QA — 실제 `pnpm dev` 부팅에서 Git Pulse IPC의 ESM import 오류 수정, 고아 프로세스 없음 확인.
 
 ## Release Artifacts
 | Artifact | SHA256 |

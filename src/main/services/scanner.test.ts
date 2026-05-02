@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { parseFrontmatter } from './scanner'
+import { countDocs, parseFrontmatter, scanProjects } from './scanner'
 import { localFs } from '../transport/local/fs'
 
 const FIXTURES = path.resolve(__dirname, '../../__fixtures__')
@@ -205,6 +205,36 @@ describe('Doc shape contract', () => {
       // Downstream code in FilterBar.tsx (line 9: AI_SOURCES) and buildDocGroups
       // assumes tags is string[] but receives string — will silently misbehave
       expect(isArray).toBe(false) // document the violation
+    }
+  })
+})
+
+describe('project scanner ignore policy', () => {
+  it('countDocs excludes pytest cache README files from user-facing docs', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'markwand-count-docs-'))
+    try {
+      fs.writeFileSync(path.join(root, 'README.md'), '# real doc')
+      fs.mkdirSync(path.join(root, '.pytest_cache'), { recursive: true })
+      fs.writeFileSync(path.join(root, '.pytest_cache/README.md'), '# cache doc')
+
+      await expect(countDocs(root)).resolves.toBe(1)
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('container scan skips pytest cache directories when looking for projects', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'markwand-scan-projects-'))
+    try {
+      fs.mkdirSync(path.join(root, '.pytest_cache'), { recursive: true })
+      fs.writeFileSync(path.join(root, '.pytest_cache/README.md'), '# cache marker')
+      fs.mkdirSync(path.join(root, 'actual-project'), { recursive: true })
+      fs.writeFileSync(path.join(root, 'actual-project/README.md'), '# real project')
+
+      const projects = await scanProjects('ws-test', root, 'container')
+      expect(projects.map((p) => p.name)).toEqual(['actual-project'])
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true })
     }
   })
 })

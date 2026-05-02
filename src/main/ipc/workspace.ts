@@ -41,6 +41,7 @@ const WORKSPACE_SCAN_IGNORE_PATTERNS = [
   '**/.next/**',
   '**/build/**',
   '**/__pycache__/**',
+  '**/.pytest_cache/**',
   '**/target/**',
   '**/vendor/**',
   '**/.venv/**',
@@ -337,7 +338,7 @@ const SSH_PROJECT_MARKERS = [
 // 로컬과 완전 동일 집합이 아님을 주석으로 명시 (Evaluator M-2).
 const SSH_PROJECT_SCAN_IGNORE = new Set([
   'node_modules', 'dist', 'build', 'out', 'target', 'vendor', 'coverage',
-  '__pycache__', '__fixtures__', '__snapshots__',
+  '__pycache__', '.pytest_cache', '__fixtures__', '__snapshots__',
   '.next', '.nuxt', '.svelte-kit', '.turbo', '.cache', '.venv',
 ])
 

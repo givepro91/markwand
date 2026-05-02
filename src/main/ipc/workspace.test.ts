@@ -113,6 +113,7 @@ describe('composeDocsFromFileStats', () => {
       'README.md': '# root',
       'node_modules/pkg/a.md': '# skip',
       'dist/build.md': '# skip',
+      '.pytest_cache/README.md': '# pytest cache',
       'src/__fixtures__/fm-foo.md': '---\ntags: []\n---\n# fixture', // GUI 피드백: fixture 혼입 방지
       'src/__snapshots__/snap.md': '# snap',
     })
@@ -122,6 +123,7 @@ describe('composeDocsFromFileStats', () => {
       expect(paths.some((p) => p.endsWith('README.md'))).toBe(true)
       expect(paths.some((p) => p.includes('node_modules'))).toBe(false)
       expect(paths.some((p) => p.includes('dist'))).toBe(false)
+      expect(paths.some((p) => p.includes('.pytest_cache'))).toBe(false)
       expect(paths.some((p) => p.includes('__fixtures__'))).toBe(false)
       expect(paths.some((p) => p.includes('__snapshots__'))).toBe(false)
     } finally {

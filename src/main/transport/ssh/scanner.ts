@@ -27,7 +27,7 @@ const PROJECT_MARKERS = [
 // readdir 결과의 엔트리를 컨테이너 스캔에서 건너뛸 디렉토리 이름 (로컬 PROJECT_SCAN_IGNORE 미러)
 const PROJECT_SCAN_IGNORE = new Set([
   'node_modules', 'dist', 'build', 'out', 'target', 'vendor', 'coverage',
-  '__pycache__', '__fixtures__', '__snapshots__',
+  '__pycache__', '.pytest_cache', '__fixtures__', '__snapshots__',
   '.next', '.nuxt', '.svelte-kit', '.turbo', '.cache', '.venv',
 ])
 
