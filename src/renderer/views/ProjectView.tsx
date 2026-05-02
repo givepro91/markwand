@@ -68,6 +68,7 @@ export function ProjectDocReturnBar({
 
   return (
     <div
+      data-project-doc-return-bar=""
       style={{
         position: 'sticky',
         top: 0,
@@ -112,6 +113,12 @@ export function ProjectDocReturnBar({
       </Button>
     </div>
   )
+}
+
+export function getDocumentStickyOffset(container: HTMLElement): number {
+  const returnBar = container.querySelector<HTMLElement>('[data-project-doc-return-bar]')
+  if (!returnBar) return 16
+  return Math.ceil(returnBar.getBoundingClientRect().height + 24)
 }
 
 const ChevronLeftIcon = () => (
@@ -633,7 +640,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
     }
     const containerTop = container.getBoundingClientRect().top
     const elTop = el.getBoundingClientRect().top
-    const offset = elTop - containerTop + container.scrollTop - 16
+    const offset = elTop - containerTop + container.scrollTop - getDocumentStickyOffset(container)
     container.scrollTo({ top: offset, behavior: 'smooth' })
   }, [headings])
 
@@ -959,7 +966,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
           <aside
             aria-label={t('projectView.documentTools')}
             style={{
-              width: activeRightTool === 'issues' ? 'min(360px, 32vw)' : '240px',
+              width: activeRightTool === 'issues' ? 'clamp(320px, 32vw, 380px)' : 'clamp(320px, 30vw, 440px)',
               flexShrink: 0,
               borderLeft: '1px solid var(--border)',
               background: 'color-mix(in srgb, var(--bg-elev) 92%, var(--bg))',

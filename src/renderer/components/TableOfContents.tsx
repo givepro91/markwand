@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 
 export interface Heading {
@@ -113,20 +113,23 @@ export function TableOfContents({ headings, onHeadingClick }: TableOfContentsPro
             <button
               onClick={() => handleClick(h.id)}
               style={{
-                display: 'block',
+                display: '-webkit-box',
                 width: '100%',
                 textAlign: 'left',
                 background: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
-                padding: `2px 0 2px ${(h.level - 1) * 10}px`,
+                padding: `4px 6px 4px ${(h.level - 1) * 12}px`,
                 fontSize: h.level === 1 ? 'var(--fs-sm)' : 'var(--fs-xs)',
                 fontWeight: h.level <= 2 ? 'var(--fw-medium)' : 'var(--fw-normal)',
                 color: h.level === 1 ? 'var(--text)' : 'var(--text-muted)',
                 lineHeight: 'var(--lh-normal)',
-                whiteSpace: 'nowrap',
+                whiteSpace: 'normal',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
+                overflowWrap: 'anywhere',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical' as CSSProperties['WebkitBoxOrient'],
                 borderRadius: 'var(--r-sm)',
                 fontFamily: 'inherit',
               }}
