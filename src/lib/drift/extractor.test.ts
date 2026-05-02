@@ -357,6 +357,13 @@ describe('extractReferences — edge cases', () => {
     expect(refs.every((ref) => ref.reportMissing === false)).toBe(true)
   })
 
+  it('extensionless @/ refs are low-confidence and do not report missing', () => {
+    const refs = extractReferences('API prefix is @/api/v1 and branch is @/release/main.', ROOT)
+    expect(refs).toHaveLength(2)
+    expect(refs.every((ref) => ref.kind === 'at')).toBe(true)
+    expect(refs.every((ref) => ref.reportMissing === false)).toBe(true)
+  })
+
   it('directory-like inline references are low-confidence and do not report missing', () => {
     const refs = extractReferences('Review `docs/plans/` before release.', ROOT)
     expect(refs).toHaveLength(1)

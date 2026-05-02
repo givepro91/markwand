@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, IconButton } from './ui'
 import { WorkspaceManageModal } from './WorkspaceManageModal'
@@ -28,6 +28,91 @@ interface WorkspacePickerProps {
   onRemove: (id: string) => Promise<void>
 }
 
+function workspaceLabel(workspace: Workspace): string {
+  if (workspace.transport?.type !== 'ssh') return workspace.name
+  const segments = workspace.root.split('/').filter((s) => s.length > 0)
+  const projectName = segments[segments.length - 1] ?? workspace.root
+  return `🌐 ${workspace.name} / ${projectName}`
+}
+
+const menuItemStyle: CSSProperties = {
+  width: '100%',
+  border: 0,
+  borderRadius: 'var(--r-md)',
+  background: 'transparent',
+  color: 'var(--text)',
+  display: 'grid',
+  gridTemplateColumns: 'auto minmax(0, 1fr)',
+  alignItems: 'center',
+  gap: 'var(--sp-2)',
+  padding: 'var(--sp-2) var(--sp-3)',
+  fontFamily: 'inherit',
+  fontSize: 'var(--fs-sm)',
+  textAlign: 'left',
+  cursor: 'pointer',
+}
+
+function WorkspaceMenuAction({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        ...menuItemStyle,
+        gridTemplateColumns: 'minmax(0, 1fr)',
+        fontWeight: 'var(--fw-semibold)' as CSSProperties['fontWeight'],
+      }}
+    >
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>+ {label.replace(/^\+\s*/, '')}</span>
+    </button>
+  )
+}
+
+function WorkspaceMenuGroup({
+  label,
+  workspaces,
+  activeId,
+  onSelect,
+}: {
+  label: string
+  workspaces: Workspace[]
+  activeId: string | null
+  onSelect: (id: string) => void
+}) {
+  if (workspaces.length === 0) return null
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-1)', paddingBottom: 'var(--sp-2)' }}>
+      <div style={{ padding: 'var(--sp-1) var(--sp-3)', color: 'var(--text-muted)', fontSize: 'var(--fs-xs)', fontWeight: 'var(--fw-semibold)' }}>
+        {label}
+      </div>
+      {workspaces.map((workspace) => {
+        const active = workspace.id === activeId
+        return (
+          <button
+            key={workspace.id}
+            type="button"
+            role="option"
+            aria-selected={active}
+            onClick={() => onSelect(workspace.id)}
+            style={{
+              ...menuItemStyle,
+              background: active ? 'color-mix(in srgb, var(--accent) 14%, transparent)' : 'transparent',
+              color: active ? 'var(--text)' : 'var(--text-muted)',
+              fontWeight: active ? 'var(--fw-semibold)' : 'var(--fw-medium)',
+            }}
+          >
+            <span aria-hidden="true" style={{ color: active ? 'var(--accent)' : 'transparent' }}>✓</span>
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {workspaceLabel(workspace)}
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export function WorkspacePicker({
   workspaces,
   activeId,
@@ -39,6 +124,39 @@ export function WorkspacePicker({
 }: WorkspacePickerProps) {
   const { t } = useTranslation()
   const [showManage, setShowManage] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const triggerRef = useRef<HTMLButtonElement | null>(null)
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null)
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const syncPosition = () => {
+      const rect = triggerRef.current?.getBoundingClientRect()
+      if (!rect) return
+      setMenuPosition({
+        top: Math.round(rect.bottom + 8),
+        left: Math.round(rect.left),
+      })
+    }
+    syncPosition()
+    const onPointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setMenuOpen(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    window.addEventListener('resize', syncPosition)
+    window.addEventListener('scroll', syncPosition, true)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('resize', syncPosition)
+      window.removeEventListener('scroll', syncPosition, true)
+    }
+  }, [menuOpen])
 
   if (workspaces.length === 0) {
     return (
@@ -57,81 +175,115 @@ export function WorkspacePicker({
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-1)' }}>
-        <div style={{ position: 'relative' }}>
-          <select
-            value={activeId ?? ''}
-            aria-label={t('picker.select')}
-            onChange={(e) => {
-              const val = e.target.value
-              if (val === '__add__') onAdd()
-              else if (val === '__add_ssh__' && onAddSsh) onAddSsh()
-              else if (val) onSelect(val)
-            }}
-            style={{
-              appearance: 'none',
-              background: 'var(--bg-elev)',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--r-md)',
-              color: 'var(--text)',
-              fontSize: 'var(--fs-sm)',
-              fontWeight: 'var(--fw-medium)',
-              padding: 'var(--sp-1) 28px var(--sp-1) var(--sp-3)',
-              cursor: 'pointer',
-              maxWidth: '180px',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            {/* Follow-up FS8 — 로컬 / SSH 그룹 분리로 시각적 구분 (optgroup). */}
+      <div ref={rootRef} style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-1)', position: 'relative' }}>
+        <button
+          ref={triggerRef}
+          type="button"
+          aria-label={t('picker.select')}
+          aria-haspopup="listbox"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((open) => !open)}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) auto',
+            alignItems: 'center',
+            gap: 'var(--sp-2)',
+            background: 'var(--bg-elev)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--r-md)',
+            color: 'var(--text)',
+            fontFamily: 'inherit',
+            fontSize: 'var(--fs-sm)',
+            fontWeight: 'var(--fw-medium)',
+            padding: 'var(--sp-1) var(--sp-2) var(--sp-1) var(--sp-3)',
+            cursor: 'pointer',
+            width: '220px',
+            maxWidth: 'min(220px, calc(100vw - 96px))',
+            WebkitAppRegion: 'no-drag',
+          } as CSSProperties}
+        >
+          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>
             {(() => {
-              const local = workspaces.filter((w) => !w.transport || w.transport.type === 'local')
-              const remote = workspaces.filter((w) => w.transport?.type === 'ssh')
-              return (
-                <>
-                  {local.length > 0 && (
-                    <optgroup label={t('picker.groupLocal')}>
-                      {local.map((w) => (
-                        <option key={w.id} value={w.id}>{w.name}</option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {remote.length > 0 && (
-                    <optgroup label={t('picker.groupRemote')}>
-                      {remote.map((w) => {
-                        // FS9-B — "서버명 / 프로젝트폴더" 표시. root basename 을 추출.
-                        const segments = w.root.split('/').filter((s) => s.length > 0)
-                        const projectName = segments[segments.length - 1] ?? w.root
-                        return (
-                          <option key={w.id} value={w.id}>
-                            🌐 {w.name} / {projectName}
-                          </option>
-                        )
-                      })}
-                    </optgroup>
-                  )}
-                </>
-              )
+              const active = workspaces.find((w) => w.id === activeId)
+              return active ? workspaceLabel(active) : t('picker.select')
             })()}
-            <option value="__add__">{t('picker.addLocal')}</option>
-            {experimentalSsh && onAddSsh && (
-              <option value="__add_ssh__">{t('picker.addSsh')}</option>
-            )}
-          </select>
-          <span
-            style={{
-              position: 'absolute',
-              right: 'var(--sp-2)',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              pointerEvents: 'none',
-              color: 'var(--text-muted)',
-              fontSize: 'var(--fs-xs)',
-            }}
-          >
+          </span>
+          <span aria-hidden="true" style={{ color: 'var(--text-muted)', transform: menuOpen ? 'rotate(180deg)' : undefined }}>
             ▾
           </span>
-        </div>
+        </button>
+
+        {menuOpen && (
+          <div
+            role="listbox"
+            aria-label={t('picker.select')}
+            style={{
+              position: 'fixed',
+              top: menuPosition ? `${menuPosition.top}px` : 'calc(100% + var(--sp-2))',
+              left: menuPosition ? `${menuPosition.left}px` : 0,
+              zIndex: 'calc(var(--z-modal) + 40)',
+              width: 'min(360px, calc(100vw - 24px))',
+              maxHeight: 'min(420px, calc(100vh - 96px))',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              background: 'color-mix(in srgb, var(--bg-elev) 96%, transparent)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--r-xl)',
+              boxShadow: 'var(--shadow-lg)',
+              backdropFilter: 'blur(18px)',
+            }}
+          >
+            <div style={{ overflow: 'auto', padding: 'var(--sp-2)', overscrollBehavior: 'contain' }}>
+              <WorkspaceMenuGroup
+                label={t('picker.groupLocal')}
+                workspaces={workspaces.filter((w) => !w.transport || w.transport.type === 'local')}
+                activeId={activeId}
+                onSelect={(id) => {
+                  setMenuOpen(false)
+                  onSelect(id)
+                }}
+              />
+              <WorkspaceMenuGroup
+                label={t('picker.groupRemote')}
+                workspaces={workspaces.filter((w) => w.transport?.type === 'ssh')}
+                activeId={activeId}
+                onSelect={(id) => {
+                  setMenuOpen(false)
+                  onSelect(id)
+                }}
+              />
+            </div>
+            <div
+              style={{
+                flexShrink: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 'var(--sp-1)',
+                padding: 'var(--sp-2)',
+                borderTop: '1px solid var(--border)',
+                background: 'color-mix(in srgb, var(--bg-elev) 92%, transparent)',
+              }}
+            >
+              <WorkspaceMenuAction
+                label={t('picker.addLocal')}
+                onClick={() => {
+                  setMenuOpen(false)
+                  onAdd()
+                }}
+              />
+              {experimentalSsh && onAddSsh && (
+                <WorkspaceMenuAction
+                  label={t('picker.addSsh')}
+                  onClick={() => {
+                    setMenuOpen(false)
+                    onAddSsh()
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        )}
         <IconButton
           aria-label={t('picker.manage')}
           size="sm"

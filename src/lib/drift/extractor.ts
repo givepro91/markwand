@@ -72,8 +72,11 @@ function isDirectoryLikePath(s: string): boolean {
 }
 
 function shouldReportMissing(rawPath: string, kind: ReferenceKind): boolean {
-  if (kind === 'at') return true
   if (isDirectoryLikePath(rawPath)) return false
+  // Extensionless refs such as `@/api/v1`, `origin/main`, or `docs/plans`
+  // are too ambiguous to report as broken. If the target exists we still keep
+  // the relationship, but a miss stays silent to avoid slash-heavy prose noise.
+  if (kind === 'at') return hasKnownFileExtension(rawPath)
   return hasKnownFileExtension(rawPath)
 }
 

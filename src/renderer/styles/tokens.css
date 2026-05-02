@@ -90,6 +90,9 @@
 }
 
 [data-theme="dark"] {
+  /* tokens.css is imported after themes.css through globals.css, so keep the
+     dark primary-button contrast here as well. */
+  --accent-contrast: #ffffff;
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
   --shadow-md: 0 3px 6px rgba(0,0,0,0.5);
   --shadow-lg: 0 8px 24px rgba(0,0,0,0.6);

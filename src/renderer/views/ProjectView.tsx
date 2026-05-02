@@ -545,11 +545,10 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
     findControllerRef.current?.clear()
   }, [])
 
-  // DriftPanel 각 ref 에서 "위치로 이동" 누르면 뷰어에서 해당 raw 문자열을 find → 하이라이트·스크롤.
+  // DriftPanel 각 ref 에서 "위치로 이동" 누르면 검색 UI를 열지 않고 본문으로 바로 스크롤한다.
   const handleJumpToRef = useCallback((raw: string) => {
-    setShowFind(true)
-    setFindQuery(raw)
-    // findController 는 content 렌더 후 생성됨. 이미 있으면 즉시 update, 없으면 show 후 effect 가 create 할 때까지 대기 없이 가벼운 재시도.
+    // 검색바가 열려 있던 상태라면 입력값은 동기화해 두고, 닫혀 있으면 조용히 하이라이트만 갱신한다.
+    if (showFind) setFindQuery(raw)
     const tryUpdate = () => {
       const c = findControllerRef.current
       if (c) {
@@ -557,9 +556,8 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
       }
     }
     tryUpdate()
-    // 검색바가 이제 막 떴다면 controller 가 아직 없을 수 있어 다음 프레임에 재시도.
     requestAnimationFrame(tryUpdate)
-  }, [])
+  }, [showFind])
 
   // F2: TOC heading 클릭 → scroll 컨테이너 내부에서 스크롤
   // 1순위 id 매칭, 실패 시 heading 텍스트 기반 매칭으로 fallback (custom component 실행 실패/

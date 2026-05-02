@@ -4,13 +4,13 @@
 - **Goal**: 다음 라운드 제품 매력 강화 — Project Wiki를 "읽는 지도"에서 "다음 행동을 제안하는 지도"로 진화.
 - **Phase**: **building** — 비개발자 친화 UX 카피 정리 완료, Ask This Project 기반 확장 준비.
 - **Blocker**: none
-- **Last Activity**: Onboarding Brief export 추가 — Project Brief 카드에서 새 협업자용 입문 브리프를 클립보드로 복사. SSH 워크스페이스에서도 쓰기 없이 동작하는 렌더러 전용 경로. QA: targeted vitest 15 PASS · typecheck PASS · full test 407 PASS · build PASS (2026-05-02).
+- **Last Activity**: Dogfood UI/Drift fixes — 확장자 없는 slash refs는 missing 오탐 제외, Drift 위치 이동은 검색창 없이 직접 하이라이트, 다크 primary 대비 완화, WorkspacePicker는 fixed custom listbox로 헤더 clipping/긴 목록 UX 개선. QA: targeted vitest 53 PASS · typecheck PASS · full test 410 PASS · build PASS (2026-05-02).
 - **Remote**: `origin/main` = `21c0f9e`; tag `v0.4.0-beta.10` = `deacb77`; Release: https://github.com/givepro91/markwand/releases/tag/v0.4.0-beta.10
 
 ## Recently Done
-1. Onboarding Brief export — Project Wiki 요약에서 새 협업자용 입문 브리프를 즉시 복사 가능하게 함.
-2. Trust & Drift false-positive hardening — 실제 Markwand 문서 기준 감사로 경로/디렉토리/패키지/placeholder 오탐을 줄임.
-3. Plain-language + product-language UX pass — 비개발자도 이해하기 쉽게 쉬운 설명을 앞에 두고, Markwand 내부 개념명은 함께 보여 학습 가능한 제품 언어로 유지.
+1. Dogfood UI/Drift fixes — slash ref 오탐, Drift 직접 이동, dark primary 대비, WorkspacePicker clipping/긴 목록 UX 개선.
+2. Onboarding Brief export — Project Wiki 요약에서 새 협업자용 입문 브리프를 즉시 복사 가능하게 함.
+3. Trust & Drift false-positive hardening — 실제 Markwand 문서 기준 감사로 경로/디렉토리/패키지/placeholder 오탐을 줄임.
 
 ## Release Artifacts
 | Artifact | SHA256 |
