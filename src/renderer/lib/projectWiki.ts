@@ -40,6 +40,7 @@ export type WikiDocRole =
   | 'reference'
   | 'decisionRecord'
   | 'workLog'
+  | 'tooling'
   | 'archive'
   | 'ideaDraft'
 
@@ -238,6 +239,15 @@ const ROLE_POLICY: Record<WikiDocRole, WikiDocRolePolicy> = {
     unreadImpact: 0,
     maintenanceSensitivity: 0.2,
   },
+  tooling: {
+    staleAfterDays: Number.POSITIVE_INFINITY,
+    staleDocImpact: 0,
+    missingRefImpact: 1,
+    staleRefImpact: 0,
+    missingMetaImpact: 0,
+    unreadImpact: 0,
+    maintenanceSensitivity: 0.05,
+  },
   archive: {
     staleAfterDays: Number.POSITIVE_INFINITY,
     staleDocImpact: 0,
@@ -330,7 +340,28 @@ function displayNameFor(displayNames: Map<string, string>, doc: Doc): string {
   return displayNames.get(doc.path) ?? doc.name
 }
 
+function normalizedDocPath(doc: Doc): string {
+  return doc.path.toLowerCase().replace(/\\/g, '/')
+}
+
+function isToolingSessionDoc(doc: Doc): boolean {
+  const p = normalizedDocPath(doc)
+  return p.includes('/.claude/sessions/')
+}
+
+function isToolingSupportDoc(doc: Doc): boolean {
+  const p = normalizedDocPath(doc)
+  return (
+    p.includes('/.claude/') ||
+    p.includes('/.agents/skills/') ||
+    p.includes('/.claude/agents/') ||
+    p.includes('/.claude/commands/') ||
+    p.includes('/.claude/rules/')
+  )
+}
+
 function isEntrypointDoc(doc: Doc): boolean {
+  if (isToolingSessionDoc(doc) || isToolingSupportDoc(doc)) return false
   const p = doc.path.toLowerCase()
   const n = doc.name.toLowerCase()
   return (
@@ -346,6 +377,7 @@ function isEntrypointDoc(doc: Doc): boolean {
 }
 
 function isDecisionDoc(doc: Doc): boolean {
+  if (isToolingSessionDoc(doc) || isToolingSupportDoc(doc)) return false
   const p = doc.path.toLowerCase()
   const n = doc.name.toLowerCase()
   const source = String(doc.frontmatter?.source ?? '').toLowerCase()
@@ -370,6 +402,9 @@ export function classifyWikiDocRole(doc: Doc): WikiDocRole {
   const base = basename(doc.path).toLowerCase()
   const source = String(doc.frontmatter?.source ?? '').toLowerCase()
   const status = String(doc.frontmatter?.status ?? '').toLowerCase()
+
+  if (isToolingSessionDoc(doc)) return 'workLog'
+  if (isToolingSupportDoc(doc)) return 'tooling'
 
   if (
     p.includes('/archive/') ||
@@ -551,8 +586,9 @@ function buildRoleGroups(docs: Doc[], displayNames: Map<string, string>): WikiDo
     reference: 2,
     decisionRecord: 3,
     workLog: 4,
-    archive: 5,
-    ideaDraft: 6,
+    tooling: 5,
+    archive: 6,
+    ideaDraft: 7,
   }
 
   return Array.from(buckets.entries())
@@ -1027,7 +1063,7 @@ export function buildProjectWikiSummary(
   }
   const onboardingFallbackDocs = recentSorted.filter((doc) => {
     const role = classifyWikiDocRole(doc)
-    return role !== 'archive' && role !== 'ideaDraft' && role !== 'workLog'
+    return role !== 'archive' && role !== 'ideaDraft' && role !== 'workLog' && role !== 'tooling'
   })
   for (const doc of onboardingFallbackDocs) {
     addUniqueDoc(onboardingPath, onboardingSeen, doc, 'recent', Math.max(1, Math.round(doc.mtime / 1_000_000)), displayNameFor(displayNames, doc))

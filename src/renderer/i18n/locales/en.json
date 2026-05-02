@@ -453,6 +453,7 @@
       "reference": "Reference doc",
       "decisionRecord": "Decision record",
       "workLog": "Work log",
+      "tooling": "Tooling setup",
       "archive": "Past record",
       "ideaDraft": "Idea draft"
     },
@@ -462,6 +463,7 @@
       "reference": "Explains structure or usage, so mismatches should be checked.",
       "decisionRecord": "Preserves why decisions happened; it is not always meant to be rewritten.",
       "workLog": "Plans and sprint notes can be read as historical context.",
+      "tooling": "Agent and automation setup docs are separated from first-read project truth.",
       "archive": "Preserved history; alerts here should stay low priority.",
       "ideaDraft": "Early proposals or ideas are judged separately from execution docs."
     }

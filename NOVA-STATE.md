@@ -4,13 +4,13 @@
 - **Goal**: Project Wiki를 "경고 도구"에서 "문서 역할과 현재 상황을 판단하는 프로젝트 이해 레이어"로 진화.
 - **Phase**: **planning** — 제품화 backlog 선별 완료, 다음 Sprint는 First Project Aha Path 추천.
 - **Blocker**: none
-- **Last Activity**: swk-ground-control dogfood QA — `.pytest_cache/README.md`가 입문 문서로 오인되던 스캐너 누수 수정. Local/SSH ignore 정책 동기화, 실제 앱 재부팅에서 `project:scan-docs(d8e83922) 107 docs` 확인, full test 445 PASS · typecheck PASS · build PASS (2026-05-02).
+- **Last Activity**: spwk-product dogfood QA — `.claude/*`·`.agents/skills/*` 내부 도구 문서가 입문/Decision/부채 상단을 오염하던 위키 분류 수정. 실제 앱 핫리로드 후 브리프 read-doc 목록이 사용자-facing 문서로 정상화, full test 446 PASS · typecheck PASS · build PASS (2026-05-02).
 - **Remote**: `origin/main` = `21c0f9e`; tag `v0.4.0-beta.10` = `deacb77`; Release: https://github.com/givepro91/markwand/releases/tag/v0.4.0-beta.10
 
 ## Recently Done
-1. swk-ground-control dogfood QA — pytest cache README 2건을 문서/위키/SSH 탐색 대상에서 제외.
-2. Productization backlog — `docs/plans/productization-backlog.md` 작성, 다음 Sprint로 First Project Aha Path 추천.
-3. Runtime QA — 실제 `pnpm dev` 부팅에서 Git Pulse IPC의 ESM import 오류 수정, 고아 프로세스 없음 확인.
+1. spwk-product dogfood QA — 숨김 Claude/agent 도구 문서를 `tooling`/`workLog`로 분리해 첫 읽기·Decision Log·Doc Debt 오염 제거.
+2. swk-ground-control dogfood QA — pytest cache README 2건을 문서/위키/SSH 탐색 대상에서 제외.
+3. Productization backlog — `docs/plans/productization-backlog.md` 작성, 다음 Sprint로 First Project Aha Path 추천.
 
 ## Release Artifacts
 | Artifact | SHA256 |

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildProjectWikiSummary } from './projectWiki'
+import { buildProjectWikiSummary, classifyWikiDocRole } from './projectWiki'
 import type { Doc, DriftReport, VerifiedReference } from '../../preload/types'
 
 const NOW = Date.parse('2026-05-01T00:00:00Z')
@@ -127,6 +127,42 @@ describe('buildProjectWikiSummary', () => {
       hubs: [],
       riskyLinks: [],
     })
+  })
+
+  it('keeps agent tooling and session logs out of first-read and cleanup pressure', () => {
+    const old = NOW - 100 * 24 * 60 * 60 * 1000
+    const docs: Doc[] = [
+      doc('README.md'),
+      doc('docs/ROADMAP.md'),
+      doc('.agents/skills/vercel-react-best-practices/README.md', { mtime: old }),
+      doc('.agents/skills/vercel-react-best-practices/AGENTS.md', { mtime: old }),
+      doc('.claude/agents/reviewer.md', { mtime: old }),
+      doc('apps/landinsight/.claude/design/api-contracts.md', { mtime: old }),
+      doc('.claude/sessions/2026-02-26-harness-setup.md', { mtime: old }),
+    ]
+
+    const summary = buildProjectWikiSummary(docs, {}, {}, NOW)
+
+    expect(classifyWikiDocRole(docs[2])).toBe('tooling')
+    expect(classifyWikiDocRole(docs[5])).toBe('tooling')
+    expect(classifyWikiDocRole(docs[6])).toBe('workLog')
+    expect(summary.onboardingPath.map((item) => item.name)).toEqual([
+      'README.md',
+      'docs/ROADMAP.md',
+    ])
+    expect(summary.decisionLog.map((item) => item.name)).not.toContain('.claude/sessions/2026-02-26-harness-setup.md')
+    expect(summary.decisionLog.map((item) => item.name)).not.toContain('apps/landinsight/.claude/design/api-contracts.md')
+    expect(summary.docDebt.map((item) => item.name)).not.toContain('.agents/skills/vercel-react-best-practices/README.md')
+    expect(summary.docDebt.map((item) => item.name)).not.toContain('.agents/skills/vercel-react-best-practices/AGENTS.md')
+    expect(summary.docDebt.map((item) => item.name)).not.toContain('.claude/agents/reviewer.md')
+    expect(summary.docDebt.map((item) => item.name)).not.toContain('apps/landinsight/.claude/design/api-contracts.md')
+    expect(summary.docDebt.find((item) => item.name === '.claude/sessions/2026-02-26-harness-setup.md')?.reasons).not.toContain('stale')
+    expect(summary.roleGroups?.map((item) => ({ role: item.role, count: item.count }))).toEqual([
+      { role: 'currentGuide', count: 1 },
+      { role: 'reference', count: 1 },
+      { role: 'workLog', count: 1 },
+      { role: 'tooling', count: 4 },
+    ])
   })
 
   it('summarizes drift risks by document and total counts', () => {
@@ -314,7 +350,7 @@ describe('buildProjectWikiSummary', () => {
     )
 
     expect(summary.onboardingPath.map((item) => item.name)).toContain('CLAUDE.md')
-    expect(summary.onboardingPath.map((item) => item.name)).toContain('.claude/CLAUDE.md')
+    expect(summary.onboardingPath.map((item) => item.name)).not.toContain('.claude/CLAUDE.md')
     expect(summary.decisionLog.map((item) => item.name)).toContain('docs/design/claude-design-input.md')
     expect(summary.decisionLog.map((item) => item.name)).toContain('archive/claude-design-input.md')
     expect(summary.decisionTimeline.map((item) => item.name)).toContain('docs/design/claude-design-input.md')

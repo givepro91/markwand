@@ -139,6 +139,7 @@ const roleTitles: Record<WikiDocRole, string> = {
   reference: 'Reference docs',
   decisionRecord: 'Decision records',
   workLog: 'Work logs',
+  tooling: 'Tooling docs',
   archive: 'Past records',
   ideaDraft: 'Idea drafts',
 }
@@ -149,6 +150,7 @@ const roleGuidance: Record<WikiDocRole, string> = {
   reference: 'Use these for structure and API context, but verify if related code changed recently.',
   decisionRecord: 'Preserve these as rationale. Do not rewrite just because later code changed.',
   workLog: 'Read these as historical project flow. They usually do not need forced updates.',
+  tooling: 'Use these as automation or agent configuration context, not as first-read project truth.',
   archive: 'Keep these low priority unless someone explicitly needs the archived context.',
   ideaDraft: 'Treat these as proposals or early thinking, not current implementation truth.',
 }
@@ -407,7 +409,7 @@ export function formatProjectWikiOnboardingBrief(
 
   if (summary.roleGroups?.length) {
     lines.push('', '## How to Read Older Docs')
-    for (const group of summary.roleGroups.filter((item) => ['workLog', 'decisionRecord', 'archive', 'ideaDraft'].includes(item.role)).slice(0, 3)) {
+    for (const group of summary.roleGroups.filter((item) => ['workLog', 'decisionRecord', 'tooling', 'archive', 'ideaDraft'].includes(item.role)).slice(0, 3)) {
       lines.push(`- ${roleTitles[group.role]}: ${roleGuidance[group.role]}`)
     }
   }
