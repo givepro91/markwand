@@ -240,6 +240,23 @@ const SshImage = memo(function SshImage({
 // 헤딩 레벨 → 태그 이름
 const HEADING_TAGS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const
 
+type SourcePositionNode = {
+  position?: {
+    start?: { line?: number }
+    end?: { line?: number }
+  }
+}
+
+function sourceLineAttrs(node?: SourcePositionNode): Record<string, number> {
+  const start = node?.position?.start?.line
+  const end = node?.position?.end?.line
+  if (!start || !end) return {}
+  return {
+    'data-source-start': start,
+    'data-source-end': end,
+  }
+}
+
 // React children을 재귀적으로 순회해 텍스트를 수집한다.
 // 인라인 포맷(**, *, `, [text](url))이 있는 heading도 extractHeadings와 동일한 slug가 나와야
 // TOC 클릭 시 DOM id 매칭이 성공한다.
@@ -257,14 +274,14 @@ function extractChildText(node: React.ReactNode): string {
 // id 중복 방지용 카운터 (컴포넌트 인스턴스 스코프는 ref로 관리)
 function makeHeadingComponent(level: 1 | 2 | 3 | 4 | 5 | 6, slugCounter: Map<string, number>) {
   const Tag = HEADING_TAGS[level - 1]
-  return function HeadingNode({ children, id: _ignored, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
+  return function HeadingNode({ children, id: _ignored, node, ...props }: React.HTMLAttributes<HTMLHeadingElement> & { node?: SourcePositionNode }) {
     // react-markdown의 기본 props에서 id는 무시하고 항상 extractHeadings와 동일한 slug를 부여한다.
     const text = extractChildText(children).trim()
     const base = slugify(text)
     const count = slugCounter.get(base) ?? 0
     slugCounter.set(base, count + 1)
     const id = count === 0 ? base : `${base}-${count}`
-    return <Tag {...props} id={id}>{children}</Tag>
+    return <Tag {...props} {...sourceLineAttrs(node)} id={id}>{children}</Tag>
   }
 }
 
@@ -321,6 +338,18 @@ function MarkdownViewerInner({ content, basePath, onDocNavigate, onHeadings, wor
     h4: makeHeadingComponent(4, slugCounter),
     h5: makeHeadingComponent(5, slugCounter),
     h6: makeHeadingComponent(6, slugCounter),
+    p({ node, children, ...props }) {
+      return <p {...props} {...sourceLineAttrs(node)}>{children}</p>
+    },
+    li({ node, children, ...props }) {
+      return <li {...props} {...sourceLineAttrs(node)}>{children}</li>
+    },
+    blockquote({ node, children, ...props }) {
+      return <blockquote {...props} {...sourceLineAttrs(node)}>{children}</blockquote>
+    },
+    pre({ node, children, ...props }) {
+      return <pre {...props} {...sourceLineAttrs(node)}>{children}</pre>
+    },
 
     // 링크 처리: 외부 → shell.openExternal, 내부 .md → onDocNavigate, app:// 이미지
     a({ href, children, ...props }) {

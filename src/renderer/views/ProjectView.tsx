@@ -6,7 +6,7 @@ import { ImageViewer } from '../components/ImageViewer'
 import { AiHandoffButton } from '../components/AiHandoffButton'
 import { FilterBar } from '../components/FilterBar'
 import { TableOfContents } from '../components/TableOfContents'
-import { DriftPanel } from '../components/DriftPanel'
+import { DriftPanel, type DriftJumpTarget } from '../components/DriftPanel'
 import { ProjectWikiPanel } from '../components/ProjectWikiPanel'
 import { I18nErrorBoundary } from '../components/ErrorBoundary'
 import { RecentDocsPanel } from '../components/RecentDocsPanel'
@@ -16,6 +16,7 @@ import { useProjectWikiBrief } from '../hooks/useProjectWikiBrief'
 import { useReloadOnRefresh } from '../hooks/useReloadOnRefresh'
 import { useAppStore } from '../state/store'
 import { createFindController, type FindController } from '../lib/findInContainer'
+import { scrollMarkdownSourceLineIntoView } from '../lib/markdownSourceLine'
 import { buildProjectWikiSummary } from '../lib/projectWiki'
 import { classifyAsset } from '../../lib/viewable'
 import { applyMetaFilter } from '../utils/docFilters'
@@ -545,18 +546,28 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
     findControllerRef.current?.clear()
   }, [])
 
-  // DriftPanel 각 ref 에서 "위치로 이동" 누르면 검색 UI를 열지 않고 본문으로 바로 스크롤한다.
-  const handleJumpToRef = useCallback((raw: string) => {
+  // DriftPanel 각 ref 에서 "위치로 이동" 누르면 검색 UI를 열지 않고 해당 소스 라인으로 바로 스크롤한다.
+  const handleJumpToRef = useCallback((target: DriftJumpTarget) => {
     // 검색바가 열려 있던 상태라면 입력값은 동기화해 두고, 닫혀 있으면 조용히 하이라이트만 갱신한다.
-    if (showFind) setFindQuery(raw)
+    if (showFind) setFindQuery(target.raw)
     const tryUpdate = () => {
       const c = findControllerRef.current
       if (c) {
-        c.update(raw)
+        c.update(target.raw)
+      }
+    }
+    const tryScrollToSourceLine = () => {
+      const root = scrollContainerRef.current?.querySelector<HTMLElement>('.markdown-viewer')
+      if (root) {
+        scrollMarkdownSourceLineIntoView(root, target)
       }
     }
     tryUpdate()
-    requestAnimationFrame(tryUpdate)
+    tryScrollToSourceLine()
+    requestAnimationFrame(() => {
+      tryUpdate()
+      tryScrollToSourceLine()
+    })
   }, [showFind])
 
   // F2: TOC heading 클릭 → scroll 컨테이너 내부에서 스크롤

@@ -53,6 +53,14 @@
   line-height: var(--lh-loose);
 }
 
+.markdown-viewer [data-drift-jump-target="true"] {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  transition: background 180ms ease, outline-color 180ms ease;
+}
+
 /* Links */
 .markdown-viewer a {
   color: var(--accent);

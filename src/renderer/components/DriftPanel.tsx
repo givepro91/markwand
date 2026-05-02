@@ -8,9 +8,15 @@ import type { DriftStatus, VerifiedReference } from '../../preload/types'
 interface DriftPanelProps {
   docPath: string
   projectRoot: string
-  // 위치로 이동 — 뷰어에서 ref.raw 문자열을 find → 하이라이트 + 스크롤.
+  // 위치로 이동 — 뷰어에서 ref.line 을 우선 스크롤하고, ref.raw 문자열은 보조 하이라이트로 사용.
   // 미지정 시 "위치로 이동" 액션이 숨겨진다 (기본 동작: ProjectView 가 주입).
-  onJumpToRef?: (raw: string) => void
+  onJumpToRef?: (target: DriftJumpTarget) => void
+}
+
+export interface DriftJumpTarget {
+  raw: string
+  line: number
+  col: number
 }
 
 function buildStatusMeta(t: TFunction): Record<DriftStatus, { label: string; color: string; bg: string; icon: string }> {
@@ -383,7 +389,11 @@ export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProp
                 projectRoot={projectRoot}
                 ignored={ignored.has(ref.resolvedPath)}
                 onToggleIgnore={() => toggleIgnoredRef(docPath, ref.resolvedPath)}
-                onJump={onJumpToRef ? () => onJumpToRef(getSearchText(ref.raw, ref.kind)) : undefined}
+                onJump={onJumpToRef ? () => onJumpToRef({
+                  raw: getSearchText(ref.raw, ref.kind),
+                  line: ref.line,
+                  col: ref.col,
+                }) : undefined}
               />
             ))}
           </ul>
