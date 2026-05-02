@@ -57,4 +57,14 @@ describe('DriftPanel', () => {
       col: 12,
     })
   })
+
+  it('keeps side panel expanded so reference actions remain reachable while reading', () => {
+    renderWithProviders(
+      <DriftPanel docPath={docPath} projectRoot={projectRoot} variant="side" onJumpToRef={vi.fn()} />,
+    )
+
+    expect(screen.getByRole('button', { name: 'drift.ariaToggle' })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: 'drift.jumpLabel' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'drift.ignore' })).toBeInTheDocument()
+  })
 })

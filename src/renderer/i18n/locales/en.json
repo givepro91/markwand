@@ -159,6 +159,7 @@
     "findClose": "Close search",
     "findNoResults": "No matches",
     "tocToggle": "Toggle table of contents",
+    "documentTools": "Document tools",
     "sidebarResize": "Resize sidebar",
     "selectFile": "Select a document from the file list on the left",
     "selectFileDesc": "Click a document or image to open it here.",

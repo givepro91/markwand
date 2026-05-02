@@ -170,6 +170,11 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
     [docs, driftReports, readDocs]
   )
   const { brief: wikiBrief, loading: wikiBriefLoading } = useProjectWikiBrief(projectName, wikiSummary, docsByPath)
+  const selectedIsMarkdown = selectedDoc ? classifyAsset(selectedDoc.path) === 'md' : false
+  const selectedDriftReport = selectedDoc ? driftReports[selectedDoc.path] : undefined
+  const showDriftRail = Boolean(!showWiki && selectedIsMarkdown && selectedDriftReport?.references.length)
+  const showTocRail = Boolean(!showWiki && selectedIsMarkdown && showToc && headings.length > 0)
+  const showRightRail = showDriftRail || showTocRail
   const handleReturnToWiki = useCallback(() => {
     setShowWiki(true)
     requestAnimationFrame(() => {
@@ -882,13 +887,6 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
                 </I18nErrorBoundary>
               ) : (
                 <I18nErrorBoundary resetKey={selectedDoc.path}>
-                  <I18nErrorBoundary resetKey={selectedDoc.path}>
-                    <DriftPanel
-                      docPath={selectedDoc.path}
-                      projectRoot={projectRoot}
-                      onJumpToRef={handleJumpToRef}
-                    />
-                  </I18nErrorBoundary>
                   <MarkdownViewer
                     content={docContent}
                     basePath={selectedDoc.path}
@@ -910,20 +908,55 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
           )}
         </div>
 
-        {/* F2: 우측 TOC 사이드바 — onHeadingClick 전달 */}
-        {showToc && headings.length > 0 && (
-          <div
+        {showRightRail && selectedDoc && (
+          <aside
+            aria-label={t('projectView.documentTools')}
             style={{
-              width: '220px',
+              width: showDriftRail ? 'min(360px, 32vw)' : '240px',
               flexShrink: 0,
               borderLeft: '1px solid var(--border)',
-              background: 'var(--bg-elev)',
+              background: 'color-mix(in srgb, var(--bg-elev) 92%, var(--bg))',
               overflow: 'auto',
               padding: 'var(--sp-4) var(--sp-3)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--sp-4)',
             }}
           >
-            <TableOfContents headings={headings} onHeadingClick={handleTocClick} />
-          </div>
+            {showDriftRail && (
+              <I18nErrorBoundary resetKey={`${selectedDoc.path}:drift-rail`}>
+                <DriftPanel
+                  docPath={selectedDoc.path}
+                  projectRoot={projectRoot}
+                  variant="side"
+                  onJumpToRef={handleJumpToRef}
+                />
+              </I18nErrorBoundary>
+            )}
+            {showTocRail && (
+              <section
+                style={{
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--r-xl)',
+                  background: 'var(--bg-elev)',
+                  padding: 'var(--sp-3)',
+                  boxShadow: 'var(--shadow-sm)',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 'var(--fs-sm)',
+                    fontWeight: 'var(--fw-semibold)',
+                    color: 'var(--text)',
+                    marginBottom: 'var(--sp-2)',
+                  }}
+                >
+                  {t('toc.title')}
+                </div>
+                <TableOfContents headings={headings} onHeadingClick={handleTocClick} />
+              </section>
+            )}
+          </aside>
         )}
       </div>
     </div>

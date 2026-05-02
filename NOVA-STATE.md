@@ -4,13 +4,13 @@
 - **Goal**: 다음 라운드 제품 매력 강화 — Project Wiki를 "읽는 지도"에서 "다음 행동을 제안하는 지도"로 진화.
 - **Phase**: **building** — 비개발자 친화 UX 카피 정리 완료, Ask This Project 기반 확장 준비.
 - **Blocker**: none
-- **Last Activity**: Drift table-line jump hardening — "본문에서 보기"가 표(table) 안 참조도 source line으로 이동하도록 table cell attrs 추가, find 대상은 Drift 패널 제외 Markdown 본문으로 제한. QA: targeted vitest 6 PASS · typecheck PASS · full test 416 PASS · build PASS (2026-05-02).
+- **Last Activity**: Drift review rail UX — 문서 확인 중에도 참조 이동/무시/복사/재검증을 계속 처리할 수 있도록 Drift 패널을 우측 문서 도구 레일로 이동하고 TOC와 공존하도록 정리. QA: targeted vitest 8 PASS · typecheck PASS · full test 417 PASS · build PASS (2026-05-02).
 - **Remote**: `origin/main` = `21c0f9e`; tag `v0.4.0-beta.10` = `deacb77`; Release: https://github.com/givepro91/markwand/releases/tag/v0.4.0-beta.10
 
 ## Recently Done
-1. Drift table-line jump hardening — 표 안 참조 라인 이동 + Drift 패널 검색 오염 차단.
-2. Drift exact-line jump fix — "본문에서 보기"가 같은 참조의 첫 매치가 아닌 실제 L번호 위치로 이동.
-3. WorkspacePicker portal fix — 드롭다운 메뉴를 body portal로 렌더링해 헤더 clipping 회귀 차단.
+1. Drift review rail UX — 우측 상시 패널에서 참조 이동/무시/복사/재검증을 문서 읽기 중 유지.
+2. Drift table-line jump hardening — 표 안 참조 라인 이동 + Drift 패널 검색 오염 차단.
+3. Drift exact-line jump fix — "본문에서 보기"가 같은 참조의 첫 매치가 아닌 실제 L번호 위치로 이동.
 
 ## Release Artifacts
 | Artifact | SHA256 |

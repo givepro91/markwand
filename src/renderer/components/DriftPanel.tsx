@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { useAppStore } from '../state/store'
@@ -8,6 +8,7 @@ import type { DriftStatus, VerifiedReference } from '../../preload/types'
 interface DriftPanelProps {
   docPath: string
   projectRoot: string
+  variant?: 'inline' | 'side'
   // 위치로 이동 — 뷰어에서 ref.line 을 우선 스크롤하고, ref.raw 문자열은 보조 하이라이트로 사용.
   // 미지정 시 "위치로 이동" 액션이 숨겨진다 (기본 동작: ProjectView 가 주입).
   onJumpToRef?: (target: DriftJumpTarget) => void
@@ -116,7 +117,7 @@ export function buildCopyIssuesPrompt(params: {
   return out.join('\n')
 }
 
-export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProps) {
+export function DriftPanel({ docPath, projectRoot, variant = 'inline', onJumpToRef }: DriftPanelProps) {
   const { t } = useTranslation()
   const STATUS_META = useMemo(() => buildStatusMeta(t), [t])
   const report = useAppStore((s) => s.driftReports[docPath])
@@ -125,10 +126,15 @@ export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProp
   const toggleIgnoredRef = useAppStore((s) => s.toggleIgnoredRef)
   const clearIgnoredRefs = useAppStore((s) => s.clearIgnoredRefs)
 
-  const [expanded, setExpanded] = useState(false)
+  const isSide = variant === 'side'
+  const [expanded, setExpanded] = useState(isSide)
   const [revalidating, setRevalidating] = useState(false)
   const [revalidateError, setRevalidateError] = useState<string | null>(null)
   const [issuesCopied, setIssuesCopied] = useState(false)
+
+  useEffect(() => {
+    if (isSide) setExpanded(true)
+  }, [isSide, docPath])
 
   const ignored = useMemo(() => new Set(ignoredList ?? []), [ignoredList])
 
@@ -199,21 +205,23 @@ export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProp
     <div
       style={{
         border: '1px solid var(--border)',
-        borderRadius: 'var(--r-md)',
+        borderRadius: isSide ? 'var(--r-xl)' : 'var(--r-md)',
         background: hasIssues ? 'var(--bg-elev)' : 'transparent',
-        marginBottom: 'var(--sp-4)',
+        marginBottom: isSide ? 0 : 'var(--sp-4)',
         overflow: 'hidden',
+        boxShadow: isSide ? 'var(--shadow-sm)' : undefined,
       }}
     >
       {/* 헤더 */}
       <div
         style={{
           display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--sp-3)',
+          alignItems: isSide ? 'flex-start' : 'center',
+          gap: isSide ? 'var(--sp-2)' : 'var(--sp-3)',
           padding: 'var(--sp-2) var(--sp-3)',
           cursor: 'pointer',
           userSelect: 'none',
+          flexWrap: isSide ? 'wrap' : 'nowrap',
         }}
         onClick={() => setExpanded((v) => !v)}
         role="button"
@@ -286,11 +294,11 @@ export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProp
             </span>
           )}
         </div>
-        <span style={{ flex: 1 }} />
+        <span style={{ flex: 1, minWidth: isSide ? '100%' : undefined }} />
         {/* 헤더 div 의 토글 onClick 이 Button에 번지지 않도록 wrapping span 에서 stopPropagation */}
         <span
           onClick={(e) => e.stopPropagation()}
-          style={{ display: 'inline-flex', gap: '4px' }}
+          style={{ display: 'inline-flex', gap: '4px', flexWrap: 'wrap', justifyContent: isSide ? 'flex-start' : 'flex-end' }}
         >
           {hasIssues && (
             <span
@@ -337,7 +345,7 @@ export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProp
       {expanded && (
         <div style={{ borderTop: '1px solid var(--border)', padding: 'var(--sp-2) var(--sp-3)' }}>
           {/* 상태 설명 — "무엇을 해야 할지 모르겠다" 해소용. hasIssues 일 때만 노출. */}
-          {hasIssues && (
+          {hasIssues && !isSide && (
             <div
               style={{
                 fontSize: 'var(--fs-xs)',
@@ -378,8 +386,8 @@ export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProp
               display: 'flex',
               flexDirection: 'column',
               gap: '2px',
-              maxHeight: '280px',
-              overflow: 'auto',
+              maxHeight: isSide ? 'none' : '280px',
+              overflow: isSide ? 'visible' : 'auto',
             }}
           >
             {sortedRefs.map((ref) => (
@@ -389,6 +397,7 @@ export function DriftPanel({ docPath, projectRoot, onJumpToRef }: DriftPanelProp
                 projectRoot={projectRoot}
                 ignored={ignored.has(ref.resolvedPath)}
                 onToggleIgnore={() => toggleIgnoredRef(docPath, ref.resolvedPath)}
+                variant={variant}
                 onJump={onJumpToRef ? () => onJumpToRef({
                   raw: getSearchText(ref.raw, ref.kind),
                   line: ref.line,
@@ -421,15 +430,17 @@ interface DriftRefRowProps {
   projectRoot: string
   ignored: boolean
   onToggleIgnore: () => void
+  variant?: 'inline' | 'side'
   onJump?: () => void
 }
 
-function DriftRefRow({ ref_, projectRoot, ignored, onToggleIgnore, onJump }: DriftRefRowProps) {
+function DriftRefRow({ ref_, projectRoot, ignored, onToggleIgnore, variant = 'inline', onJump }: DriftRefRowProps) {
   const { t } = useTranslation()
   const STATUS_META = useMemo(() => buildStatusMeta(t), [t])
   const meta = STATUS_META[ref_.status]
   const displayPath = relativePath(ref_.resolvedPath, projectRoot)
   const [copied, setCopied] = useState(false)
+  const isSide = variant === 'side'
 
   const handleCopy = useCallback(async () => {
     try {
@@ -464,13 +475,16 @@ function DriftRefRow({ ref_, projectRoot, ignored, onToggleIgnore, onJump }: Dri
   return (
     <li
       style={{
-        display: 'flex',
+        display: isSide ? 'grid' : 'flex',
+        gridTemplateColumns: isSide ? 'auto auto minmax(0, 1fr)' : undefined,
         alignItems: 'center',
         gap: 'var(--sp-2)',
-        padding: '4px 6px',
+        rowGap: isSide ? '6px' : undefined,
+        padding: isSide ? '8px 6px' : '4px 6px',
         borderRadius: 'var(--r-sm)',
         opacity: ignored ? 0.5 : 1,
         fontSize: 'var(--fs-xs)',
+        borderBottom: isSide ? '1px solid var(--border-muted)' : undefined,
       }}
     >
       <span
@@ -521,42 +535,53 @@ function DriftRefRow({ ref_, projectRoot, ignored, onToggleIgnore, onJump }: Dri
           {t('drift.folderLabel')}
         </span>
       )}
-      {onJump && (
+      <span
+        style={{
+          gridColumn: isSide ? '1 / -1' : undefined,
+          display: 'inline-flex',
+          gap: '4px',
+          flexWrap: 'wrap',
+          justifyContent: isSide ? 'flex-start' : 'flex-end',
+          flexShrink: 0,
+        }}
+      >
+        {onJump && (
+          <button
+            type="button"
+            onClick={onJump}
+            style={actionBtn}
+            title={t('drift.jumpTitle')}
+          >
+            {t('drift.jumpLabel')}
+          </button>
+        )}
+        {ref_.status !== 'missing' && (
+          <button
+            type="button"
+            onClick={handleReveal}
+            style={actionBtn}
+            title={ref_.isDirectory ? t('drift.revealFolder') : t('drift.revealFile')}
+          >
+            {t('drift.openInFinder')}
+          </button>
+        )}
         <button
           type="button"
-          onClick={onJump}
+          onClick={handleCopy}
           style={actionBtn}
-          title={t('drift.jumpTitle')}
+          title={t('drift.copyPathTitle')}
         >
-          {t('drift.jumpLabel')}
+          {copied ? t('drift.copyPathDone') : t('drift.copyPathLabel')}
         </button>
-      )}
-      {ref_.status !== 'missing' && (
         <button
           type="button"
-          onClick={handleReveal}
-          style={actionBtn}
-          title={ref_.isDirectory ? t('drift.revealFolder') : t('drift.revealFile')}
+          onClick={onToggleIgnore}
+          style={{ ...actionBtn, background: ignored ? 'var(--bg-elev)' : 'transparent' }}
+          aria-pressed={ignored}
         >
-          {t('drift.openInFinder')}
+          {ignored ? t('drift.unignore') : t('drift.ignore')}
         </button>
-      )}
-      <button
-        type="button"
-        onClick={handleCopy}
-        style={actionBtn}
-        title={t('drift.copyPathTitle')}
-      >
-        {copied ? t('drift.copyPathDone') : t('drift.copyPathLabel')}
-      </button>
-      <button
-        type="button"
-        onClick={onToggleIgnore}
-        style={{ ...actionBtn, background: ignored ? 'var(--bg-elev)' : 'transparent' }}
-        aria-pressed={ignored}
-      >
-        {ignored ? t('drift.unignore') : t('drift.ignore')}
-      </button>
+      </span>
     </li>
   )
 }
