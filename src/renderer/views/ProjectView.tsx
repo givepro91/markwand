@@ -213,6 +213,62 @@ export function ProjectFindControls({
   )
 }
 
+export function ProjectActionButton({
+  icon,
+  label,
+  ariaLabel,
+  active = false,
+  onClick,
+}: {
+  icon: ReactNode
+  label: string
+  ariaLabel?: string
+  active?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={ariaLabel ?? label}
+      aria-pressed={active}
+      title={ariaLabel ?? label}
+      onClick={onClick}
+      style={{
+        minHeight: '32px',
+        minWidth: '32px',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '6px',
+        padding: '0 10px',
+        border: '1px solid',
+        borderColor: active ? 'transparent' : 'var(--border)',
+        borderRadius: 'var(--r-pill)',
+        background: active ? 'linear-gradient(135deg, var(--accent), var(--accent-hover))' : 'var(--surface-glass)',
+        color: active ? 'var(--accent-contrast)' : 'var(--text)',
+        boxShadow: active ? '0 8px 20px color-mix(in srgb, var(--accent) 18%, transparent)' : 'none',
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        fontSize: 'var(--fs-sm)',
+        fontWeight: 'var(--fw-semibold)',
+        whiteSpace: 'nowrap',
+        transition: `background var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard)`,
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-1px)'
+        if (!active) e.currentTarget.style.background = 'var(--bg-hover)'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)'
+        if (!active) e.currentTarget.style.background = 'var(--surface-glass)'
+      }}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  )
+}
+
 export function getDocumentStickyOffset(container: HTMLElement): number {
   const returnBar = container.querySelector<HTMLElement>('[data-project-doc-return-bar]')
   if (!returnBar) return 16
@@ -786,22 +842,20 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
           onClose={handleCloseFind}
         />
       ) : (
-        <IconButton
+        <ProjectActionButton
+          icon={<SearchIcon />}
+          label={t('projectView.findShort')}
           aria-label={t('projectView.findInDoc')}
-          aria-pressed={false}
-          size="sm"
-          variant="ghost"
+          active={false}
           onClick={() => setShowFind(true)}
-        >
-          <SearchIcon />
-        </IconButton>
+        />
       )}
       {hasDriftTool && (
-        <IconButton
+        <ProjectActionButton
+          icon={<ToolsIcon />}
+          label={t('projectView.issuesTab')}
           aria-label={t('projectView.documentTools')}
-          aria-pressed={showRightRail && documentToolsMode === 'all'}
-          size="sm"
-          variant={showRightRail && documentToolsMode === 'all' ? 'primary' : 'ghost'}
+          active={showRightRail && documentToolsMode === 'all'}
           onClick={() => {
             if (showRightRail && documentToolsMode === 'all') {
               setShowDocumentTools(false)
@@ -811,15 +865,13 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
               setActiveDocumentTool(hasDriftTool ? 'issues' : 'toc')
             }
           }}
-        >
-          <ToolsIcon />
-        </IconButton>
+        />
       )}
-      <IconButton
+      <ProjectActionButton
+        icon={<TocIcon />}
+        label={t('projectView.tocTab')}
         aria-label={t('projectView.tocToggle')}
-        aria-pressed={showTocRail}
-        size="sm"
-        variant={showTocRail ? 'primary' : 'ghost'}
+        active={showTocRail}
         onClick={() => {
           const next = getTocActionState({ showTocRail, hasDriftTool, documentToolsMode })
           setShowToc(next.showToc)
@@ -827,9 +879,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
           setActiveDocumentTool(next.activeDocumentTool)
           setDocumentToolsMode(next.documentToolsMode)
         }}
-      >
-        <TocIcon />
-      </IconButton>
+      />
     </>
   ) : null
 

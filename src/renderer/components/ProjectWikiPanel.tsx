@@ -1073,6 +1073,7 @@ function ProjectBriefCard({
 
 function WikiSectionNav() {
   const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
   const sections = [
     { id: 'project-wiki-brief', label: t('projectWiki.navBrief') },
     { id: 'project-wiki-link-graph', label: t('projectWiki.navLinks') },
@@ -1094,11 +1095,11 @@ function WikiSectionNav() {
         top: 'var(--sp-3)',
         zIndex: 'var(--z-sticky)',
         display: 'flex',
+        flexDirection: 'column',
         gap: 'var(--sp-2)',
-        flexWrap: 'wrap',
         padding: 'var(--sp-2)',
         border: '1px solid var(--border)',
-        borderRadius: '999px',
+        borderRadius: open ? 'var(--r-xl)' : '999px',
         background: 'var(--surface-glass)',
         backdropFilter: 'blur(14px)',
         boxShadow: 'var(--shadow-sm)',
@@ -1106,16 +1107,29 @@ function WikiSectionNav() {
         maxWidth: '100%',
       }}
     >
-      {sections.map((section) => (
-        <Button
-          key={section.id}
-          variant="ghost"
-          size="sm"
-          onClick={() => jumpToSection(section.id)}
-        >
-          {section.label}
-        </Button>
-      ))}
+      <Button
+        variant={open ? 'primary' : 'ghost'}
+        size="sm"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-label={t('projectWiki.navToggle')}
+      >
+        {t('projectWiki.navToggle')}
+        <span style={{ opacity: 0.72, marginLeft: '4px' }}>{t('projectWiki.navToggleCount', { count: sections.length })}</span>
+      </Button>
+      {open && (
+        <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
+          {sections.map((section) => (
+            <Button
+              key={section.id}
+              variant="ghost"
+              size="sm"
+              onClick={() => jumpToSection(section.id)}
+            >
+              {section.label}
+            </Button>
+          ))}
+        </div>
+      )}
     </nav>
   )
 }

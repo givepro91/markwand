@@ -125,6 +125,26 @@ beforeEach(() => {
 })
 
 describe('ProjectWikiPanel — AI task prompt copy', () => {
+  it('keeps wiki section navigation collapsed until the user asks for it', async () => {
+    renderWithProviders(
+      <ProjectWikiPanel
+        projectName="markwand"
+        summary={summary}
+        brief={null}
+        briefLoading={false}
+        docsByPath={new Map([[doc.path, doc]])}
+        onOpenDoc={vi.fn()}
+      />
+    )
+
+    expect(screen.queryByRole('button', { name: 'projectWiki.navBrief' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'projectWiki.navToggle' }))
+
+    expect(screen.getByRole('button', { name: 'projectWiki.navBrief' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'projectWiki.navRisks' })).toBeInTheDocument()
+  })
+
   it('copies a focused AI task prompt from the suggested task card', async () => {
     renderWithProviders(
       <ProjectWikiPanel
@@ -320,6 +340,7 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
       />
     )
 
+    fireEvent.click(screen.getByRole('button', { name: 'projectWiki.navToggle' }))
     fireEvent.click(screen.getByRole('button', { name: 'projectWiki.navLinks' }))
 
     expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
@@ -342,6 +363,7 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
       />
     )
 
+    fireEvent.click(screen.getByRole('button', { name: 'projectWiki.navToggle' }))
     fireEvent.click(screen.getByRole('button', { name: 'projectWiki.navLinks' }))
 
     expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ behavior: 'auto', block: 'start' })

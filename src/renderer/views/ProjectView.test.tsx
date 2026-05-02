@@ -6,7 +6,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { renderWithProviders, screen, userEvent } from '../__test-utils__/render'
-import { getDocumentStickyOffset, getTocActionState, ProjectDocReturnBar, ProjectFindControls } from './ProjectView'
+import { getDocumentStickyOffset, getTocActionState, ProjectActionButton, ProjectDocReturnBar, ProjectFindControls } from './ProjectView'
 
 describe('ProjectDocReturnBar', () => {
   it('calls the return handler from a visible Back to Wiki action', async () => {
@@ -56,6 +56,19 @@ describe('ProjectDocReturnBar', () => {
     const returnBar = screen.getByText('README.md').closest('[data-project-doc-return-bar]')
     expect(returnBar).toContainElement(screen.getByRole('search', { name: 'projectView.findInDoc' }))
     expect(screen.getByPlaceholderText('projectView.searchPlaceholder')).toBeInTheDocument()
+  })
+
+  it('uses readable labels for document action buttons instead of icon-only controls', async () => {
+    const onClick = vi.fn()
+    renderWithProviders(
+      <ProjectActionButton icon={<span aria-hidden="true">⌕</span>} label="검색" ariaLabel="문서 내 검색" onClick={onClick} />
+    )
+
+    const button = screen.getByRole('button', { name: '문서 내 검색' })
+    expect(button).toHaveTextContent('검색')
+    expect(button).toHaveAttribute('title', '문서 내 검색')
+    await userEvent.setup().click(button)
+    expect(onClick).toHaveBeenCalledOnce()
   })
 
   it('reserves the sticky reading bar height when jumping from the TOC', () => {
