@@ -103,10 +103,10 @@ function applyHighlights(ranges: Range[], activeIndex: number): void {
   }
 }
 
-function scrollRangeIntoView(container: HTMLElement, range: Range): void {
+function scrollRangeIntoView(scrollContainer: HTMLElement, range: Range): void {
   if (!isLiveRange(range)) return
   const rangeRect = range.getBoundingClientRect()
-  const cRect = container.getBoundingClientRect()
+  const cRect = scrollContainer.getBoundingClientRect()
   // viewport 안에 이미 있으면 유지
   if (
     rangeRect.top >= cRect.top + SCROLL_VIEWPORT_PADDING &&
@@ -115,11 +115,11 @@ function scrollRangeIntoView(container: HTMLElement, range: Range): void {
     return
   }
   // 상단에서 1/3 지점에 오도록 보정
-  const offset = rangeRect.top - cRect.top + container.scrollTop - container.clientHeight / 3
-  container.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' })
+  const offset = rangeRect.top - cRect.top + scrollContainer.scrollTop - scrollContainer.clientHeight / 3
+  scrollContainer.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' })
 }
 
-export function createFindController(container: HTMLElement): FindController {
+export function createFindController(container: HTMLElement, scrollContainer: HTMLElement = container): FindController {
   let ranges: Range[] = []
   let activeIdx = -1
   const listeners = new Set<(s: FindState) => void>()
@@ -154,7 +154,7 @@ export function createFindController(container: HTMLElement): FindController {
     ranges = collectRanges(container, query)
     activeIdx = ranges.length > 0 ? 0 : -1
     applyHighlights(ranges, activeIdx)
-    if (activeIdx >= 0) scrollRangeIntoView(container, ranges[activeIdx])
+    if (activeIdx >= 0) scrollRangeIntoView(scrollContainer, ranges[activeIdx])
     emit()
     return ranges.length
   }
@@ -163,7 +163,7 @@ export function createFindController(container: HTMLElement): FindController {
     if (ranges.length === 0) return
     activeIdx = (activeIdx + delta + ranges.length) % ranges.length
     applyHighlights(ranges, activeIdx)
-    scrollRangeIntoView(container, ranges[activeIdx])
+    scrollRangeIntoView(scrollContainer, ranges[activeIdx])
     emit()
   }
 

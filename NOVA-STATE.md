@@ -4,13 +4,13 @@
 - **Goal**: 다음 라운드 제품 매력 강화 — Project Wiki를 "읽는 지도"에서 "다음 행동을 제안하는 지도"로 진화.
 - **Phase**: **building** — 비개발자 친화 UX 카피 정리 완료, Ask This Project 기반 확장 준비.
 - **Blocker**: none
-- **Last Activity**: Drift exact-line jump fix — "본문에서 보기"가 참조 문자열 첫 매치가 아니라 Drift가 기록한 source line으로 이동하도록 Markdown source line attrs + line-target scroll/pulse 추가. QA: targeted vitest 4 PASS · typecheck PASS · full test 414 PASS · build PASS (2026-05-02).
+- **Last Activity**: Drift table-line jump hardening — "본문에서 보기"가 표(table) 안 참조도 source line으로 이동하도록 table cell attrs 추가, find 대상은 Drift 패널 제외 Markdown 본문으로 제한. QA: targeted vitest 6 PASS · typecheck PASS · full test 416 PASS · build PASS (2026-05-02).
 - **Remote**: `origin/main` = `21c0f9e`; tag `v0.4.0-beta.10` = `deacb77`; Release: https://github.com/givepro91/markwand/releases/tag/v0.4.0-beta.10
 
 ## Recently Done
-1. Drift exact-line jump fix — "본문에서 보기"가 같은 참조의 첫 매치가 아닌 실제 L번호 위치로 이동.
-2. WorkspacePicker portal fix — 드롭다운 메뉴를 body portal로 렌더링해 헤더 clipping 회귀 차단.
-3. Dogfood UI/Drift fixes — slash ref 오탐, Drift 직접 이동, dark primary 대비, WorkspacePicker clipping/긴 목록 UX 개선.
+1. Drift table-line jump hardening — 표 안 참조 라인 이동 + Drift 패널 검색 오염 차단.
+2. Drift exact-line jump fix — "본문에서 보기"가 같은 참조의 첫 매치가 아닌 실제 L번호 위치로 이동.
+3. WorkspacePicker portal fix — 드롭다운 메뉴를 body portal로 렌더링해 헤더 clipping 회귀 차단.
 
 ## Release Artifacts
 | Artifact | SHA256 |

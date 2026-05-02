@@ -27,4 +27,18 @@ describe('MarkdownViewer', () => {
     expect(target).toHaveAttribute('data-source-start', '5')
     expect(target).toHaveAttribute('data-source-end', '5')
   })
+
+  it('renders source line ranges for table cells used by Drift jump', () => {
+    renderWithProviders(
+      <MarkdownViewer
+        content={'| File | Note |\n|---|---|\n| `config/ownership.local.yaml` | missing |'}
+        basePath="/project/docs/design.md"
+        onDocNavigate={() => {}}
+      />,
+    )
+
+    const target = screen.getByText('config/ownership.local.yaml').closest('td')
+    expect(target).toHaveAttribute('data-source-start', '3')
+    expect(target).toHaveAttribute('data-source-end', '3')
+  })
 })

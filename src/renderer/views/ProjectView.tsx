@@ -399,12 +399,13 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
   useEffect(() => {
     const container = scrollContainerRef.current
     if (!container) return
+    const searchRoot = container.querySelector<HTMLElement>('.markdown-viewer') ?? container
     // 문서 전환 직전에 살아있는 debounce 타이머를 제거해 새 controller에 이전 debounce가 섞이지 않게 한다.
     if (findDebounceRef.current) {
       clearTimeout(findDebounceRef.current)
       findDebounceRef.current = null
     }
-    const controller = createFindController(container)
+    const controller = createFindController(searchRoot, container)
     findControllerRef.current = controller
     const off = controller.onChange((s) => {
       setFindResult({ active: s.active, total: s.total })

@@ -350,6 +350,24 @@ function MarkdownViewerInner({ content, basePath, onDocNavigate, onHeadings, wor
     pre({ node, children, ...props }) {
       return <pre {...props} {...sourceLineAttrs(node)}>{children}</pre>
     },
+    table({ node, children, ...props }) {
+      return <table {...props} {...sourceLineAttrs(node)}>{children}</table>
+    },
+    thead({ node, children, ...props }) {
+      return <thead {...props} {...sourceLineAttrs(node)}>{children}</thead>
+    },
+    tbody({ node, children, ...props }) {
+      return <tbody {...props} {...sourceLineAttrs(node)}>{children}</tbody>
+    },
+    tr({ node, children, ...props }) {
+      return <tr {...props} {...sourceLineAttrs(node)}>{children}</tr>
+    },
+    th({ node, children, ...props }) {
+      return <th {...props} {...sourceLineAttrs(node)}>{children}</th>
+    },
+    td({ node, children, ...props }) {
+      return <td {...props} {...sourceLineAttrs(node)}>{children}</td>
+    },
 
     // 링크 처리: 외부 → shell.openExternal, 내부 .md → onDocNavigate, app:// 이미지
     a({ href, children, ...props }) {
