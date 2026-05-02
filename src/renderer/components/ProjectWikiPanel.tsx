@@ -34,6 +34,141 @@ interface ProjectWikiPanelProps {
   onOpenDoc: (doc: Doc) => void
 }
 
+type AhaPrimaryAction = 'openRisk' | 'openStart' | 'copyHandoff' | 'waitForBrief'
+
+function FirstProjectAhaCard({
+  projectName,
+  summary,
+  gitContext,
+  brief,
+  briefLoading,
+  docsByPath,
+  onOpenDoc,
+}: {
+  projectName: string
+  summary: ProjectWikiSummary
+  gitContext?: ProjectWikiGitContext | null
+  brief: ProjectWikiBrief | null
+  briefLoading: boolean
+  docsByPath: Map<string, Doc>
+  onOpenDoc: (doc: Doc) => void
+}) {
+  const { t } = useTranslation()
+  const [copied, setCopied] = useState(false)
+  const topTask = summary.suggestedTasks[0]
+  const riskDocLink = summary.risks.docsWithRisk[0] ?? summary.pulse.primaryDoc
+  const startDocLink = summary.onboardingPath[0] ?? summary.pulse.primaryDoc
+  const riskDoc = riskDocLink ? docsByPath.get(riskDocLink.path) : undefined
+  const startDoc = startDocLink ? docsByPath.get(startDocLink.path) : undefined
+  const hasRisk = summary.trust.level === 'weak' || topTask?.intent === 'repairReferences' || summary.risks.missingRefs > 0
+  const action: AhaPrimaryAction = hasRisk && riskDoc
+    ? 'openRisk'
+    : startDoc
+      ? 'openStart'
+      : brief
+        ? 'copyHandoff'
+        : 'waitForBrief'
+
+  const handlePrimary = async () => {
+    if (action === 'openRisk' && riskDoc) {
+      onOpenDoc(riskDoc)
+      return
+    }
+    if (action === 'openStart' && startDoc) {
+      onOpenDoc(startDoc)
+      return
+    }
+    if (action === 'copyHandoff' && brief) {
+      try {
+        await navigator.clipboard.writeText(formatProjectWikiHandoffBrief(projectName, summary, brief, gitContext))
+        setCopied(true)
+        toast.success(t('projectWiki.copyHandoffSuccess'))
+      } catch {
+        toast.error(t('projectWiki.copyHandoffError'))
+      }
+    }
+  }
+
+  const handleCopyHandoff = async () => {
+    if (!brief) return
+    try {
+      await navigator.clipboard.writeText(formatProjectWikiHandoffBrief(projectName, summary, brief, gitContext))
+      setCopied(true)
+      toast.success(t('projectWiki.copyHandoffSuccess'))
+    } catch {
+      toast.error(t('projectWiki.copyHandoffError'))
+    }
+  }
+
+  return (
+    <section
+      id="project-wiki-aha"
+      style={{
+        border: '1px solid color-mix(in srgb, var(--accent) 30%, var(--border))',
+        borderRadius: 'var(--r-xl)',
+        padding: 'var(--sp-5)',
+        background:
+          'radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--accent) 18%, transparent) 0, transparent 34%), linear-gradient(135deg, var(--bg-elev) 0%, var(--bg) 100%)',
+        boxShadow: 'var(--shadow-md)',
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr) auto',
+        gap: 'var(--sp-4)',
+        alignItems: 'center',
+        minWidth: 0,
+      }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', minWidth: 0 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-2)', alignItems: 'center' }}>
+          <Badge variant="marker" size="sm">{t('projectWiki.aha.badge')}</Badge>
+          <Badge variant={hasRisk ? 'danger' : 'default'} size="sm">{t(`projectWiki.aha.action.${action}.badge`)}</Badge>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-1)', minWidth: 0 }}>
+          <h2 style={{ margin: 0, color: 'var(--text)', fontSize: 'var(--fs-xl)', fontWeight: 'var(--fw-bold)', letterSpacing: '-0.02em' }}>
+            {t(`projectWiki.aha.action.${action}.title`)}
+          </h2>
+          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--fs-sm)', lineHeight: 'var(--lh-relaxed)' }}>
+            {t(`projectWiki.aha.action.${action}.desc`, {
+              doc: action === 'openRisk' ? riskDocLink?.name : startDocLink?.name,
+            })}
+          </p>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
+          <Badge variant={brief ? 'success' : 'default'} size="sm">{t('projectWiki.aha.step.brief')}</Badge>
+          <Badge variant={summary.risks.missingRefs + summary.risks.staleRefs > 0 ? 'danger' : 'success'} size="sm">
+            {t('projectWiki.aha.step.risks')}
+          </Badge>
+          <Badge variant={brief ? 'marker' : 'default'} size="sm">{t('projectWiki.aha.step.handoff')}</Badge>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', alignItems: 'stretch', minWidth: '150px' }}>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={handlePrimary}
+          disabled={action === 'waitForBrief' || (action === 'copyHandoff' && !brief)}
+          aria-label={t(`projectWiki.aha.action.${action}.aria`)}
+        >
+          {action === 'copyHandoff' && copied
+            ? t('projectWiki.copyHandoffDone')
+            : t(`projectWiki.aha.action.${action}.cta`)}
+        </Button>
+        {brief && action !== 'copyHandoff' && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCopyHandoff}
+            aria-label={t('projectWiki.aha.copyHandoffAria')}
+          >
+            {copied ? t('projectWiki.copyHandoffDone') : t('projectWiki.aha.copyHandoff')}
+          </Button>
+        )}
+        {briefLoading && <Badge variant="default" size="sm">{t('projectWiki.briefLoading')}</Badge>}
+      </div>
+    </section>
+  )
+}
+
 function GitSituationCard({
   situation,
   docsByPath,
@@ -1593,6 +1728,16 @@ export function ProjectWikiPanel({
           })}
         </p>
       </header>
+
+      <FirstProjectAhaCard
+        projectName={projectName}
+        summary={summary}
+        gitContext={gitContext}
+        brief={brief}
+        briefLoading={briefLoading}
+        docsByPath={docsByPath}
+        onOpenDoc={onOpenDoc}
+      />
 
       <ProjectPulseCard
         projectName={projectName}

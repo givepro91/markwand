@@ -142,6 +142,45 @@ beforeEach(() => {
 })
 
 describe('ProjectWikiPanel — AI task prompt copy', () => {
+  it('surfaces one next-best action at the top of the wiki', () => {
+    const onOpenDoc = vi.fn()
+    renderWithProviders(
+      <ProjectWikiPanel
+        projectName="markwand"
+        summary={summary}
+        brief={null}
+        briefLoading={false}
+        docsByPath={new Map([[doc.path, doc]])}
+        onOpenDoc={onOpenDoc}
+      />
+    )
+
+    expect(screen.getByText('projectWiki.aha.badge')).toBeInTheDocument()
+    expect(screen.getByText('projectWiki.aha.action.openRisk.title')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'projectWiki.aha.action.openRisk.aria' }))
+
+    expect(onOpenDoc).toHaveBeenCalledWith(doc)
+  })
+
+  it('copies the AI handoff from the top aha path when a brief is ready', async () => {
+    renderWithProviders(
+      <ProjectWikiPanel
+        projectName="markwand"
+        summary={summary}
+        brief={brief}
+        briefLoading={false}
+        docsByPath={new Map([[doc.path, doc]])}
+        onOpenDoc={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'projectWiki.aha.copyHandoffAria' }))
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce())
+    expect(writeText.mock.calls[0][0]).toContain('# Handoff Brief: markwand')
+  })
+
   it('keeps wiki section navigation collapsed until the user asks for it', async () => {
     renderWithProviders(
       <ProjectWikiPanel

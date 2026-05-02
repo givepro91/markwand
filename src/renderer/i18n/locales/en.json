@@ -199,6 +199,46 @@
     "returnToWikiAria": "Return to project wiki",
     "title": "{{name}} Wiki",
     "summary": "{{docs}} markdown docs, {{recent}} changed in the last 7 days. Tracking {{missing}} broken links and {{stale}} stale references.",
+    "aha": {
+      "badge": "Next best action",
+      "copyHandoff": "Hand off to AI",
+      "copyHandoffAria": "Copy the current project summary for AI handoff",
+      "step": {
+        "brief": "Quick summary",
+        "risks": "Issues to check",
+        "handoff": "AI handoff"
+      },
+      "action": {
+        "openRisk": {
+          "badge": "Issue first",
+          "title": "Check the document flow that may block you",
+          "desc": "{{doc}} has reference issues that can weaken AI summaries. Starting there makes the next judgment safer.",
+          "cta": "Open issue doc",
+          "aria": "Open the issue document to check first"
+        },
+        "openStart": {
+          "badge": "Start reading",
+          "title": "Start with this document",
+          "desc": "{{doc}} is the best entry point for understanding the project right now.",
+          "cta": "Open start doc",
+          "aria": "Open the recommended start document"
+        },
+        "copyHandoff": {
+          "badge": "AI-ready",
+          "title": "The AI handoff is ready",
+          "desc": "Copy the project brief, trust signals, and recent change context into Claude or Codex in one step.",
+          "cta": "Copy AI summary",
+          "aria": "Copy the project summary for AI"
+        },
+        "waitForBrief": {
+          "badge": "Reading",
+          "title": "Reading document evidence",
+          "desc": "The quick summary, issues to check, and AI handoff flow will appear shortly.",
+          "cta": "Please wait",
+          "aria": "Reading document evidence"
+        }
+      }
+    },
     "git": {
       "title": "Recent Change Flow · Git Pulse",
       "loading": "Reading Git flow",

@@ -199,6 +199,46 @@
     "returnToWikiAria": "프로젝트 위키로 돌아가기",
     "title": "{{name}} 위키",
     "summary": "문서 {{docs}}개 중 최근 7일 변경 {{recent}}개. 깨진 링크 {{missing}}개, 오래된 참조 {{stale}}개를 추적 중입니다.",
+    "aha": {
+      "badge": "지금 할 일",
+      "copyHandoff": "AI에게 전달하기",
+      "copyHandoffAria": "현재 프로젝트 요약을 AI에게 전달할 형식으로 복사",
+      "step": {
+        "brief": "한눈에 요약",
+        "risks": "확인할 문제",
+        "handoff": "AI 전달"
+      },
+      "action": {
+        "openRisk": {
+          "badge": "문제 먼저",
+          "title": "먼저 막히는 문서 흐름을 확인하세요",
+          "desc": "{{doc}}에서 AI 요약을 흔들 수 있는 참조 문제가 보입니다. 이 문서부터 보면 이후 판단이 더 안전합니다.",
+          "cta": "문제 문서 열기",
+          "aria": "먼저 확인할 문제 문서 열기"
+        },
+        "openStart": {
+          "badge": "읽기 시작",
+          "title": "이 문서부터 읽으면 됩니다",
+          "desc": "{{doc}}가 현재 프로젝트를 이해하기 좋은 시작점입니다. 처음 온 사람도 여기서 맥락을 잡을 수 있습니다.",
+          "cta": "시작 문서 열기",
+          "aria": "처음 읽을 시작 문서 열기"
+        },
+        "copyHandoff": {
+          "badge": "AI 준비됨",
+          "title": "AI에게 넘길 요약이 준비됐습니다",
+          "desc": "프로젝트 요약, 신뢰 신호, 최근 변경 흐름을 한 번에 복사해 Claude나 Codex에 붙여넣을 수 있습니다.",
+          "cta": "AI용 요약 복사",
+          "aria": "AI에게 전달할 프로젝트 요약 복사"
+        },
+        "waitForBrief": {
+          "badge": "읽는 중",
+          "title": "문서 근거를 읽는 중입니다",
+          "desc": "곧 한눈에 요약, 확인할 문제, AI 전달 흐름이 채워집니다.",
+          "cta": "잠시만 기다려주세요",
+          "aria": "문서 근거를 읽는 중"
+        }
+      }
+    },
     "git": {
       "title": "최근 변경 흐름 · Git Pulse",
       "loading": "Git 흐름 읽는 중",
