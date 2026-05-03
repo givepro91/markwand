@@ -1222,8 +1222,8 @@ function RelationshipGraph({
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--sp-4)' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', minWidth: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 'var(--sp-4)', minWidth: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', minWidth: 0, overflow: 'hidden' }}>
           <strong style={{ color: 'var(--text)', fontSize: 'var(--fs-sm)', fontWeight: 'var(--fw-semibold)' }}>
             {t('projectWiki.linkGraphHubs')}
           </strong>
@@ -1253,7 +1253,20 @@ function RelationshipGraph({
                   overflow: 'hidden',
                 }}
               >
-                <span style={{ display: 'block', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{hub.name}</span>
+                <span
+                  style={{
+                    display: '-webkit-box',
+                    minWidth: 0,
+                    maxWidth: '100%',
+                    overflow: 'hidden',
+                    overflowWrap: 'anywhere',
+                    WebkitBoxOrient: 'vertical',
+                    WebkitLineClamp: 2,
+                    lineHeight: 'var(--lh-snug)',
+                  }}
+                >
+                  {hub.name}
+                </span>
                 <span style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-1)' }}>
                   <Badge variant="default" size="sm">{t('projectWiki.linkGraphInbound', { count: hub.inbound })}</Badge>
                   <Badge variant="default" size="sm">{t('projectWiki.linkGraphOutbound', { count: hub.outbound })}</Badge>
@@ -1266,7 +1279,7 @@ function RelationshipGraph({
           )}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', minWidth: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', minWidth: 0, overflow: 'hidden' }}>
           <strong style={{ color: 'var(--text)', fontSize: 'var(--fs-sm)', fontWeight: 'var(--fw-semibold)' }}>
             {t('projectWiki.linkGraphRiskLinks')}
           </strong>
@@ -1297,14 +1310,26 @@ function RelationshipGraph({
                 }}
               >
                 <span style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--sp-2)', alignItems: 'center', minWidth: 0, flexWrap: 'wrap' }}>
-                  <span style={{ display: 'block', minWidth: 0, flex: '1 1 220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span
+                    style={{
+                      display: '-webkit-box',
+                      minWidth: 0,
+                      maxWidth: '100%',
+                      flex: '1 1 220px',
+                      overflow: 'hidden',
+                      overflowWrap: 'anywhere',
+                      WebkitBoxOrient: 'vertical',
+                      WebkitLineClamp: 2,
+                      lineHeight: 'var(--lh-snug)',
+                    }}
+                  >
                     {link.sourceName} → {link.targetName}
                   </span>
                   <span style={{ flexShrink: 0 }}>
                     <Badge variant={statusVariant(link.status)} size="sm">{t(`projectWiki.linkGraphStatus.${link.status}`)}</Badge>
                   </span>
                 </span>
-                <span style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-xs)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-xs)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
                   {t('projectWiki.linkGraphLine', { line: link.line })} · {link.raw}
                 </span>
               </button>

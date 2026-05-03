@@ -452,6 +452,49 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
     expect(onOpenDoc).toHaveBeenCalledWith(doc)
   })
 
+  it('keeps long link graph names inside their cards', () => {
+    const longName = '20260316-0900_district-map-pnu-extractor_implementation-ready-super-long-reference-name.md'
+    const longLinkSummary: ProjectWikiSummary = {
+      ...summary,
+      relationships: {
+        ...summary.relationships,
+        hubs: [{
+          path: doc.path,
+          name: longName,
+          inbound: 0,
+          outbound: 24,
+          riskRefs: 24,
+        }],
+        riskyLinks: [{
+          sourcePath: doc.path,
+          sourceName: longName,
+          targetPath: '/project/.claude/sessions/TEMPLATE.md',
+          targetName: 'TEMPLATE.md',
+          raw: '`.claude/sessions/TEMPLATE.md`',
+          status: 'missing',
+          kind: 'inline',
+          line: 26,
+        }],
+      },
+    }
+
+    renderWithProviders(
+      <ProjectWikiPanel
+        projectName="markwand"
+        summary={longLinkSummary}
+        brief={null}
+        briefLoading={false}
+        docsByPath={new Map([[doc.path, doc]])}
+        onOpenDoc={vi.fn()}
+      />
+    )
+
+    const [hubTitle, riskTitle] = screen.getAllByText((content) => content.includes(longName))
+
+    expect(hubTitle).toHaveStyle({ overflow: 'hidden', overflowWrap: 'anywhere', maxWidth: '100%' })
+    expect(riskTitle).toHaveStyle({ overflow: 'hidden', overflowWrap: 'anywhere', maxWidth: '100%' })
+  })
+
   it('opens a document from the decision timeline', () => {
     const onOpenDoc = vi.fn()
     renderWithProviders(
