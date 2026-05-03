@@ -10,6 +10,7 @@ import { registerWorkspaceHandlers } from './ipc/workspace'
 import { registerFsHandlers } from './ipc/fs'
 import { registerPrefsHandlers } from './ipc/prefs'
 import { registerClaudeHandlers } from './ipc/claude'
+import { registerProjectOpenerHandlers } from './ipc/projectOpeners'
 import { registerComposerHandlers } from './ipc/composer'
 import { registerDriftHandlers } from './ipc/drift'
 import { registerAnnotationHandlers } from './ipc/annotation'
@@ -97,6 +98,7 @@ async function initializeApp(): Promise<void> {
   registerFsHandlers()
   registerPrefsHandlers()
   registerClaudeHandlers()
+  registerProjectOpenerHandlers()
   registerComposerHandlers()
   registerDriftHandlers()
   registerAnnotationHandlers()

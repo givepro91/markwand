@@ -116,7 +116,7 @@ export interface WikiRiskLink {
   targetName: string
   raw: string
   status: 'missing' | 'stale'
-  kind: 'at' | 'hint' | 'inline'
+  kind: 'at' | 'hint' | 'inline' | 'plain'
   line: number
 }
 

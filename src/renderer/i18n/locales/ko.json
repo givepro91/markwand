@@ -109,6 +109,26 @@
     "copyError": "프로젝트 요약을 복사하지 못했습니다."
   },
 
+  "projectOpen": {
+    "openWith": "{{app}}로 프로젝트 열기",
+    "openWithShort": "{{app}}로 열기",
+    "opening": "여는 중…",
+    "menuAria": "프로젝트 열 앱 선택",
+    "menuHint": "설치된 앱만 표시됩니다. 별표를 누르면 기본값으로 저장됩니다.",
+    "defaultBadge": "기본",
+    "setDefaultAria": "{{app}}를 기본 열기 앱으로 설정",
+    "defaultSaved": "{{app}}를 기본 열기 앱으로 저장했습니다.",
+    "openError": "프로젝트를 열지 못했습니다: {{reason}}",
+    "unknownError": "알 수 없는 오류",
+    "none": "열 앱 없음",
+    "disabled": "현재 프로젝트에서는 사용할 수 없습니다.",
+    "sshDisabled": "SSH 프로젝트는 원격 경로라 로컬 IDE/터미널에서 바로 열 수 없습니다.",
+    "settingsTitle": "프로젝트 열기 기본값",
+    "settingsSelectAria": "프로젝트를 열 기본 앱 선택",
+    "settingsHint": "사이드바의 프로젝트 열기 버튼에서 사용할 기본 앱입니다. 설치된 앱만 선택할 수 있습니다.",
+    "settingsEmpty": "감지된 열기 앱이 없습니다."
+  },
+
   "inbox": {
     "sectionToday": "오늘",
     "sectionYesterday": "어제",

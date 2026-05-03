@@ -4,7 +4,7 @@
 
 Markwand 는 Apple Developer Program 없이 배포되는 **무료 베타 ZIP** 입니다. 앱은 ad-hoc 서명되어 있으며, 완전한 공증 앱처럼 더블클릭 한 번으로 끝나지는 않지만 터미널 없이 설치할 수 있게 구성했습니다.
 
-> 릴리스 노트: [release-notes/v0.4.0-beta.10.md](./release-notes/v0.4.0-beta.10.md)
+> 릴리스 노트: [release-notes/v0.4.0-beta.11.md](./release-notes/v0.4.0-beta.11.md)
 
 ---
 

@@ -48,6 +48,10 @@ export function createApiMock(overrides: Record<string, unknown> = {}) {
       onTransportStatus: vi.fn(() => unsubscribe),
       verifyHostKey: vi.fn(() => ok()),
     },
+    projectOpeners: {
+      list: vi.fn(() => ok([{ id: 'finder', label: 'Finder', available: true }])),
+      open: vi.fn(() => ok({ ok: true })),
+    },
     annotation: {
       load: vi.fn(() => ok({ version: 1 as const, annotations: [] })),
       save: vi.fn(() => ok()),
@@ -55,6 +59,7 @@ export function createApiMock(overrides: Record<string, unknown> = {}) {
     shell: {
       openExternal: vi.fn(() => ok()),
       showItemInFolder: vi.fn(() => ok()),
+      revealInFinder: vi.fn(() => ok()),
     },
     clipboard: {
       writeText: vi.fn(() => ok()),

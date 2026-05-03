@@ -109,6 +109,26 @@
     "copyError": "Could not copy the project summary."
   },
 
+  "projectOpen": {
+    "openWith": "Open project in {{app}}",
+    "openWithShort": "Open in {{app}}",
+    "opening": "Opening…",
+    "menuAria": "Choose an app to open this project",
+    "menuHint": "Only installed apps are shown. Use the star to save your default.",
+    "defaultBadge": "Default",
+    "setDefaultAria": "Set {{app}} as the default project opener",
+    "defaultSaved": "Saved {{app}} as the default project opener.",
+    "openError": "Could not open the project: {{reason}}",
+    "unknownError": "Unknown error",
+    "none": "No app found",
+    "disabled": "Not available for this project.",
+    "sshDisabled": "SSH projects use remote paths, so local IDEs and terminals cannot open them directly.",
+    "settingsTitle": "Default project opener",
+    "settingsSelectAria": "Choose the default app for opening projects",
+    "settingsHint": "This is used by the project opener button in the sidebar. Only installed apps can be selected.",
+    "settingsEmpty": "No opener apps were detected."
+  },
+
   "inbox": {
     "sectionToday": "Today",
     "sectionYesterday": "Yesterday",

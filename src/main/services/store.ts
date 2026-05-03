@@ -1,4 +1,4 @@
-import type { Workspace, ViewMode, SortOrder, ThemeType, TerminalType } from '../../preload/types'
+import type { Workspace, ViewMode, SortOrder, ThemeType, TerminalType, ProjectOpenerId } from '../../preload/types'
 
 /**
  * SSH TOFU 저장소 엔트리 — workspaceId 기준 (M3 Plan §S2.1).
@@ -32,6 +32,7 @@ export interface StoreSchema {
   treeExpanded: Record<string, string[]>
   sortOrder: SortOrder
   terminal: TerminalType
+  defaultProjectOpener: ProjectOpenerId
   /** M3 S2 — SSH TOFU 저장소. workspaceId(ssh:<hex>) → hostKey entry. */
   sshKnownHosts: Record<string, SshKnownHostEntry>
   /** M3 S3 — experimental flag 모음. 신규 기능을 기본 off 로 배송하기 위한 layer. */
@@ -59,6 +60,7 @@ export async function getStore(): Promise<import('electron-store').default<Store
       treeExpanded: {},
       sortOrder: 'recent',
       terminal: 'Terminal',
+      defaultProjectOpener: 'finder',
       sshKnownHosts: {},
       experimentalFeatures: { sshTransport: false },
     },
@@ -106,6 +108,11 @@ export async function getStore(): Promise<import('electron-store').default<Store
         type: 'string',
         enum: ['Terminal', 'iTerm2', 'Ghostty'],
         default: 'Terminal',
+      },
+      defaultProjectOpener: {
+        type: 'string',
+        enum: ['vscode', 'cursor', 'finder', 'terminal', 'iterm2', 'ghostty', 'xcode', 'intellij'],
+        default: 'finder',
       },
       sshKnownHosts: { type: 'object', default: {} },
       experimentalFeatures: {

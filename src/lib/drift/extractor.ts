@@ -6,6 +6,10 @@ const AT_REF_RE = /@(\/[^\s"'`\]>)]+)/g
 
 // Matches `inner content` on a single line
 const INLINE_BACKTICK_RE = /`([^`\n]+)`/g
+// Matches conservative plain paths such as src/components/toast-provider.tsx.
+// Boundary is required so URLs/prose fragments do not get sliced into false refs.
+const PLAIN_PATH_RE =
+  /(^|[\s([{:])((?:\.{1,2}[\/\\]|[A-Za-z0-9_.@~-]+[\/\\])[A-Za-z0-9_.\/\\+@~#?-]+\.[A-Za-z0-9]{1,8}(?:[?#][A-Za-z0-9_.\/\\+@~#?=&%-]*)?)/g
 
 // Opening fence: ``` or ~~~, optionally followed by language specifier
 const FENCE_OPEN_RE = /^(`{3,}|~{3,})/
@@ -22,6 +26,11 @@ function isPathLike(s: string): boolean {
   if (!s || s.length < 2) return false
   if (/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(s)) return false
   return s.includes('/') || s.includes('\\')
+}
+
+function isBareFileName(s: string): boolean {
+  const cleaned = stripPathExtras(s)
+  return !cleaned.includes('/') && !cleaned.includes('\\') && hasKnownFileExtension(cleaned) && PATH_CHAR_RE.test(cleaned)
 }
 
 // Path 후보 허용 문자 화이트리스트.
@@ -163,6 +172,72 @@ function resolveRef(
   return path.resolve(base, cleaned)
 }
 
+function resolveProjectSuffixFallback(rawPath: string, projectRoot: string): string | null {
+  const cleaned = stripPathExtras(rawPath)
+  if (!cleaned || path.isAbsolute(cleaned) || isWindowsAbsolutePath(cleaned)) return null
+  const relParts = cleaned.split(/[/\\]/).filter(Boolean)
+  if (relParts.length < 2) return null
+
+  const root = path.resolve(projectRoot)
+  const rootParts = root.split(path.sep).filter(Boolean)
+  const rootPrefix = root.startsWith(path.sep) ? path.sep : ''
+  const maxOverlap = Math.min(relParts.length - 1, rootParts.length)
+
+  for (let len = maxOverlap; len >= 1; len--) {
+    const rootSuffix = rootParts.slice(-len).join('/')
+    const relPrefix = relParts.slice(0, len).join('/')
+    if (rootSuffix !== relPrefix) continue
+    const ancestorParts = rootParts.slice(0, rootParts.length - len)
+    return path.join(rootPrefix, ...ancestorParts, ...relParts)
+  }
+
+  return null
+}
+
+function uniqueFallbackPaths(paths: Array<string | null | undefined>, primary: string): string[] {
+  const seen = new Set([path.resolve(primary)])
+  const unique: string[] = []
+  for (const candidate of paths) {
+    if (!candidate) continue
+    const key = path.resolve(candidate)
+    if (seen.has(key)) continue
+    seen.add(key)
+    unique.push(candidate)
+  }
+  return unique
+}
+
+function buildFallbackPaths(
+  rawPath: string,
+  kind: ReferenceKind,
+  projectRoot: string,
+  primary: string,
+  docDir?: string
+): string[] {
+  const projectRootFallback = docDir ? resolveRef(rawPath, kind, projectRoot) : undefined
+  const projectSuffixFallback = resolveProjectSuffixFallback(rawPath, projectRoot)
+  return uniqueFallbackPaths([projectRootFallback, projectSuffixFallback], primary)
+}
+
+function pushReference(results: Reference[], ref: Reference): void {
+  const last = results[results.length - 1]
+  if (
+    last &&
+    last.kind === ref.kind &&
+    last.line === ref.line &&
+    last.raw === ref.raw &&
+    last.resolvedPath === ref.resolvedPath &&
+    (last.fallbackPaths ?? []).join('\0') === (ref.fallbackPaths ?? []).join('\0')
+  ) {
+    return
+  }
+  results.push(ref)
+}
+
+function maskInlineCode(line: string): string {
+  return line.replace(INLINE_BACKTICK_RE, (m) => ' '.repeat(m.length))
+}
+
 function extractHintComment(line: string): { pathStr: string; col: number } | null {
   let m: RegExpMatchArray | null
 
@@ -170,21 +245,21 @@ function extractHintComment(line: string): { pathStr: string; col: number } | nu
   m = line.match(/^(\s*\/\/\s*)(.+)$/)
   if (m) {
     const pathStr = m[2].trim()
-    if (isPathLike(pathStr)) return { pathStr, col: m[1].length + 1 }
+    if (isPathLike(pathStr) || isBareFileName(pathStr)) return { pathStr, col: m[1].length + 1 }
   }
 
   // # path  (or #path)
   m = line.match(/^(\s*#\s*)(.+)$/)
   if (m) {
     const pathStr = m[2].trim()
-    if (isPathLike(pathStr)) return { pathStr, col: m[1].length + 1 }
+    if (isPathLike(pathStr) || isBareFileName(pathStr)) return { pathStr, col: m[1].length + 1 }
   }
 
   // /* path */ or /* path
   m = line.replace(/\*\/\s*$/, '').match(/^(\s*\/\*\s*)(.+)$/)
   if (m) {
     const pathStr = m[2].trim()
-    if (isPathLike(pathStr)) return { pathStr, col: m[1].length + 1 }
+    if (isPathLike(pathStr) || isBareFileName(pathStr)) return { pathStr, col: m[1].length + 1 }
   }
 
   return null
@@ -225,7 +300,7 @@ export function extractReferences(
         if (!isMeaningfulPathCandidate(pathPart)) continue
         const resolvedPath = resolveRef(pathPart, 'at', projectRoot)
         if (!resolvedPath) continue
-        results.push({
+        pushReference(results, {
           raw: rawMatch,
           resolvedPath,
           reportMissing: shouldReportMissing(pathPart, 'at'),
@@ -238,7 +313,8 @@ export function extractReferences(
       // Inline backtick paths — path-like 이면서 모든 가드 통과해야.
       for (const m of line.matchAll(INLINE_BACKTICK_RE)) {
         const inner = m[1]
-        if (!isPathLike(inner)) continue
+        const bareFileName = isBareFileName(inner)
+        if (!isPathLike(inner) && !bareFileName) continue
         if (inner.startsWith('@/')) continue // at-ref 로 이미 처리됨
         if (isNpmScopePackage(inner)) continue
         if (isGlobOrPlaceholder(inner)) continue
@@ -246,13 +322,41 @@ export function extractReferences(
         const col = (m.index ?? 0) + 1
         const primary = resolveRef(inner, 'inline', projectRoot, docDir)
         if (!primary) continue
-        const fallback = docDir ? resolveRef(inner, 'inline', projectRoot) : undefined
-        results.push({
+        const fallbackPaths = buildFallbackPaths(inner, 'inline', projectRoot, primary, docDir)
+        pushReference(results, {
           raw: m[0],
           resolvedPath: primary,
-          fallbackPath: fallback && fallback !== primary ? fallback : undefined,
+          fallbackPath: fallbackPaths[0],
+          fallbackPaths: fallbackPaths.length > 0 ? fallbackPaths : undefined,
+          lookupBasename: bareFileName ? stripPathExtras(inner) : undefined,
           reportMissing: shouldReportMissing(inner, 'inline'),
           kind: 'inline',
+          line: lineNum,
+          col,
+        })
+      }
+
+      // Plain prose paths — e.g. "Check src/components/toast-provider.tsx".
+      // Backtick ranges are masked first so inline refs do not double count.
+      const plainLine = maskInlineCode(line)
+      for (const m of plainLine.matchAll(PLAIN_PATH_RE)) {
+        const rawPath = m[2]
+        if (rawPath.startsWith('@/')) continue
+        if (isNpmScopePackage(rawPath)) continue
+        if (isGlobOrPlaceholder(rawPath)) continue
+        if (!isMeaningfulPathCandidate(rawPath)) continue
+        const primary = resolveRef(rawPath, 'plain', projectRoot, docDir)
+        if (!primary) continue
+        const boundary = m[1] ?? ''
+        const col = (m.index ?? 0) + boundary.length + 1
+        const fallbackPaths = buildFallbackPaths(rawPath, 'plain', projectRoot, primary, docDir)
+        pushReference(results, {
+          raw: rawPath,
+          resolvedPath: primary,
+          fallbackPath: fallbackPaths[0],
+          fallbackPaths: fallbackPaths.length > 0 ? fallbackPaths : undefined,
+          reportMissing: shouldReportMissing(rawPath, 'plain'),
+          kind: 'plain',
           line: lineNum,
           col,
         })
@@ -278,11 +382,13 @@ export function extractReferences(
           ) {
             const primary = resolveRef(hint.pathStr, 'hint', projectRoot, docDir)
             if (!primary) continue
-            const fallback = docDir ? resolveRef(hint.pathStr, 'hint', projectRoot) : undefined
-            results.push({
+            const fallbackPaths = buildFallbackPaths(hint.pathStr, 'hint', projectRoot, primary, docDir)
+            pushReference(results, {
               raw: line.trim(),
               resolvedPath: primary,
-              fallbackPath: fallback && fallback !== primary ? fallback : undefined,
+              fallbackPath: fallbackPaths[0],
+              fallbackPaths: fallbackPaths.length > 0 ? fallbackPaths : undefined,
+              lookupBasename: isBareFileName(hint.pathStr) ? stripPathExtras(hint.pathStr) : undefined,
               reportMissing: shouldReportMissing(hint.pathStr, 'hint'),
               kind: 'hint',
               line: lineNum,

@@ -135,6 +135,16 @@ describe('extractReferences — code block hints (hint)', () => {
     expect(refs[0].resolvedPath).toBe('/project/lib/utils.ts')
   })
 
+  it('bare filename hint is extracted for basename lookup', () => {
+    const md = '```\n// toast-provider.tsx\n```'
+    const refs = extractReferences(md, ROOT, '/project/docs/plan.md')
+    expect(refs).toHaveLength(1)
+    expect(refs[0].kind).toBe('hint')
+    expect(refs[0].resolvedPath).toBe('/project/docs/toast-provider.tsx')
+    expect(refs[0].fallbackPath).toBe('/project/toast-provider.tsx')
+    expect(refs[0].lookupBasename).toBe('toast-provider.tsx')
+  })
+
   it('Windows path hint — backslashes normalized', () => {
     const md = '```\n// C:\\Users\\foo\\bar.ts\n```'
     const refs = extractReferences(md, ROOT)
@@ -194,6 +204,15 @@ describe('extractReferences — inline backtick (inline)', () => {
     expect(extractReferences('call `someVar` here', ROOT)).toHaveLength(0)
   })
 
+  it('bare code filename in backticks is extracted for basename lookup', () => {
+    const refs = extractReferences('See `toast-provider.tsx` for the UI toast flow.', ROOT, '/project/docs/plan.md')
+    expect(refs).toHaveLength(1)
+    expect(refs[0].kind).toBe('inline')
+    expect(refs[0].resolvedPath).toBe('/project/docs/toast-provider.tsx')
+    expect(refs[0].fallbackPath).toBe('/project/toast-provider.tsx')
+    expect(refs[0].lookupBasename).toBe('toast-provider.tsx')
+  })
+
   it('URL in backtick not extracted as path', () => {
     expect(extractReferences('Visit `https://example.com/path`', ROOT)).toHaveLength(0)
   })
@@ -230,6 +249,60 @@ describe('extractReferences — inline backtick (inline)', () => {
   it('query string stripped from inline resolvedPath', () => {
     const refs = extractReferences('`src/foo.ts?v=1`', ROOT)
     expect(refs[0].resolvedPath).toBe('/project/src/foo.ts')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Plain prose paths — kind='plain'
+// ---------------------------------------------------------------------------
+
+describe('extractReferences — plain prose paths (plain)', () => {
+  it('extracts a project-root-like code path even when it is not wrapped in backticks', () => {
+    const refs = extractReferences(
+      'Check src/components/toast-provider.tsx before changing notifications.',
+      ROOT,
+      '/project/docs/design.md',
+    )
+    expect(refs).toHaveLength(1)
+    expect(refs[0].kind).toBe('plain')
+    expect(refs[0].raw).toBe('src/components/toast-provider.tsx')
+    expect(refs[0].resolvedPath).toBe('/project/docs/src/components/toast-provider.tsx')
+    expect(refs[0].fallbackPath).toBe('/project/src/components/toast-provider.tsx')
+  })
+
+  it('adds a monorepo self-prefix fallback when projectRoot is a nested package', () => {
+    const refs = extractReferences(
+      'Provider: `apps/lbd/src/hooks/useEngineJobs.ts`.',
+      '/repo/apps/lbd',
+      '/repo/apps/lbd/docs/plans/engine-polling-provider.plan.md',
+    )
+    expect(refs).toHaveLength(1)
+    expect(refs[0].resolvedPath).toBe('/repo/apps/lbd/docs/plans/apps/lbd/src/hooks/useEngineJobs.ts')
+    expect(refs[0].fallbackPaths).toEqual([
+      '/repo/apps/lbd/apps/lbd/src/hooks/useEngineJobs.ts',
+      '/repo/apps/lbd/src/hooks/useEngineJobs.ts',
+    ])
+  })
+
+  it('does not double-count paths already wrapped in backticks', () => {
+    const refs = extractReferences('Check `src/components/toast-provider.tsx`.', ROOT, '/project/docs/design.md')
+    expect(refs).toHaveLength(1)
+    expect(refs[0].kind).toBe('inline')
+  })
+
+  it('does not double-count identical markdown link label and href paths on the same line', () => {
+    const refs = extractReferences(
+      'Route: [apps/hub/src/App.tsx](apps/hub/src/App.tsx) — import 7 + Route 7.',
+      '/repo',
+      '/repo/docs/plans/hub.md',
+    )
+    expect(refs).toHaveLength(1)
+    expect(refs[0].kind).toBe('plain')
+    expect(refs[0].raw).toBe('apps/hub/src/App.tsx')
+  })
+
+  it('ignores URLs with path-like segments', () => {
+    expect(extractReferences('Open https://example.com/src/toast-provider.tsx', ROOT)).toHaveLength(0)
   })
 })
 

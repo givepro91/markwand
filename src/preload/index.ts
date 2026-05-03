@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type {
   ThemeType,
   TerminalType,
+  ProjectOpenerId,
   Doc,
   FsChangeEvent,
   HostKeyPromptPayload,
@@ -75,6 +76,12 @@ contextBridge.exposeInMainWorld('api', {
     check: () => ipcRenderer.invoke('claude:check'),
     open: (dir: string, terminal: TerminalType) =>
       ipcRenderer.invoke('claude:open', { dir, terminal }),
+  },
+
+  projectOpeners: {
+    list: () => ipcRenderer.invoke('project-openers:list'),
+    open: (projectRoot: string, openerId: ProjectOpenerId) =>
+      ipcRenderer.invoke('project-openers:open', { projectRoot, openerId }),
   },
 
   composer: {

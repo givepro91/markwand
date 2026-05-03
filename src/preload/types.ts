@@ -1,5 +1,14 @@
 export type ThemeType = 'light' | 'dark' | 'system'
 export type TerminalType = 'Terminal' | 'iTerm2' | 'Ghostty'
+export type ProjectOpenerId =
+  | 'vscode'
+  | 'cursor'
+  | 'finder'
+  | 'terminal'
+  | 'iterm2'
+  | 'ghostty'
+  | 'xcode'
+  | 'intellij'
 export type ViewMode = 'all' | 'inbox' | 'project'
 export type SortOrder = 'recent' | 'name' | 'count'
 export type ViewLayout = 'grid' | 'list'
@@ -143,6 +152,17 @@ export interface ClaudeCheckResult {
 }
 
 export interface ClaudeOpenResult {
+  ok: boolean
+  reason?: string
+}
+
+export interface ProjectOpenerInfo {
+  id: ProjectOpenerId
+  label: string
+  available: boolean
+}
+
+export interface ProjectOpenResult {
   ok: boolean
   reason?: string
 }
@@ -297,6 +317,10 @@ export interface WindowApi {
   claude: {
     check: () => Promise<ClaudeCheckResult>
     open: (dir: string, terminal: TerminalType) => Promise<ClaudeOpenResult>
+  }
+  projectOpeners: {
+    list: () => Promise<ProjectOpenerInfo[]>
+    open: (projectRoot: string, openerId: ProjectOpenerId) => Promise<ProjectOpenResult>
   }
   composer: {
     estimateTokens: (paths: string[]) => Promise<ComposerEstimate>

@@ -6,6 +6,7 @@ import {
   parseWorkspaceAddSshInput,
   parsePrefsGetInput,
   parsePrefsSetInput,
+  parseProjectOpenInput,
 } from './validators'
 
 // IPC 핸들러 보안 체크리스트 (Plan §M1.4 Critic G-Major).
@@ -176,5 +177,26 @@ describe('ALLOWED_PREFS_KEYS — activeProjectId 통과 (FS-RT-2)', () => {
 
   it('parsePrefsGetInput — 알 수 없는 키 거부', () => {
     expect(() => parsePrefsGetInput({ key: 'fakeKey__' })).toThrow('PREFS_KEY_NOT_ALLOWED')
+  })
+})
+
+describe('Project opener IPC input — enum allowlist', () => {
+  it('parseProjectOpenInput — 허용된 opener id 통과', () => {
+    const parsed = parseProjectOpenInput({ projectRoot: '/Users/alice/workspace/app', openerId: 'vscode' })
+    expect(parsed).toEqual({ projectRoot: '/Users/alice/workspace/app', openerId: 'vscode' })
+  })
+
+  it('parseProjectOpenInput — 알 수 없는 opener id 거부', () => {
+    expect(() => parseProjectOpenInput({ projectRoot: '/Users/alice/workspace/app', openerId: 'rm-rf' })).toThrow()
+  })
+
+  it('parsePrefsGetInput — defaultProjectOpener 키 통과', () => {
+    expect(() => parsePrefsGetInput({ key: 'defaultProjectOpener' })).not.toThrow()
+  })
+
+  it('parsePrefsSetInput — defaultProjectOpener 값 저장 통과', () => {
+    const out = parsePrefsSetInput({ key: 'defaultProjectOpener', value: 'finder' })
+    expect(out.key).toBe('defaultProjectOpener')
+    expect(out.value).toBe('finder')
   })
 })

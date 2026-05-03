@@ -1,7 +1,7 @@
 import path from 'path'
 import posix from 'node:path/posix'
 import { z } from 'zod'
-import type { ThemeType, TerminalType } from '../../preload/types'
+import type { ThemeType, TerminalType, ProjectOpenerId } from '../../preload/types'
 
 // 공통 상수
 const PathInput = z.string().min(1).max(512)
@@ -12,6 +12,16 @@ const ProjectIdInput = z.string().regex(/^[a-f0-9]{8,32}$/, 'INVALID_PROJECT_ID'
 // M3 S3 — workspaceId 는 로컬(UUID v4) 또는 SSH(`ssh:<hex16>`). 두 포맷 수용.
 const SshWorkspaceIdInput = z.string().regex(/^ssh:[a-f0-9]{16}$/, 'INVALID_SSH_WS_ID')
 const WorkspaceIdInput = z.union([UuidInput, SshWorkspaceIdInput])
+const ProjectOpenerIdInput = z.enum([
+  'vscode',
+  'cursor',
+  'finder',
+  'terminal',
+  'iterm2',
+  'ghostty',
+  'xcode',
+  'intellij',
+])
 
 export const ALLOWED_PREFS_KEYS = new Set([
   'viewMode',
@@ -46,6 +56,8 @@ export const ALLOWED_PREFS_KEYS = new Set([
   'onboardingShown',
   // v0.4 C4 — FilterBar 접힘 상태 (기본 true)
   'filterBarCollapsed',
+  // v0.4 — 프로젝트를 Finder/터미널/IDE 중 어떤 앱으로 기본 열지.
+  'defaultProjectOpener',
 ])
 
 // ── parse 함수들 ──────────────────────────────────────────────
@@ -102,6 +114,15 @@ export function parseClaudeOpenInput(raw: unknown): { dir: string; terminal: Ter
       terminal: z.enum(['Terminal', 'iTerm2', 'Ghostty']),
     })
     .parse(raw) as { dir: string; terminal: TerminalType }
+}
+
+export function parseProjectOpenInput(raw: unknown): { projectRoot: string; openerId: ProjectOpenerId } {
+  return z
+    .object({
+      projectRoot: PathInput,
+      openerId: ProjectOpenerIdInput,
+    })
+    .parse(raw) as { projectRoot: string; openerId: ProjectOpenerId }
 }
 
 export function parseThemeInput(raw: unknown): { theme: ThemeType } {

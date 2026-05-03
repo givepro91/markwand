@@ -4,7 +4,7 @@
 
 Markwand is distributed as a **free beta ZIP** without the Apple Developer Program. The app is ad-hoc signed, so it still shows a macOS warning on first launch, but installation does not require Terminal for the normal path.
 
-> Release notes: [release-notes/v0.4.0-beta.10.md](./release-notes/v0.4.0-beta.10.md)
+> Release notes: [release-notes/v0.4.0-beta.11.md](./release-notes/v0.4.0-beta.11.md)
 
 ---
 

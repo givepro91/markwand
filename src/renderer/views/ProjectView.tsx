@@ -4,6 +4,7 @@ import { FileTree } from '../components/FileTree'
 import { MarkdownViewer } from '../components/MarkdownViewer'
 import { ImageViewer } from '../components/ImageViewer'
 import { AiHandoffButton } from '../components/AiHandoffButton'
+import { ProjectOpenMenu } from '../components/ProjectOpenMenu'
 import { FilterBar } from '../components/FilterBar'
 import { TableOfContents } from '../components/TableOfContents'
 import { DriftPanel, type DriftJumpTarget } from '../components/DriftPanel'
@@ -325,6 +326,11 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
   const currentWorkspaceId = useAppStore((s) => {
     const p = s.projects.find((x) => x.id === projectId)
     return p?.workspaceId ?? null
+  })
+  const isSshProject = useAppStore((s) => {
+    const project = s.projects.find((x) => x.id === projectId)
+    const workspace = project ? s.workspaces.find((x) => x.id === project.workspaceId) : null
+    return workspace?.transport?.type === 'ssh'
   })
 
   const isFilterActive =
@@ -928,6 +934,11 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
               {projectName}
             </span>
             <AiHandoffButton projectName={projectName} summary={wikiSummary} brief={wikiBrief} />
+            <ProjectOpenMenu
+              projectRoot={projectRoot}
+              disabled={isSshProject}
+              disabledReason={t('projectOpen.sshDisabled')}
+            />
           </div>
           {/* 최근 7일 문서 — FileTree 위 별도 섹션. 시각 구분(다른 배경 + 굵은 borderBottom).
               빈 상태(7일 내 수정 0건)일 땐 컴포넌트 자체가 null 반환해 헷갈림 방지.

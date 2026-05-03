@@ -1,5 +1,7 @@
 import { ipcMain } from 'electron'
 import { z } from 'zod'
+import path from 'node:path'
+import fg from 'fast-glob'
 import { extractReferences } from '../../lib/drift/extractor'
 import type { DriftReport, DriftStatus, Reference, VerifiedReference } from '../../lib/drift/types'
 import { contentHash } from '../../lib/drift/hash'
@@ -11,6 +13,26 @@ import { resolveTransportForPath } from './fs'
 // extract + stat 을 메인 스레드에서 수행하므로 상한 필수.
 // 2MB 초과 시 다수의 AI 산출물(보통 수십 KB)이 아닌 비정상 파일로 간주.
 const MAX_DRIFT_FILE_BYTES = 2 * 1024 * 1024
+const BASENAME_LOOKUP_MAX_MATCHES = 25
+const DRIFT_LOOKUP_IGNORE = [
+  '**/node_modules/**',
+  '**/.git/**',
+  '**/__fixtures__/**',
+  '**/__snapshots__/**',
+  '**/dist/**',
+  '**/.next/**',
+  '**/build/**',
+  '**/__pycache__/**',
+  '**/.pytest_cache/**',
+  '**/target/**',
+  '**/vendor/**',
+  '**/.venv/**',
+  '**/coverage/**',
+  '**/.cache/**',
+  '**/out/**',
+  '**/.nuxt/**',
+  '**/.turbo/**',
+]
 
 const VerifyInputSchema = z.object({
   docPath: z.string().min(1).max(512),
@@ -30,6 +52,31 @@ function emptyReport(docPath: string, docMtime: number, projectRoot: string): Dr
     counts: { ok: 0, missing: 0, stale: 0 },
     verifiedAt: Date.now(),
   }
+}
+
+function isSafeBasename(name: string): boolean {
+  return path.basename(name) === name && !name.includes('/') && !name.includes('\\') && !/[*<>{}]/.test(name)
+}
+
+export async function findLocalBasenameTarget(projectRoot: string, basename: string): Promise<string | null> {
+  if (!isSafeBasename(basename)) return null
+  const matches = await fg(`**/${basename}`, {
+    cwd: projectRoot,
+    absolute: true,
+    onlyFiles: true,
+    followSymbolicLinks: false,
+    suppressErrors: true,
+    dot: true,
+    caseSensitiveMatch: false,
+    ignore: DRIFT_LOOKUP_IGNORE,
+  })
+  if (matches.length === 0) return null
+  return matches
+    .slice(0, BASENAME_LOOKUP_MAX_MATCHES)
+    .sort((a, b) => {
+      const depth = a.split(path.sep).length - b.split(path.sep).length
+      return depth !== 0 ? depth : a.localeCompare(b)
+    })[0]
 }
 
 export function registerDriftHandlers(): void {
@@ -78,15 +125,25 @@ export function registerDriftHandlers(): void {
     async function statWithFallback(
       ref: Reference
     ): Promise<{ path: string; mtimeMs: number; size: number; isDirectory: boolean } | null> {
-      try {
-        const s = await transport.fs.stat(ref.resolvedPath)
-        return { path: ref.resolvedPath, mtimeMs: s.mtimeMs, size: s.size, isDirectory: s.isDirectory }
-      } catch {}
-      if (ref.fallbackPath) {
+      const candidates = Array.from(new Set([
+        ref.resolvedPath,
+        ref.fallbackPath,
+        ...(ref.fallbackPaths ?? []),
+      ].filter((candidate): candidate is string => typeof candidate === 'string' && candidate.length > 0)))
+      for (const candidate of candidates) {
         try {
-          const s = await transport.fs.stat(ref.fallbackPath)
-          return { path: ref.fallbackPath, mtimeMs: s.mtimeMs, size: s.size, isDirectory: s.isDirectory }
+          const s = await transport.fs.stat(candidate)
+          return { path: candidate, mtimeMs: s.mtimeMs, size: s.size, isDirectory: s.isDirectory }
         } catch {}
+      }
+      if (transport.kind === 'local' && ref.lookupBasename) {
+        const found = await findLocalBasenameTarget(projectRoot, ref.lookupBasename)
+        if (found) {
+          try {
+            const s = await transport.fs.stat(found)
+            return { path: found, mtimeMs: s.mtimeMs, size: s.size, isDirectory: s.isDirectory }
+          } catch {}
+        }
       }
       return null
     }
