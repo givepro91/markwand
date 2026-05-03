@@ -478,6 +478,7 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
         path: '/project/overflow.md',
         name: longName,
         role: 'reference',
+        action: 'fix',
         score: 1667,
         missing: 42,
         stale: 7,
@@ -518,6 +519,51 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
     expect(timelineButton).toHaveStyle({ minWidth: '0', width: '100%', boxSizing: 'border-box' })
     expect(debtTitle).toHaveStyle({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })
     expect(timelineTitle).toHaveStyle({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })
+  })
+
+  it('explains whether risky docs should be fixed, confirmed, or preserved', () => {
+    const oldPlan: Doc = {
+      path: '/project/docs/plans/old-plan.md',
+      projectId: 'p1',
+      name: 'old-plan.md',
+      mtime: Date.parse('2026-04-01T00:00:00Z'),
+    }
+    const calibratedSummary: ProjectWikiSummary = {
+      ...summary,
+      docDebt: [{
+        path: oldPlan.path,
+        name: oldPlan.name,
+        role: 'workLog',
+        action: 'preserve',
+        score: 18,
+        ageDays: 30,
+        missing: 6,
+        stale: 0,
+        reasons: ['risk'],
+      }],
+      risks: {
+        ...summary.risks,
+        docsWithRisk: [
+          { path: doc.path, name: doc.name, missing: 1, stale: 0, role: 'reference', score: 10, action: 'fix' },
+          { path: oldPlan.path, name: oldPlan.name, missing: 6, stale: 0, role: 'workLog', score: 18, action: 'preserve' },
+        ],
+      },
+    }
+
+    renderWithProviders(
+      <ProjectWikiPanel
+        projectName="markwand"
+        summary={calibratedSummary}
+        brief={null}
+        briefLoading={false}
+        docsByPath={new Map([[doc.path, doc], [oldPlan.path, oldPlan]])}
+        onOpenDoc={vi.fn()}
+      />
+    )
+
+    expect(screen.getAllByText('projectWiki.riskAction.fix').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('projectWiki.riskAction.preserve').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('projectWiki.riskActionHint.preserve').length).toBeGreaterThan(0)
   })
 
   it('jumps to wiki sections from the sticky section navigation', () => {

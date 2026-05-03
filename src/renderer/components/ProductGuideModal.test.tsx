@@ -23,6 +23,8 @@ describe('ProductGuideModal', () => {
     expect(screen.getByText('productGuide.sections.wiki.title')).toBeInTheDocument()
     expect(screen.getByText('productGuide.sections.search.title')).toBeInTheDocument()
     expect(screen.getByText('productGuide.sections.ssh.title')).toBeInTheDocument()
+    expect(screen.getByText('productGuide.sections.install.title')).toBeInTheDocument()
+    expect(screen.getByText('productGuide.tips.install')).toBeInTheDocument()
   })
 
   it('closes on Escape so the always-available guide does not trap users', () => {

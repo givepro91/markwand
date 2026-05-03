@@ -18,6 +18,7 @@ import type {
   WikiRiskDoc,
   WikiRiskLink,
   WikiDocRoleGroup,
+  WikiRiskAction,
   WikiSuggestedTask,
   WikiTrustSignal,
 } from '../lib/projectWiki'
@@ -35,6 +36,13 @@ interface ProjectWikiPanelProps {
 }
 
 type AhaPrimaryAction = 'openRisk' | 'openStart' | 'copyHandoff' | 'waitForBrief'
+
+function riskActionVariant(action?: WikiRiskAction): 'default' | 'danger' | 'marker' | 'success' {
+  if (action === 'fix') return 'danger'
+  if (action === 'confirm') return 'marker'
+  if (action === 'preserve') return 'default'
+  return 'default'
+}
 
 function FirstProjectAhaCard({
   projectName,
@@ -788,10 +796,22 @@ function RiskList({
               fontFamily: 'inherit',
             }}
           >
-            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {item.name}
+            <span style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-1)', minWidth: 0 }}>
+              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {item.name}
+              </span>
+              {item.action && (
+                <span style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-relaxed)' }}>
+                  {t(`projectWiki.riskActionHint.${item.action}`)}
+                </span>
+              )}
             </span>
-            <span style={{ display: 'inline-flex', gap: 'var(--sp-1)', alignItems: 'center', flexShrink: 0 }}>
+            <span style={{ display: 'inline-flex', gap: 'var(--sp-1)', alignItems: 'center', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {item.action && (
+                <Badge variant={riskActionVariant(item.action)} size="sm">
+                  {t(`projectWiki.riskAction.${item.action}`)}
+                </Badge>
+              )}
               {item.role && (
                 <Badge variant={item.role === 'operational' || item.role === 'currentGuide' ? 'marker' : 'default'} size="sm">
                   {t(`projectWiki.docRole.${item.role}`)}
@@ -1010,12 +1030,18 @@ function DocDebtRadar({
               <Badge variant={item.role === 'operational' || item.role === 'currentGuide' ? 'marker' : 'default'} size="sm">
                 {t(`projectWiki.docRole.${item.role}`)}
               </Badge>
+              <Badge variant={riskActionVariant(item.action)} size="sm">
+                {t(`projectWiki.riskAction.${item.action}`)}
+              </Badge>
               {item.reasons.map((reason) => (
                 <Badge key={reason} variant={reason === 'risk' ? 'danger' : 'default'} size="sm">
                   {t(`projectWiki.docDebtReason.${reason}`)}
                 </Badge>
               ))}
               {item.ageDays > 0 && <Badge variant="default" size="sm">{t('projectWiki.docDebtAge', { days: item.ageDays })}</Badge>}
+            </span>
+            <span style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-xs)', lineHeight: 'var(--lh-relaxed)' }}>
+              {t(`projectWiki.riskActionHint.${item.action}`)}
             </span>
           </button>
         )

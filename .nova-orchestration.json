@@ -476,5 +476,39 @@
     ],
     "createdAt": "2026-05-01T06:31:32.581Z",
     "updatedAt": "2026-05-01T06:41:28.348Z"
+  },
+  "orch-mop00i90-pqty": {
+    "id": "orch-mop00i90-pqty",
+    "task": "남은 제품화 후속 작업 전체 진행: P1 Trust Calibration을 시작으로 Project Wiki/Handoff/설치 신뢰도 후속 개선을 구현·검증·커밋한다.",
+    "complexity": "medium",
+    "status": "completed",
+    "phases": [
+      {
+        "name": "분석",
+        "role": "Orchestrator",
+        "status": "completed",
+        "result": "P1 Trust Calibration 범위 확정: risk/doc debt 항목에 action tone 추가, workLog/archive 과잉 경고 완화, UI 문구/테스트 보강",
+        "startedAt": "2026-05-02T23:54:36.882Z",
+        "completedAt": "2026-05-02T23:55:29.726Z"
+      },
+      {
+        "name": "구현",
+        "role": "Generator",
+        "status": "completed",
+        "result": "Trust Calibration 데이터 모델/UI/AI handoff 반영 완료: fix/confirm/preserve 액션 추가, 과거 계획·아카이브는 보존 액션으로 분리, 추천 작업은 fix 대상만 수리 후보로 제한.",
+        "startedAt": "2026-05-02T23:55:40.143Z",
+        "completedAt": "2026-05-03T00:04:01.290Z"
+      },
+      {
+        "name": "검증",
+        "role": "Evaluator",
+        "status": "completed",
+        "result": "PASS: vitest 54 files/453 tests, pnpm typecheck, pnpm build. pnpm dev booted against spwk-product and terminated cleanly; no Electron/Vite orphan process found.",
+        "startedAt": "2026-05-03T00:04:10.945Z",
+        "completedAt": "2026-05-03T00:11:58.399Z"
+      }
+    ],
+    "createdAt": "2026-05-02T23:54:24.228Z",
+    "updatedAt": "2026-05-03T00:11:58.399Z"
   }
 }

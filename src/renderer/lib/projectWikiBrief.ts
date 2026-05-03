@@ -289,7 +289,8 @@ export function formatProjectWikiHandoffBrief(
   if (summary.onboardingPath.length > 0 || summary.risks.docsWithRisk.length > 0) {
     lines.push('## Open These First')
     for (const item of summary.risks.docsWithRisk.slice(0, 3)) {
-      lines.push(`- Check issue doc: ${item.name}: ${item.path} (${item.missing} broken, ${item.stale} stale)`)
+      const action = item.action ? `, action ${item.action}` : ''
+      lines.push(`- Check issue doc: ${item.name}: ${item.path} (${item.missing} broken, ${item.stale} stale${action})`)
     }
     for (const item of summary.onboardingPath.slice(0, 5)) {
       lines.push(`- Read start doc: ${item.name}: ${item.path}`)
@@ -357,7 +358,7 @@ export function formatProjectWikiHandoffBrief(
     lines.push('## Doc Debt Radar')
     for (const item of summary.docDebt.slice(0, 8)) {
       const rolePart = item.role ? `, role ${item.role}` : ''
-      lines.push(`- ${item.name}: score ${item.score}${rolePart}, ${item.ageDays}d old (${item.reasons.join(', ')})`)
+      lines.push(`- ${item.name}: score ${item.score}${rolePart}, action ${item.action}, ${item.ageDays}d old (${item.reasons.join(', ')})`)
       lines.push(`  - ${item.path}`)
     }
     lines.push('')
@@ -389,7 +390,8 @@ export function formatProjectWikiHandoffBrief(
   if (summary.risks.docsWithRisk.length > 0) {
     lines.push('## Risk Board')
     for (const item of summary.risks.docsWithRisk.slice(0, 8)) {
-      lines.push(`- ${item.name}: ${item.missing} broken, ${item.stale} stale refs (${item.path})`)
+      const action = item.action ? `, action ${item.action}` : ''
+      lines.push(`- ${item.name}: ${item.missing} broken, ${item.stale} stale refs${action} (${item.path})`)
     }
     lines.push('')
   }

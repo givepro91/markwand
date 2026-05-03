@@ -182,7 +182,7 @@ describe('buildProjectWikiSummary', () => {
     expect(summary.risks.missingRefs).toBe(2)
     expect(summary.risks.staleRefs).toBe(1)
     expect(summary.risks.docsWithRisk).toEqual([
-      { path: risky.path, name: risky.name, missing: 2, stale: 1, role: 'reference', score: 23 },
+      { path: risky.path, name: risky.name, missing: 2, stale: 1, role: 'reference', score: 23, action: 'fix' },
     ])
     expect(summary.docDebt[0]).toMatchObject({
       path: risky.path,
@@ -387,7 +387,8 @@ describe('buildProjectWikiSummary', () => {
     expect(summary.decisionLog.map((item) => item.name)).toContain('archive/claude-design-input.md')
     expect(summary.decisionTimeline.map((item) => item.name)).toContain('docs/design/claude-design-input.md')
     expect(summary.risks.docsWithRisk[0].name).toBe('docs/design/claude-design-input.md')
-    expect(summary.suggestedTasks[0].docs[0].name).toBe('docs/design/claude-design-input.md')
+    expect(summary.risks.docsWithRisk[0].action).toBe('confirm')
+    expect(summary.suggestedTasks.some((item) => item.intent === 'repairReferences')).toBe(false)
   })
 
   it('prioritizes stale and under-specified docs in the doc debt radar', () => {
@@ -411,7 +412,7 @@ describe('buildProjectWikiSummary', () => {
 
     expect(summary.docDebt.map((item) => item.name)).toEqual(['docs/reference/overview.md', 'docs/risky.md'])
     expect(summary.docDebt[0]).toMatchObject({ reasons: ['stale'], role: 'reference' })
-    expect(summary.docDebt[1]).toMatchObject({ reasons: ['risk'], role: 'decisionRecord' })
+    expect(summary.docDebt[1]).toMatchObject({ reasons: ['risk'], role: 'decisionRecord', action: 'confirm' })
     expect(summary.trust).toMatchObject({
       level: 'strong',
       penalties: {
@@ -428,11 +429,11 @@ describe('buildProjectWikiSummary', () => {
       { key: 'recentDocs', count: 2, impact: 4, tone: 'positive' },
     ])
     expect(summary.suggestedTasks.map((item) => item.intent)).toEqual([
-      'repairReferences',
       'refreshStaleDocs',
       'buildOnboardingBrief',
+      'extractDecisionTimeline',
     ])
-    expect(summary.suggestedTasks[1]).toMatchObject({
+    expect(summary.suggestedTasks[0]).toMatchObject({
       id: 'refresh-stale-docs',
       priority: 'medium',
       docs: [{ path: old.path, name: old.name }],
@@ -481,11 +482,41 @@ describe('buildProjectWikiSummary', () => {
       path: archive.path,
       role: 'archive',
       score: 4,
+      action: 'preserve',
     })
     expect(summary.suggestedTasks.some((item) => item.intent === 'repairReferences')).toBe(false)
     expect(summary.suggestedTasks).toEqual([])
     expect(summary.pulse.tone).not.toBe('attention')
-    expect(summary.docDebt[0]).toMatchObject({ role: 'archive', reasons: ['risk'] })
+    expect(summary.docDebt[0]).toMatchObject({ role: 'archive', reasons: ['risk'], action: 'preserve' })
+  })
+
+  it('treats old plans with broken references as preserved context instead of repair work', () => {
+    const readme = doc('README.md')
+    const oldPlan = doc('docs/plans/2026-04-old-implementation-plan.md', {
+      frontmatter: { source: 'design', status: 'done' },
+    })
+
+    const summary = buildProjectWikiSummary(
+      [readme, oldPlan],
+      {
+        [readme.path]: drift(readme.path, 1, 0),
+        [oldPlan.path]: drift(oldPlan.path, 6, 0),
+      },
+      { [readme.path]: NOW, [oldPlan.path]: NOW },
+      NOW
+    )
+
+    expect(summary.risks.docsWithRisk.find((item) => item.path === readme.path)).toMatchObject({
+      action: 'fix',
+      role: 'currentGuide',
+    })
+    expect(summary.risks.docsWithRisk.find((item) => item.path === oldPlan.path)).toMatchObject({
+      action: 'preserve',
+      role: 'workLog',
+    })
+    expect(summary.suggestedTasks.find((item) => item.intent === 'repairReferences')?.docs.map((item) => item.path)).toEqual([
+      readme.path,
+    ])
   })
 
   it('calculates trust from all risky docs even when the radar only displays the top five', () => {

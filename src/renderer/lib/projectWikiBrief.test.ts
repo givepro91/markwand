@@ -111,6 +111,7 @@ describe('formatProjectWikiHandoffBrief', () => {
         path: '/project/risky.md',
         name: 'risky.md',
         role: 'reference',
+        action: 'fix',
         score: 52,
         ageDays: 45,
         missing: 1,
@@ -121,7 +122,7 @@ describe('formatProjectWikiHandoffBrief', () => {
       risks: {
         missingRefs: 1,
         staleRefs: 1,
-        docsWithRisk: [{ path: '/project/risky.md', name: 'risky.md', missing: 1, stale: 1 }],
+        docsWithRisk: [{ path: '/project/risky.md', name: 'risky.md', missing: 1, stale: 1, action: 'fix' }],
       },
       relationships: {
         checkedDocs: 2,
@@ -208,7 +209,7 @@ describe('formatProjectWikiHandoffBrief', () => {
     expect(text).toContain('## Guardrails')
     expect(text).toContain('Do not treat old plans, work logs, or archived notes as docs that must be updated automatically.')
     expect(text).toContain('## Open These First')
-    expect(text).toContain('- Check issue doc: risky.md: /project/risky.md (1 broken, 1 stale)')
+    expect(text).toContain('- Check issue doc: risky.md: /project/risky.md (1 broken, 1 stale, action fix)')
     expect(text).toContain('- Read start doc: README.md: /project/README.md')
     expect(text).toContain('- Trust score: 74/100 (watch)')
     expect(text).toContain('## Trust Signals')
@@ -222,7 +223,7 @@ describe('formatProjectWikiHandoffBrief', () => {
     expect(text).toContain('## Knowledge Map')
     expect(text).toContain('- overview: 1 docs')
     expect(text).toContain('## Doc Debt Radar')
-    expect(text).toContain('- risky.md: score 52, role reference, 45d old (stale, risk)')
+    expect(text).toContain('- risky.md: score 52, role reference, action fix, 45d old (stale, risk)')
     expect(text).toContain('## Link Graph')
     expect(text).toContain('- References: 4 (2 ok, 1 broken, 1 stale)')
     expect(text).toContain('- Hub: README.md: 2 inbound, 1 outbound, 0 risky (/project/README.md)')
@@ -232,7 +233,7 @@ describe('formatProjectWikiHandoffBrief', () => {
     expect(text).toContain('Prompt: Review the listed documents')
     expect(text).toContain('Doc: risky.md: /project/risky.md')
     expect(text).toContain('- Markwand: /project/README.md')
-    expect(text).toContain('- risky.md: 1 broken, 1 stale refs (/project/risky.md)')
+    expect(text).toContain('- risky.md: 1 broken, 1 stale refs, action fix (/project/risky.md)')
     expect(text).toContain('## If You Only Do One Thing')
   })
 })
@@ -255,6 +256,7 @@ describe('formatProjectWikiOnboardingBrief', () => {
         path: '/project/docs/plan.md',
         name: 'docs/plan.md',
         role: 'workLog',
+        action: 'preserve',
         score: 44,
         ageDays: 17,
         missing: 1,

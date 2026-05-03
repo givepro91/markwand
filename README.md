@@ -50,14 +50,14 @@ Markwand is **not** a markdown editor, **not** a cloud notes service, and **not*
 
 ## Installation (macOS)
 
-Markwand ships unsigned (ad-hoc signed) while in beta. Pick the DMG matching your Mac:
+Markwand ships as a free ad-hoc signed ZIP while in beta. Pick the ZIP matching your Mac:
 
-- Apple Silicon (M1/M2/M3/M4) → `Markwand-*-arm64.dmg`
-- Intel → `Markwand-*.dmg`
+- Apple Silicon (M1/M2/M3/M4) → `Markwand-*-arm64-free.zip`
+- Intel → `Markwand-*-x64-free.zip`
 
 Latest: **[Releases](https://github.com/givepro91/markwand/releases)**
 
-First-launch on macOS Sequoia (15+) / Tahoe (26+) requires one trip through **System Settings → Privacy & Security → Open Anyway**. Full step-by-step, including SHA-256 verification and the Sonoma-or-earlier right-click path:
+First launch may show a macOS security warning because the free build is not notarized. The normal path is unzip, drag **Markwand.app** to Applications, then right-click or Control-click → **Open** once. If macOS still refuses to open it, the guide includes the verified one-line `xattr` fallback.
 
 - 🇺🇸 [English install guide](./docs/install-macos.en.md)
 - 🇰🇷 [한국어 설치 가이드](./docs/install-macos.md)
@@ -82,7 +82,7 @@ pnpm typecheck
 # Lint
 pnpm lint
 
-# Unsigned DMG (macOS)
+# Free ZIP build (macOS)
 pnpm dist:mac
 ```
 

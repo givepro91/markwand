@@ -86,13 +86,18 @@
       "ssh": {
         "title": "Read-only SSH",
         "body": "Remote server docs can be read from the desktop app, but Markwand stays read-only and only reads what it needs."
+      },
+      "install": {
+        "title": "Free install path",
+        "body": "The current free beta ships as a ZIP without the Apple Developer Program. The first-launch warning is expected, and the install guide explains why right-click Open or one xattr command may be needed."
       }
     },
     "tips": {
       "cmdk": "Press ⌘K to find documents across the projects currently loaded.",
       "wiki": "Use the project wiki to see plain labels and Markwand concept names together.",
       "ssh": "Remote SSH docs can be slower; opening a project first warms the document cache and keeps search light.",
-      "handoff": "Use Send to AI in the sidebar to copy the current project summary."
+      "handoff": "Use Send to AI in the sidebar to copy the current project summary.",
+      "install": "Before release, verify free ZIP install, first launch, quit time, and that DevTools are not exposed."
     }
   },
 
@@ -481,6 +486,16 @@
     "riskEmpty": "No document reference issues detected right now.",
     "riskMissing": "Broken",
     "riskStale": "Needs review",
+    "riskAction": {
+      "fix": "Fix",
+      "confirm": "Confirm",
+      "preserve": "Preserve"
+    },
+    "riskActionHint": {
+      "fix": "This doc is used for current decisions, so broken references are repair candidates.",
+      "confirm": "Check whether the change should be reflected; keep it if it is historical evidence.",
+      "preserve": "Likely a past plan, record, or tooling doc, so it does not need automatic rewriting."
+    },
     "openTopRisk": "Open highest-risk doc",
     "decisionsTitle": "Decision History · Decision Log",
     "decisionsEmpty": "No plan, design, or review docs found yet.",

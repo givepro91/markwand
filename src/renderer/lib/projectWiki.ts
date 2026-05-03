@@ -15,6 +15,7 @@ export interface WikiRiskDoc {
   stale: number
   role?: WikiDocRole
   score?: number
+  action?: WikiRiskAction
 }
 
 export type WikiClusterKey =
@@ -33,6 +34,7 @@ export interface WikiDocCluster {
 }
 
 export type WikiDocDebtReason = 'stale' | 'risk' | 'missingMeta' | 'unread'
+export type WikiRiskAction = 'fix' | 'confirm' | 'preserve'
 
 export type WikiDocRole =
   | 'currentGuide'
@@ -54,6 +56,7 @@ export interface WikiDocDebt {
   path: string
   name: string
   role: WikiDocRole
+  action: WikiRiskAction
   score: number
   ageDays: number
   missing: number
@@ -266,6 +269,22 @@ const ROLE_POLICY: Record<WikiDocRole, WikiDocRolePolicy> = {
     unreadImpact: 0,
     maintenanceSensitivity: 0.15,
   },
+}
+
+function riskActionFor(role: WikiDocRole, missing: number, stale: number): WikiRiskAction {
+  if (role === 'workLog' || role === 'archive' || role === 'tooling' || role === 'ideaDraft') {
+    return 'preserve'
+  }
+  if (missing > 0 && (role === 'currentGuide' || role === 'operational' || role === 'reference')) {
+    return 'fix'
+  }
+  if (missing > 0 && role === 'decisionRecord') {
+    return 'confirm'
+  }
+  if (stale > 0) {
+    return 'confirm'
+  }
+  return role === 'currentGuide' || role === 'operational' ? 'confirm' : 'preserve'
 }
 
 function sortSourceCounts(counts: Map<string, number>): Array<{ source: string; count: number }> {
@@ -744,6 +763,7 @@ function buildDocDebt(
         path: doc.path,
         name: displayNameFor(displayNames, doc),
         role,
+        action: riskActionFor(role, missing, stale),
         score: Math.round(score),
         ageDays,
         missing,
@@ -867,7 +887,7 @@ function buildSuggestedTasks(
   }
 
   const docsWithMissingRefs = docsWithRisk.filter((doc) => doc.missing > 0)
-  const actionableMissingRefs = docsWithMissingRefs.filter((doc) => (doc.score ?? 0) >= 8 && doc.role !== 'archive')
+  const actionableMissingRefs = docsWithMissingRefs.filter((doc) => doc.action === 'fix' && (doc.score ?? 0) >= 8)
   if (actionableMissingRefs.length > 0) {
     addTask({
       id: 'repair-references',
@@ -883,7 +903,7 @@ function buildSuggestedTasks(
   }
 
   const staleRefDocs = docsWithRisk
-    .filter((doc) => doc.stale > 0 && doc.missing === 0 && (doc.score ?? 0) >= 5 && doc.role !== 'archive' && doc.role !== 'workLog')
+    .filter((doc) => doc.action === 'confirm' && doc.stale > 0 && doc.missing === 0 && (doc.score ?? 0) >= 5)
     .map((doc) => ({
       path: doc.path,
       name: doc.name,
@@ -1102,6 +1122,7 @@ export function buildProjectWikiSummary(
         stale: report.counts.stale,
         role,
         score: Math.round(report.counts.missing * policy.missingRefImpact + report.counts.stale * policy.staleRefImpact),
+        action: riskActionFor(role, report.counts.missing, report.counts.stale),
       })
     }
   }

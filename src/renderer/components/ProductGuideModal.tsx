@@ -14,9 +14,10 @@ const GUIDE_SECTIONS = [
   'handoff',
   'trust',
   'ssh',
+  'install',
 ] as const
 
-const GUIDE_TIPS = ['cmdk', 'wiki', 'ssh', 'handoff'] as const
+const GUIDE_TIPS = ['cmdk', 'wiki', 'ssh', 'handoff', 'install'] as const
 
 export function ProductGuideModal({ onClose }: ProductGuideModalProps) {
   const { t } = useTranslation()
