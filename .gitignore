@@ -48,6 +48,7 @@ yarn-error.log*
 # Nova Orbit — agent worktrees (do not commit)
 .nova-worktrees/
 .claude/worktrees/
+.claude/settings.local.json
 
 # Bench baseline은 머신별로 달라서 로컬 비교용으로만 유지 (Plan §S3/S4)
 scripts/*.baseline.json
