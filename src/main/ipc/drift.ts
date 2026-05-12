@@ -13,7 +13,6 @@ import { resolveTransportForPath } from './fs'
 // extract + stat 을 메인 스레드에서 수행하므로 상한 필수.
 // 2MB 초과 시 다수의 AI 산출물(보통 수십 KB)이 아닌 비정상 파일로 간주.
 const MAX_DRIFT_FILE_BYTES = 2 * 1024 * 1024
-const BASENAME_LOOKUP_MAX_MATCHES = 25
 const DRIFT_LOOKUP_IGNORE = [
   '**/node_modules/**',
   '**/.git/**',
@@ -58,6 +57,17 @@ function isSafeBasename(name: string): boolean {
   return path.basename(name) === name && !name.includes('/') && !name.includes('\\') && !/[*<>{}]/.test(name)
 }
 
+function isSafeRelativeSuffix(suffix: string): boolean {
+  if (!suffix || suffix.length > 256) return false
+  if (path.isAbsolute(suffix)) return false
+  if (/^[A-Za-z]:[\\/]/.test(suffix)) return false
+  if (/[*<>{}[\]!()]/.test(suffix)) return false
+  const parts = suffix.split(/[\\/]/).filter(Boolean)
+  if (parts.length < 2) return false
+  if (parts.some((part) => part === '..' || part === '.')) return false
+  return parts.join('/') === suffix.replace(/\\/g, '/')
+}
+
 export async function findLocalBasenameTarget(projectRoot: string, basename: string): Promise<string | null> {
   if (!isSafeBasename(basename)) return null
   const matches = await fg(`**/${basename}`, {
@@ -70,13 +80,25 @@ export async function findLocalBasenameTarget(projectRoot: string, basename: str
     caseSensitiveMatch: false,
     ignore: DRIFT_LOOKUP_IGNORE,
   })
-  if (matches.length === 0) return null
-  return matches
-    .slice(0, BASENAME_LOOKUP_MAX_MATCHES)
-    .sort((a, b) => {
-      const depth = a.split(path.sep).length - b.split(path.sep).length
-      return depth !== 0 ? depth : a.localeCompare(b)
-    })[0]
+  if (matches.length !== 1) return null
+  return matches[0]
+}
+
+export async function findLocalSuffixTarget(projectRoot: string, suffix: string): Promise<string | null> {
+  const normalized = suffix.replace(/\\/g, '/')
+  if (!isSafeRelativeSuffix(normalized)) return null
+  const matches = await fg(`**/${normalized}`, {
+    cwd: projectRoot,
+    absolute: true,
+    onlyFiles: true,
+    followSymbolicLinks: false,
+    suppressErrors: true,
+    dot: true,
+    caseSensitiveMatch: false,
+    ignore: DRIFT_LOOKUP_IGNORE,
+  })
+  if (matches.length !== 1) return null
+  return matches[0]
 }
 
 export function registerDriftHandlers(): void {
@@ -138,6 +160,15 @@ export function registerDriftHandlers(): void {
       }
       if (transport.kind === 'local' && ref.lookupBasename) {
         const found = await findLocalBasenameTarget(projectRoot, ref.lookupBasename)
+        if (found) {
+          try {
+            const s = await transport.fs.stat(found)
+            return { path: found, mtimeMs: s.mtimeMs, size: s.size, isDirectory: s.isDirectory }
+          } catch {}
+        }
+      }
+      if (transport.kind === 'local' && ref.lookupSuffix) {
+        const found = await findLocalSuffixTarget(projectRoot, ref.lookupSuffix)
         if (found) {
           try {
             const s = await transport.fs.stat(found)

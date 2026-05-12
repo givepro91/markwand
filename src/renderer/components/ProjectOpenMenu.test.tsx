@@ -39,6 +39,24 @@ describe('ProjectOpenMenu', () => {
     expect(api.projectOpeners.open).toHaveBeenCalledWith('/project/root', 'vscode')
   })
 
+  it('opens the current file when rendered as a compact document action', async () => {
+    const api = window.api
+    const user = userEvent.setup()
+    renderWithProviders(<ProjectOpenMenu projectRoot="/project/root/docs/spec.md" variant="compact" />)
+
+    const openButton = await screen.findByRole('button', { name: 'projectOpen.openCurrentFileWith' })
+    await waitFor(() => expect(openButton).toBeEnabled())
+    expect(openButton).toHaveTextContent('VS Code')
+    expect(openButton.parentElement?.parentElement).toHaveStyle({ flex: '0 0 auto' })
+
+    await user.click(openButton)
+
+    expect(api.projectOpeners.open).toHaveBeenCalledWith('/project/root/docs/spec.md', 'vscode')
+
+    await user.click(screen.getByRole('button', { name: 'projectOpen.currentFileMenuAria' }))
+    expect(screen.getByRole('menu', { name: 'projectOpen.currentFileMenuAria' })).toBeInTheDocument()
+  })
+
   it('shows only detected apps and can save a different default', async () => {
     const api = window.api
     const user = userEvent.setup()

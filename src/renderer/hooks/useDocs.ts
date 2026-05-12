@@ -69,6 +69,9 @@ export function useDocs(projectId: string | null) {
       window.api.project
         .scanDocs(pid, opts?.force ? { force: true } : undefined)
         .then((result) => {
+          // IPC chunk 이벤트가 누락되거나 watcher가 아직 켜지지 않은 기존 워크스페이스에서도
+          // 수동/자동 refresh 결과가 트리에 반영되도록 최종 scan result 자체를 한 번 더 병합한다.
+          if (result.length > 0) appendDocs(result)
           // 스캔 결과(ground truth) 에 없는 path 는 stale — 일괄 제거.
           // result 에는 다른 projectId 가 섞이지 않으므로 path Set 으로 충분.
           const groundTruth = new Set(result.map((d) => d.path))

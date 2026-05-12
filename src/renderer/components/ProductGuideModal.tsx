@@ -12,7 +12,6 @@ const GUIDE_SECTIONS = [
   'wiki',
   'search',
   'handoff',
-  'trust',
   'ssh',
   'install',
 ] as const

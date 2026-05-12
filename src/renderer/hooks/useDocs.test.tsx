@@ -93,6 +93,22 @@ describe('useDocs — refreshKey → force 전달', () => {
 
     expect(lastScanCall?.opts?.force).toBe(true)
   })
+
+  it('docs-chunk 이벤트가 없어도 최종 scan 결과를 store 에 병합한다', async () => {
+    renderHook(() => useDocs(PID))
+    const fresh = makeDoc('fresh.md', { mtime: 1700000009000 })
+
+    await act(async () => {
+      scanResolver?.([fresh])
+      await Promise.resolve()
+    })
+
+    const docs = useAppStore.getState().docsByProject.get(PID) ?? []
+    expect(docs.find((d) => d.path === fresh.path)).toMatchObject({
+      name: 'fresh.md',
+      mtime: 1700000009000,
+    })
+  })
 })
 
 describe('useDocs — fs:change 처리', () => {

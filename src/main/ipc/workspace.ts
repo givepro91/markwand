@@ -611,7 +611,11 @@ export function registerWorkspaceHandlers(): void {
     const workspace = workspaces.find((w) => w.id === workspaceId)
     if (!workspace) throw new Error('WORKSPACE_NOT_FOUND')
 
-    return getOrScanProjects(workspaceId, workspace.root, workspace.mode ?? 'container')
+    const projects = await getOrScanProjects(workspaceId, workspace.root, workspace.mode ?? 'container')
+    if (!workspace.transport || workspace.transport.type === 'local') {
+      addWatchRoots([workspace.root], _event.sender)
+    }
+    return projects
   })
 
   // 명시적 새로고침 — 캐시 무효화 후 재스캔. chokidar disable 상태에서 파일 변경 동기화 수단.
@@ -622,7 +626,11 @@ export function registerWorkspaceHandlers(): void {
     const workspaces = store.get('workspaces')
     const workspace = workspaces.find((w) => w.id === workspaceId)
     if (!workspace) throw new Error('WORKSPACE_NOT_FOUND')
-    return getOrScanProjects(workspaceId, workspace.root, workspace.mode ?? 'container')
+    const projects = await getOrScanProjects(workspaceId, workspace.root, workspace.mode ?? 'container')
+    if (!workspace.transport || workspace.transport.type === 'local') {
+      addWatchRoots([workspace.root], _event.sender)
+    }
+    return projects
   })
 
   ipcMain.handle('project:get-doc-count', async (_event, raw: unknown) => {

@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useAppStore } from '../state/store'
 import { Checkbox } from './ui'
-import { DriftBadge } from './DriftBadge'
 
 interface InboxItemProps {
   path: string
@@ -21,7 +20,6 @@ export function InboxItem({ path, projectName, title, mtime, isRead, onClick }: 
   const { t } = useTranslation()
   const composerChecked = useAppStore((s) => s.selectedDocPaths.has(path))
   const toggleDocSelection = useAppStore((s) => s.toggleDocSelection)
-  const driftReport = useAppStore((s) => s.driftReports[path])
   return (
     <button
       onClick={onClick}
@@ -87,8 +85,6 @@ export function InboxItem({ path, projectName, title, mtime, isRead, onClick }: 
           {projectName}
         </div>
       </div>
-
-      <DriftBadge report={driftReport} />
 
       <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', flexShrink: 0 }}>
         {formatTime(mtime)}

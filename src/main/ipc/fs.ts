@@ -1,16 +1,25 @@
-import { ipcMain } from 'electron'
+import { ipcMain, shell } from 'electron'
+import fs from 'fs'
 import path from 'path'
 import posix from 'node:path/posix'
 import matter from 'gray-matter'
 import { getStore } from '../services/store'
-import { parseReadDocInput, assertInWorkspace } from '../security/validators'
-import { classifyAsset } from '../../lib/viewable'
+import {
+  parseFsCreateFolderInput,
+  parseFsCreateMarkdownInput,
+  parseFsRenameInput,
+  parseFsTrashInput,
+  parseReadDocInput,
+  assertInWorkspace,
+} from '../security/validators'
+import { classifyAsset, isViewable } from '../../lib/viewable'
 import { localTransport } from '../transport/local'
 import { getActiveTransport } from '../transport/resolve'
-import type { ReadDocResult, Workspace } from '../../preload/types'
+import type { FsEntryResult, ReadDocResult, Workspace } from '../../preload/types'
 import type { Transport } from '../transport/types'
 
 const MAX_READ_BYTES = 2 * 1024 * 1024
+const MARKDOWN_EXT = '.md'
 
 /**
  * Follow-up FS1 — docPath 로부터 소속 workspace 와 해당 transport 를 역매핑한다.
@@ -41,6 +50,60 @@ export async function resolveTransportForPath(
     return { transport, ws }
   }
   return null
+}
+
+function ensureLocalProjectPath(
+  targetPath: string,
+  projectRoot: string,
+  ws: Workspace,
+): void {
+  if (ws.transport?.type === 'ssh') throw new Error('REMOTE_WRITE_UNSUPPORTED')
+  assertInWorkspace(targetPath, [projectRoot], { posix: false })
+}
+
+async function resolveWritableProject(projectRoot: string, workspaces: Workspace[]): Promise<Workspace> {
+  const resolved = await resolveTransportForPath(projectRoot, workspaces)
+  if (!resolved) throw new Error('PATH_OUT_OF_WORKSPACE')
+  if (resolved.transport.kind !== 'local' || resolved.ws.transport?.type === 'ssh') {
+    throw new Error('REMOTE_WRITE_UNSUPPORTED')
+  }
+  assertInWorkspace(projectRoot, [resolved.ws.root], { posix: false })
+  return resolved.ws
+}
+
+export function normalizeMarkdownFileName(rawName: string): string {
+  const trimmed = rawName.trim()
+  const ext = path.extname(trimmed)
+  const next = ext ? trimmed : `${trimmed}${MARKDOWN_EXT}`
+  if (path.extname(next).toLowerCase() !== MARKDOWN_EXT) {
+    throw new Error('INVALID_MARKDOWN_EXTENSION')
+  }
+  return next
+}
+
+export function normalizeRenameFileName(currentName: string, rawName: string): string {
+  const trimmed = rawName.trim()
+  const currentExt = path.extname(currentName)
+  const next = path.extname(trimmed) ? trimmed : `${trimmed}${currentExt}`
+  if (!isViewable(next)) throw new Error('UNSUPPORTED_FILE_TYPE')
+  if (path.extname(next).toLowerCase() !== currentExt.toLowerCase()) {
+    throw new Error('INVALID_RENAME_EXTENSION')
+  }
+  return next
+}
+
+function titleFromMarkdownName(fileName: string): string {
+  return path.basename(fileName, MARKDOWN_EXT).replace(/[#\r\n]/g, ' ').trim() || 'Untitled'
+}
+
+async function buildEntryResult(absPath: string): Promise<FsEntryResult> {
+  const stat = await fs.promises.stat(absPath)
+  return {
+    path: absPath,
+    name: path.basename(absPath),
+    mtime: stat.mtimeMs,
+    size: stat.size,
+  }
 }
 
 export function registerFsHandlers(): void {
@@ -77,8 +140,70 @@ export function registerFsHandlers(): void {
 
     return {
       content: parsed.content,
+      rawContent: raw_content,
       mtime: stat.mtimeMs,
       frontmatter: Object.keys(parsed.data).length > 0 ? parsed.data : undefined,
     }
+  })
+
+  ipcMain.handle('fs:create-markdown', async (_event, raw: unknown): Promise<FsEntryResult> => {
+    const { projectRoot, dirPath, name } = parseFsCreateMarkdownInput(raw)
+    const store = await getStore()
+    const ws = await resolveWritableProject(projectRoot, store.get('workspaces'))
+    const fileName = normalizeMarkdownFileName(name)
+    const targetPath = path.join(dirPath, fileName)
+    ensureLocalProjectPath(dirPath, projectRoot, ws)
+    ensureLocalProjectPath(targetPath, projectRoot, ws)
+    if (await localTransport.fs.access(targetPath)) throw new Error('FILE_EXISTS')
+
+    const content = `# ${titleFromMarkdownName(fileName)}\n`
+    await fs.promises.writeFile(targetPath, content, { encoding: 'utf-8', flag: 'wx' })
+    return buildEntryResult(targetPath)
+  })
+
+  ipcMain.handle('fs:create-folder', async (_event, raw: unknown): Promise<FsEntryResult> => {
+    const { projectRoot, dirPath, name } = parseFsCreateFolderInput(raw)
+    const store = await getStore()
+    const ws = await resolveWritableProject(projectRoot, store.get('workspaces'))
+    const targetPath = path.join(dirPath, name)
+    ensureLocalProjectPath(dirPath, projectRoot, ws)
+    ensureLocalProjectPath(targetPath, projectRoot, ws)
+    if (await localTransport.fs.access(targetPath)) throw new Error('FILE_EXISTS')
+
+    await fs.promises.mkdir(targetPath)
+    return buildEntryResult(targetPath)
+  })
+
+  ipcMain.handle('fs:rename', async (_event, raw: unknown): Promise<FsEntryResult> => {
+    const { projectRoot, path: sourcePath, newName } = parseFsRenameInput(raw)
+    const store = await getStore()
+    const ws = await resolveWritableProject(projectRoot, store.get('workspaces'))
+    ensureLocalProjectPath(sourcePath, projectRoot, ws)
+
+    const currentName = path.basename(sourcePath)
+    const nextName = normalizeRenameFileName(currentName, newName)
+    const targetPath = path.join(path.dirname(sourcePath), nextName)
+    ensureLocalProjectPath(targetPath, projectRoot, ws)
+    if (path.resolve(sourcePath) === path.resolve(targetPath)) {
+      return buildEntryResult(sourcePath)
+    }
+    if (await localTransport.fs.access(targetPath)) throw new Error('FILE_EXISTS')
+
+    await fs.promises.rename(sourcePath, targetPath)
+    return buildEntryResult(targetPath)
+  })
+
+  ipcMain.handle('fs:trash', async (_event, raw: unknown): Promise<FsEntryResult> => {
+    const { projectRoot, path: targetPath } = parseFsTrashInput(raw)
+    const store = await getStore()
+    const ws = await resolveWritableProject(projectRoot, store.get('workspaces'))
+    ensureLocalProjectPath(targetPath, projectRoot, ws)
+    if (path.resolve(targetPath) === path.resolve(projectRoot)) {
+      throw new Error('CANNOT_TRASH_PROJECT_ROOT')
+    }
+    const result = await buildEntryResult(targetPath)
+
+    await shell.trashItem(targetPath)
+    return result
   })
 }

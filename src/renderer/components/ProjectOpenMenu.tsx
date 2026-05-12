@@ -7,6 +7,7 @@ interface ProjectOpenMenuProps {
   projectRoot: string
   disabled?: boolean
   disabledReason?: string
+  variant?: 'block' | 'compact'
 }
 
 const openerGlyph: Record<ProjectOpenerId, string> = {
@@ -44,7 +45,7 @@ function withFinderFallback(openers: ProjectOpenerInfo[]): ProjectOpenerInfo[] {
   return [...openers, { id: 'finder', label: 'Finder', available: true }]
 }
 
-export function ProjectOpenMenu({ projectRoot, disabled = false, disabledReason }: ProjectOpenMenuProps) {
+export function ProjectOpenMenu({ projectRoot, disabled = false, disabledReason, variant = 'block' }: ProjectOpenMenuProps) {
   const { t } = useTranslation()
   const rootRef = useRef<HTMLDivElement>(null)
   const mountedRef = useRef(false)
@@ -151,23 +152,33 @@ export function ProjectOpenMenu({ projectRoot, disabled = false, disabledReason 
     [t]
   )
 
+  const isCompact = variant === 'compact'
+  const menuAria = isCompact ? t('projectOpen.currentFileMenuAria') : t('projectOpen.menuAria')
   const title = disabled
     ? disabledReason ?? t('projectOpen.disabled')
     : selectedOpener
-      ? t('projectOpen.openWith', { app: selectedOpener.label })
+      ? t(isCompact ? 'projectOpen.openCurrentFileWith' : 'projectOpen.openWith', { app: selectedOpener.label })
       : t('projectOpen.none')
 
   return (
-    <div ref={rootRef} style={{ position: 'relative', width: '100%' }}>
+    <div
+      ref={rootRef}
+      style={{
+        position: 'relative',
+        width: isCompact ? 'auto' : '100%',
+        maxWidth: '100%',
+        flex: isCompact ? '0 0 auto' : undefined,
+      }}
+    >
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 34px',
+          gridTemplateColumns: isCompact ? 'minmax(0, 1fr) 30px' : '1fr 34px',
           gap: 'var(--sp-1)',
           border: '1px solid var(--border)',
-          borderRadius: 'var(--r-lg)',
+          borderRadius: isCompact ? 'var(--r-pill)' : 'var(--r-lg)',
           padding: '3px',
-          background: 'var(--bg)',
+          background: isCompact ? 'var(--surface-glass)' : 'var(--bg)',
           opacity: disabled ? 0.62 : 1,
         }}
         title={title}
@@ -179,11 +190,15 @@ export function ProjectOpenMenu({ projectRoot, disabled = false, disabledReason 
           aria-label={title}
           style={{
             minWidth: 0,
-            height: '32px',
+            height: isCompact ? '30px' : '32px',
             border: 0,
-            borderRadius: 'calc(var(--r-lg) - 4px)',
-            background: disabled ? 'transparent' : 'linear-gradient(135deg, var(--accent), var(--accent-hover))',
-            color: disabled ? 'var(--text-muted)' : 'var(--accent-contrast)',
+            borderRadius: isCompact ? 'var(--r-pill)' : 'calc(var(--r-lg) - 4px)',
+            background: disabled
+              ? 'transparent'
+              : isCompact
+                ? 'transparent'
+                : 'linear-gradient(135deg, var(--accent), var(--accent-hover))',
+            color: disabled ? 'var(--text-muted)' : isCompact ? 'var(--text)' : 'var(--accent-contrast)',
             cursor: effectivelyDisabled ? 'not-allowed' : 'pointer',
             fontFamily: 'inherit',
             fontSize: 'var(--fs-sm)',
@@ -192,21 +207,27 @@ export function ProjectOpenMenu({ projectRoot, disabled = false, disabledReason 
             alignItems: 'center',
             justifyContent: 'center',
             gap: 'var(--sp-2)',
-            padding: '0 var(--sp-3)',
+            padding: isCompact ? '0 var(--sp-2)' : '0 var(--sp-3)',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
           }}
         >
-          <span aria-hidden="true">{selectedOpener ? openerGlyph[selectedOpener.id] : '⌂'}</span>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {launchingId ? t('projectOpen.opening') : selectedOpener ? t('projectOpen.openWithShort', { app: selectedOpener.label }) : t('projectOpen.none')}
+            <span aria-hidden="true">{selectedOpener ? openerGlyph[selectedOpener.id] : '⌂'}</span>
+          <span style={{ maxWidth: isCompact ? '96px' : undefined, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {launchingId
+              ? t('projectOpen.opening')
+              : selectedOpener
+                ? isCompact
+                  ? selectedOpener.label
+                  : t('projectOpen.openWithShort', { app: selectedOpener.label })
+                : t('projectOpen.none')}
           </span>
         </button>
         <button
           type="button"
           disabled={disabled || loading}
-          aria-label={t('projectOpen.menuAria')}
+          aria-label={menuAria}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           onClick={() => {
@@ -216,9 +237,9 @@ export function ProjectOpenMenu({ projectRoot, disabled = false, disabledReason 
             }
           }}
           style={{
-            height: '32px',
+            height: isCompact ? '30px' : '32px',
             border: 0,
-            borderRadius: 'calc(var(--r-lg) - 4px)',
+            borderRadius: isCompact ? 'var(--r-pill)' : 'calc(var(--r-lg) - 4px)',
             background: 'transparent',
             color: 'var(--text)',
             cursor: disabled || loading ? 'not-allowed' : 'pointer',
@@ -234,12 +255,13 @@ export function ProjectOpenMenu({ projectRoot, disabled = false, disabledReason 
       {menuOpen && !disabled && (
         <div
           role="menu"
-          aria-label={t('projectOpen.menuAria')}
+          aria-label={menuAria}
           style={{
             position: 'absolute',
             left: 0,
             top: 'calc(100% + var(--sp-2))',
-            width: '100%',
+            width: isCompact ? 'max-content' : '100%',
+            minWidth: isCompact ? '220px' : undefined,
             padding: 'var(--sp-2)',
             border: '1px solid var(--border)',
             borderRadius: 'var(--r-xl)',
@@ -257,7 +279,7 @@ export function ProjectOpenMenu({ projectRoot, disabled = false, disabledReason 
               lineHeight: 'var(--lh-relaxed)',
             }}
           >
-            {t('projectOpen.menuHint')}
+            {t(isCompact ? 'projectOpen.currentFileMenuHint' : 'projectOpen.menuHint')}
           </div>
           {availableOpeners.map((opener) => {
             const isDefault = opener.id === defaultOpener

@@ -1,5 +1,7 @@
 import { shell } from 'electron'
 import { access } from 'node:fs/promises'
+import { stat as fsStat } from 'node:fs/promises'
+import type { Stats } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import type { ProjectOpenerId, ProjectOpenerInfo, ProjectOpenResult, TerminalType } from '../../preload/types'
@@ -24,8 +26,16 @@ export interface ProjectOpenerDeps {
   platform?: NodeJS.Platform
   homedir?: () => string
   access?: (target: string) => Promise<void>
+  stat?: (target: string) => Promise<Pick<Stats, 'isFile' | 'isDirectory'>>
   execa?: (file: string, args?: string[], options?: Record<string, unknown>) => Promise<ExecResult>
   openPath?: (target: string) => Promise<string>
+  showItemInFolder?: (target: string) => void
+}
+
+interface OpenTarget {
+  path: string
+  dir: string
+  isFile: boolean
 }
 
 const OPENERS: ProjectOpenerDefinition[] = [
@@ -131,6 +141,24 @@ async function pathExists(target: string, deps?: ProjectOpenerDeps): Promise<boo
     return true
   } catch {
     return false
+  }
+}
+
+async function getOpenTarget(target: string, deps?: ProjectOpenerDeps): Promise<OpenTarget> {
+  try {
+    const info = await (deps?.stat ?? fsStat)(target)
+    const isFile = info.isFile()
+    return {
+      path: target,
+      dir: isFile ? path.dirname(target) : target,
+      isFile,
+    }
+  } catch {
+    return {
+      path: target,
+      dir: target,
+      isFile: false,
+    }
   }
 }
 
@@ -262,13 +290,20 @@ export async function openProjectWithOpener(
   if (!opener) return { ok: false, reason: 'OPENER_NOT_FOUND' }
   if (!(await isOpenerAvailable(opener, deps))) return { ok: false, reason: 'OPENER_NOT_AVAILABLE' }
 
+  const target = await getOpenTarget(projectRoot, deps)
+
   if (opener.id === 'finder') {
-    const failedReason = await (deps?.openPath ?? shell.openPath)(projectRoot)
+    if (target.isFile) {
+      const showItemInFolder = deps?.showItemInFolder ?? shell.showItemInFolder
+      showItemInFolder(target.path)
+      return { ok: true }
+    }
+    const failedReason = await (deps?.openPath ?? shell.openPath)(target.path)
     return failedReason ? { ok: false, reason: failedReason } : { ok: true }
   }
 
   if (opener.terminal) {
-    return openTerminalAt(projectRoot, opener.terminal, deps)
+    return openTerminalAt(target.dir, opener.terminal, deps)
   }
 
   try {
@@ -277,12 +312,12 @@ export async function openProjectWithOpener(
     if (!execa) return { ok: false, reason: 'OPEN_FAILED' }
 
     if (cliPath) {
-      await execa(cliPath, [projectRoot], { timeout: 10_000 })
+      await execa(cliPath, [target.path], { timeout: 10_000 })
       return { ok: true }
     }
 
     if (!opener.appName) return { ok: false, reason: 'OPEN_FAILED' }
-    await execa('/usr/bin/open', ['-a', opener.appName, projectRoot], { timeout: 10_000 })
+    await execa('/usr/bin/open', ['-a', opener.appName, target.path], { timeout: 10_000 })
     return { ok: true }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

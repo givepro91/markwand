@@ -268,6 +268,77 @@ describe('extractReferences — plain prose paths (plain)', () => {
     expect(refs[0].raw).toBe('src/components/toast-provider.tsx')
     expect(refs[0].resolvedPath).toBe('/project/docs/src/components/toast-provider.tsx')
     expect(refs[0].fallbackPath).toBe('/project/src/components/toast-provider.tsx')
+    expect(refs[0].lookupSuffix).toBe('src/components/toast-provider.tsx')
+  })
+
+  it('keeps shorthand source-root suffixes for local lookup before reporting them missing', () => {
+    const refs = extractReferences(
+      'Status row references screens/Today.tsx and seed/sessionDetail.ts.',
+      ROOT,
+      '/project/NOVA-STATE.md',
+    )
+
+    expect(refs.map((ref) => ref.lookupSuffix)).toEqual([
+      'screens/Today.tsx',
+      'seed/sessionDetail.ts',
+    ])
+  })
+
+  it('treats unwrapped source-code mentions as low-confidence when the target is absent', () => {
+    const refs = extractReferences(
+      'Status row references screens/Today.tsx and seed/sessionDetail.ts.',
+      ROOT,
+      '/project/NOVA-STATE.md',
+    )
+
+    expect(refs).toHaveLength(2)
+    expect(refs.every((ref) => ref.kind === 'plain')).toBe(true)
+    expect(refs.every((ref) => ref.reportMissing === false)).toBe(true)
+  })
+
+  it('treats planned source-code paths in backticks as low-confidence until verified on disk', () => {
+    const refs = extractReferences(
+      'Next sprint will add `src/routes/public/index.tsx` and `signup.tsx`.',
+      ROOT,
+      '/project/docs/plans/public.md',
+    )
+
+    expect(refs.map((ref) => ref.reportMissing)).toEqual([false, false])
+  })
+
+  it('still reports explicit document links as missing candidates', () => {
+    const refs = extractReferences(
+      'See `docs/areas/regulatory/data-retention.md` before release.',
+      ROOT,
+      '/project/docs/plans/m2.md',
+    )
+
+    expect(refs).toHaveLength(1)
+    expect(refs[0].reportMissing).not.toBe(false)
+  })
+
+  it('keeps upward relative document paths searchable by suffix lookup', () => {
+    const refs = extractReferences(
+      'See `../../areas/regulatory/legal-pages.md` before release.',
+      ROOT,
+      '/project/docs/projects/plans/public-pages.md',
+    )
+
+    expect(refs).toHaveLength(1)
+    expect(refs[0].lookupSuffix).toBe('areas/regulatory/legal-pages.md')
+    expect(refs[0].reportMissing).toBe(true)
+  })
+
+  it('adds a sibling fallback when the path repeats the current folder name', () => {
+    const refs = extractReferences(
+      'Compare with `chats/chat-2.md`.',
+      ROOT,
+      '/project/docs/projects/plans/chats/chat-1.md',
+    )
+
+    expect(refs).toHaveLength(1)
+    expect(refs[0].resolvedPath).toBe('/project/docs/projects/plans/chats/chats/chat-2.md')
+    expect(refs[0].fallbackPaths).toContain('/project/docs/projects/plans/chats/chat-2.md')
   })
 
   it('adds a monorepo self-prefix fallback when projectRoot is a nested package', () => {

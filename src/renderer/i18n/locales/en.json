@@ -60,7 +60,7 @@
     "openTitle": "See Markwand's intent and core features",
     "kicker": "Markwand Guide",
     "title": "See what matters first, even when docs pile up",
-    "intro": "When AI notes, plans, and meeting docs keep growing, filenames are not enough. Markwand turns them into reading order, open issues, and next actions.",
+    "intro": "When AI notes, plans, and meeting docs keep growing, filenames are not enough. Markwand turns them into reading order, project context, and next actions.",
     "tipsTitle": "Try it fast",
     "sections": {
       "why": {
@@ -69,7 +69,7 @@
       },
       "wiki": {
         "title": "Project Wiki",
-        "body": "Docs are grouped into Quick Summary (Project Brief), Document Groups (Knowledge Map), Decision History (Decision Log), and Issues to Check (Risk Board). Users can understand the plain meaning first while learning Markwand's product language."
+        "body": "Docs are grouped into Quick Summary (Project Brief), Document Groups (Knowledge Map), Decision History (Decision Log), and suggested starting points. Users can understand the plain meaning first while learning Markwand's product language."
       },
       "search": {
         "title": "Quick find",
@@ -78,10 +78,6 @@
       "handoff": {
         "title": "Send to AI · AI Handoff",
         "body": "Copy the current project summary and paste it into Claude Code, Codex, Cursor, or another AI tool without explaining the project from scratch."
-      },
-      "trust": {
-        "title": "Check document health · Trust & Drift",
-        "body": "Broken links, stale content, and missing details are surfaced before you rely on a document for decisions."
       },
       "ssh": {
         "title": "Read-only SSH",
@@ -111,10 +107,13 @@
 
   "projectOpen": {
     "openWith": "Open project in {{app}}",
+    "openCurrentFileWith": "Open current file in {{app}}",
     "openWithShort": "Open in {{app}}",
     "opening": "Opening…",
     "menuAria": "Choose an app to open this project",
+    "currentFileMenuAria": "Choose an app to open the current file",
     "menuHint": "Only installed apps are shown. Use the star to save your default.",
+    "currentFileMenuHint": "Open the current file in an installed app. Terminal apps open the containing folder.",
     "defaultBadge": "Default",
     "setDefaultAria": "Set {{app}} as the default project opener",
     "defaultSaved": "Saved {{app}} as the default project opener.",
@@ -172,7 +171,15 @@
     "filterEmptyDesc": "Try different filter criteria.",
     "selectWorkspaceDesc": "Pick a workspace at the top to see its projects.",
     "notFoundDesc": "Clear filters or try a different workspace.",
-    "groupAria": "{{name}} group"
+    "groupAria": "{{name}} group",
+    "aha": {
+      "aria": "Recommended first project start",
+      "badge": "Recommended start",
+      "title": "Understand {{name}} first",
+      "desc": "Start with the summary, issues to check, and AI handoff context in one view.",
+      "open": "Open Project Wiki",
+      "openAria": "Open {{name}} Project Wiki"
+    }
   },
 
   "projectView": {
@@ -185,6 +192,23 @@
     "findClose": "Close search",
     "findNoResults": "No matches",
     "findReady": "Type to search",
+    "revealCurrent": "Location",
+    "revealCurrentAria": "Show the current file location in Finder",
+    "revealCurrentError": "Could not open the current file location: {{reason}}",
+    "copyMenu": "Copy",
+    "copyMenuAria": "Open copy options",
+    "copyMarkdownSource": "Copy source",
+    "copyMarkdownSourceAria": "Copy the current markdown source",
+    "copyMarkdownSourceSuccess": "Copied markdown source.",
+    "copyMarkdownSourceError": "Could not copy markdown source.",
+    "copyTitle": "Copy title",
+    "copyTitleAria": "Copy the current document title",
+    "copyTitleSuccess": "Copied document title.",
+    "copyTitleError": "Could not copy document title.",
+    "copyPath": "Copy path",
+    "copyPathAria": "Copy the current document path",
+    "copyPathSuccess": "Copied document path.",
+    "copyPathError": "Could not copy document path.",
     "tocToggle": "Toggle table of contents",
     "documentTools": "Document tools",
     "issuesTab": "Issues",
@@ -218,19 +242,19 @@
   "projectWiki": {
     "toggle": "Toggle project wiki",
     "badge": "Project Wiki",
-    "trustBadge": "Trust {{score}}",
+    "trustBadge": "Reading readiness {{score}}",
     "readingDoc": "Reading document",
     "returnToWiki": "Back to Wiki",
     "returnToWikiAria": "Return to project wiki",
     "title": "{{name}} Wiki",
-    "summary": "{{docs}} markdown docs, {{recent}} changed in the last 7 days. Tracking {{missing}} broken links and {{stale}} stale references.",
+    "summary": "{{docs}} markdown docs, {{recent}} changed in the last 7 days. Reading order and project context are ready.",
     "aha": {
       "badge": "Next best action",
       "copyHandoff": "Hand off to AI",
       "copyHandoffAria": "Copy the current project summary for AI handoff",
       "step": {
         "brief": "Quick summary",
-        "risks": "Issues to check",
+        "risks": "Context check",
         "handoff": "AI handoff"
       },
       "action": {
@@ -251,7 +275,7 @@
         "copyHandoff": {
           "badge": "AI-ready",
           "title": "The AI handoff is ready",
-          "desc": "Copy the project brief, trust signals, and recent change context into Claude or Codex in one step.",
+          "desc": "Copy the project brief, reading state, and recent change context into Claude or Codex in one step.",
           "cta": "Copy AI summary",
           "aria": "Copy the project summary for AI"
         },
@@ -352,6 +376,11 @@
     "copyHandoffAria": "Copy project context to paste into Claude or Codex",
     "copyHandoffSuccess": "Copied AI-ready context. Paste it into Claude or Codex next.",
     "copyHandoffError": "Could not copy the AI summary.",
+    "copyWorkspaceSnapshot": "Copy team snapshot",
+    "copyWorkspaceSnapshotDone": "Copied",
+    "copyWorkspaceSnapshotAria": "Copy a project health snapshot for team sharing",
+    "copyWorkspaceSnapshotSuccess": "Copied the team snapshot.",
+    "copyWorkspaceSnapshotError": "Could not copy the team snapshot.",
     "copyOnboardingBrief": "Copy starter brief · Onboarding",
     "copyOnboardingBriefDone": "Copied",
     "copyOnboardingBriefAria": "Copy an onboarding brief for a new collaborator",
@@ -365,15 +394,15 @@
     "docDebtEmpty": "No priority cleanup documents detected.",
     "docDebtScore": "Score {{score}}",
     "docDebtAge": "{{days}}d",
-    "trustTitle": "Can I Trust This? · Trust Diagnosis",
+    "trustTitle": "Reading State · Reading Readiness",
     "trustScore": "{{score}} / 100",
-    "trustSignalsEmpty": "No major signals are lowering trust right now.",
+    "trustSignalsEmpty": "No major signals are blocking the reading flow right now.",
     "trustImpactPenalty": "-{{impact}} pts",
     "trustImpactBonus": "+{{impact}} pts",
     "trustSummary": {
-      "strong": "Project docs look reasonably trustworthy. The suggested reading path is safe to start with.",
-      "watch": "The document flow is visible, but a few evidence signals need review before relying on it fully.",
-      "weak": "Docs are stale or risky enough that cleanup should come before major decisions."
+      "strong": "The suggested reading path is ready to start with.",
+      "watch": "The document flow is visible; checking a few stale docs or missing metadata will make it smoother.",
+      "weak": "Several docs are stale or unshaped. Light cleanup of the key docs will help first."
     },
     "trustSignal": {
       "riskRefs": "{{count}} broken refs",
@@ -396,7 +425,7 @@
         "missingMetaDocs": "Missing metadata",
         "unreadDocs": "Unread",
         "recentDocs": "Recent changes",
-        "healthy": "No major risk"
+        "healthy": "Ready to read"
       },
       "focus": {
         "repairReferences": {
@@ -493,12 +522,12 @@
       "recent": "Recent",
       "unread": "Unread",
       "risks": "Issues to check",
-      "trust": "Trust level"
+      "trust": "Reading readiness"
     },
     "trustLevel": {
       "strong": "Strong",
       "watch": "Watch",
-      "weak": "Risky"
+      "weak": "Needs cleanup"
     },
     "onboardingTitle": "Start Here",
     "onboardingEmpty": "No starting documents found yet.",
@@ -588,6 +617,22 @@
     "version": "Version {{version}}"
   },
 
+  "updates": {
+    "checkAria": "Check for updates (current version {{version}})",
+    "checking": "Checking for updates",
+    "checkingShort": "Checking…",
+    "availableAria": "New version {{version}} available",
+    "availableTitle": "New version {{version}} available — open release/download",
+    "availableBadge": "Update available",
+    "available": "Version {{version}} is available.",
+    "upToDate": "You're on the latest version.",
+    "checkFailed": "Could not check for updates: {{reason}}",
+    "preloadUnavailable": "The update checker is not loaded yet. Restart the app and try again.",
+    "unknownError": "Unknown error",
+    "openRelease": "Open release",
+    "openDownload": "Open download"
+  },
+
   "picker": {
     "select": "Select workspace",
     "addLocal": "+ Add local folder",
@@ -650,6 +695,44 @@
     "folder": "Folder",
     "docFile": "Document file",
     "imageFile": "Image file",
+    "refreshAria": "Refresh file tree",
+    "refreshTitle": "Rescan files in this project",
+    "actionsAria": "File actions",
+    "actionsUnavailable": "File actions are not loaded yet. Restart the app and try again.",
+    "localOnlyTitle": "Available for local projects only.",
+    "selectFileFirst": "Select a file first.",
+    "newMarkdownAria": "Create a new markdown document",
+    "newMarkdownTitle": "Create a markdown document in {{dir}}",
+    "newMarkdownDialogTitle": "Create markdown document",
+    "newMarkdownPrompt": "New markdown file name",
+    "newMarkdownConfirm": "Create",
+    "newMarkdownSuccess": "Created {{name}}.",
+    "newMarkdownError": "Could not create the document: {{reason}}",
+    "newFolderAria": "Create a new folder",
+    "newFolderTitle": "Create a folder in {{dir}}",
+    "newFolderDialogTitle": "Create folder",
+    "newFolderPrompt": "New folder name",
+    "newFolderConfirm": "Create",
+    "newFolderSuccess": "Created folder {{name}}.",
+    "newFolderError": "Could not create the folder: {{reason}}",
+    "renameAria": "Rename selected file",
+    "renameTitle": "Rename selected file",
+    "renameDialogTitle": "Rename file",
+    "renameDialogDesc": "Enter a new name for {{name}}.",
+    "renamePrompt": "New file name",
+    "renameConfirm": "Rename",
+    "renameSuccess": "Renamed to {{name}}.",
+    "renameError": "Could not rename the file: {{reason}}",
+    "trashAria": "Move selected file to Trash",
+    "trashTitle": "Move selected file to Trash",
+    "trashDialogTitle": "Move to Trash",
+    "trashDialogDesc": "Move {{name}} to Trash.",
+    "trashConfirm": "Move {{name}} to Trash?",
+    "trashConfirmButton": "Move to Trash",
+    "trashSuccess": "Moved {{name}} to Trash.",
+    "trashError": "Could not move the file to Trash: {{reason}}",
+    "createDialogDesc": "Create inside {{dir}}.",
+    "fileNameLabel": "Name",
     "composerSelectAria": "Select {{name}} for Composer"
   },
 
@@ -685,10 +768,22 @@
 
   "imageViewer": {
     "toolbarAria": "Image view options",
+    "canvasAria": "Image canvas",
     "fitAria": "Fit mode",
     "fitMode": "Fit",
     "actualSize": "Actual size",
     "fillMode": "Fill",
+    "zoomAria": "Image zoom",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "resetZoom": "View at 100%",
+    "shortcutsAria": "Image viewer shortcuts",
+    "shortcutsLabel": "Shortcuts",
+    "shortcutZoom": "Zoom",
+    "shortcutReset": "100%",
+    "shortcutFit": "Fit",
+    "shortcutDoubleClickKey": "Double-click",
+    "shortcutToggle": "Fit/100%",
     "loadFailed": "Could not load image",
     "loadFailedDetail": "The file may have been moved or you don't have permission.",
     "remoteLoading": "Loading remote image…"

@@ -1,6 +1,6 @@
 {
   "name": "markwand",
-  "version": "0.4.0-beta.11",
+  "version": "0.4.0-beta.12",
   "description": "An AI-output curator for your desktop — discover, read, and re-enter the markdown docs scattered across your AI-driven projects.",
   "main": "./out/main/index.js",
   "author": "jay@spacewalk.tech",
@@ -17,6 +17,7 @@
     "dist:mac:unsigned": "pnpm dist:mac:free",
     "dist:mac:release": "pnpm build && electron-builder --mac --publish never -c.mac.hardenedRuntime=true -c.mac.entitlements=build/entitlements.mac.plist -c.mac.entitlementsInherit=build/entitlements.mac.inherit.plist -c.mac.notarize=true -c.dmg.sign=true",
     "test": "vitest run",
+    "smoke:layout": "pnpm build && node scripts/layout-smoke.mjs",
     "bench:transport": "npx --yes tsx scripts/bench-transport.ts",
     "bench:renderer-chunks": "npx --yes tsx --expose-gc scripts/bench-renderer-chunks.ts",
     "test:integration-ssh": "npx --yes tsx scripts/test-integration-ssh.ts",

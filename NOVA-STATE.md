@@ -1,22 +1,30 @@
 # Nova State
 
 ## Current
-- **Goal**: Project Wiki를 "경고 도구"에서 "문서 역할과 현재 상황을 판단하는 프로젝트 이해 레이어"로 진화.
-- **Phase**: **implementation** — P1 Trust Calibration + Installation Confidence 후속 완료, 다음 Sprint는 Team/Workspace Layer 후보 검토.
+- **Goal**: Project Wiki/뷰어/파일 트리 중심으로 일상 사용 중 마찰을 줄이는 v0.4 productization polish.
+- **Phase**: **implementation** — local-first 문서 작업/복사/업데이트 UX polish 완료, 다음 Sprint 후보 검토 대기.
 - **Blocker**: none
-- **Last Activity**: P1 Trust Calibration — Risk/Doc Debt 항목에 `fix / confirm / preserve` 액션을 추가해 현재 가이드·운영·참조 문서만 수리 후보로 올리고, 오래된 plan/workLog/archive는 보존 가능한 기록으로 표시. Product Guide/README의 무료 ZIP 설치 안내도 최신화. spwk-product dev boot OK, vitest 453 PASS · typecheck PASS · build PASS · dev 종료 후 고아 프로세스 0 (2026-05-03).
-- **Remote**: `origin/main` = `21c0f9e`; tag `v0.4.0-beta.10` = `deacb77`; Release: https://github.com/givepro91/markwand/releases/tag/v0.4.0-beta.10
+- **Last Activity**: v0.4.0-beta.12 release prep — 문서/이미지 뷰어 polish, update badge, 파일 트리 sync, trust warning de-emphasis, 1440px layout pass를 `v0.4.0-beta.12`로 묶음. `pnpm smoke:layout`은 격리 userData + fixture workspace로 Electron을 띄워 1400/1440/1600x900에서 stickyGap 0, scrollPaddingTop 0px, center 882/915/1054px, TOC rail 252/259/280px, bar height 56px를 자동 검증. typecheck PASS · full vitest 527 PASS · smoke/layout PASS · dist:mac:free PASS · codesign verify PASS · diff check PASS (2026-05-12).
+- **Remote**: release target `v0.4.0-beta.12`; previous public tag `v0.4.0-beta.11`; Release URL after publish: https://github.com/givepro91/markwand/releases/tag/v0.4.0-beta.12
 
 ## Recently Done
-1. P1 Trust Calibration — 오래된 계획/작업 기록을 무조건 갱신 대상으로 보지 않고, 고치기/확인만/기록 보존으로 나눠 표시.
-2. Installation Confidence — 앱 내 Product Guide와 README/README.ko의 무료 ZIP 설치 흐름을 현재 배포 방식에 맞게 정리.
-3. Shareable AI Handoff MVP — AI handoff를 실행 지시형 Markdown으로 재구성하고 Claude/Codex 붙여넣기 CTA까지 연결.
+1. 1440px document layout pass — sticky reading bar 실제 상단 밀착, 본문 padding 분리, compact TOC rail, reading bar flex 재배분을 Electron CDP 실측과 `pnpm smoke:layout` 자동 스모크로 검증.
+2. UX stability/readability pass — 검증되지 않은 경고/기능은 숨기는 정책 문서화, 문서 헤더 복사 액션 메뉴화, 읽기 바 compact edge-to-edge sticky 정리, Markdown viewer 가독성/대비 회귀 테스트 추가.
+3. Reference audit product de-emphasis — 검증 신뢰가 애매한 링크/깨진 참조 경고를 기본 UI에서 숨기고, Project Wiki를 읽기 순서/맥락 중심으로 재정렬.
+4. In-app file operations — 새 마크다운/폴더 생성, 선택 파일 이름 변경, 휴지통 이동 구현은 보존하되 UI 노출은 숨김. 향후 에디터/작성 플로우와 함께 재검토.
+5. Copy affordances — 현재 문서 제목 복사, 경로 복사, 마크다운 원본 복사를 문서 헤더에서 제공.
+6. Update UX finish — 시작/주기 업데이트 감지 후 헤더 배지로 상시 표시하고, 배지 클릭 시 다운로드/릴리스 페이지로 이동.
+7. Drift verification trust fix — 코드/계획 경로 false positive를 보수적으로 숨기고, 실제 문서 링크 후보만 missing으로 올리도록 재분류 + 우측 문제 rail 스크롤 수정.
+8. First Project Aha Path — 프로젝트가 1개뿐인 워크스페이스에서 Project Wiki 추천 시작점을 노출.
+9. File Tree Sync fix — 파일 생성/삭제/수정이 자동 watcher와 수동 재스캔 양쪽에서 트리에 반영되도록 보강.
+10. Team Snapshot MVP — Project Wiki에서 팀 공유용 프로젝트 상태 Markdown을 복사할 수 있게 추가.
+11. Viewer usability — 도면/이미지 transform 줌·grab-pan·휠 줌·더블클릭·키보드 조작·단축키 힌트, 현재 파일 위치 열기, 현재 파일 앱 열기, 마크다운 원본 복사, 축소 화면 읽기 바 보정을 추가.
 
 ## Release Artifacts
 | Artifact | SHA256 |
 |---|---|
-| `dist/Markwand-0.4.0-beta.10-arm64-free.zip` | `291e8f4bc58cec6c1ce4886efa9f37585fdf24d3e8144a434540181c49ba726d` |
-| `dist/Markwand-0.4.0-beta.10-x64-free.zip` | `1d01f4dd179216746f79ec3d7060666f7fa31504d5e48a1f6f616ce8b6e19022` |
+| `dist/Markwand-0.4.0-beta.12-arm64-free.zip` | `7b4a95d3696b76a16b22022ffecd9104e647a303b596af38401c4d120185ac8b` |
+| `dist/Markwand-0.4.0-beta.12-x64-free.zip` | `b64c782aad105db5a57bda713fba5426d66b211a95148b41dcd615db03779260` |
 
 ## Open Product Work
 - Next: `docs/plans/productization-backlog.md` 기준 P2 Team/Workspace Layer — workspace health snapshot/export를 검토하되 SSH workspace 성능을 악화시키지 않는 local-first 설계가 우선.

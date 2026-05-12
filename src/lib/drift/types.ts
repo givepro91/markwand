@@ -11,6 +11,9 @@ export interface Reference {
   // 파일명만 적힌 코드 참조(`toast-provider.tsx`)는 docDir/projectRoot 직접 stat 이후
   // 로컬 프로젝트 파일 시스템에서 basename lookup 을 시도한다. SSH 는 성능상 전역 탐색 제외.
   lookupBasename?: string
+  // 축약된 소스 루트 경로(`screens/Today.tsx`, `seed/sessionDetail.ts`)는
+  // docDir/projectRoot 직접 stat 이후 로컬 프로젝트 안에서 같은 suffix 를 한 번 더 찾는다.
+  lookupSuffix?: string
   // false면 대상이 존재할 때만 관계로 인정하고, 없을 때는 missing으로 보고하지 않는다.
   // 예: `origin/main`, `path/posix`, `docs/` 처럼 경로처럼 보이지만 실제 파일 참조인지 애매한 토큰.
   reportMissing?: boolean

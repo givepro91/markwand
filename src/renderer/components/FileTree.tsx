@@ -18,7 +18,9 @@ interface FileTreeProps {
   projectId: string
   rootPath: string
   docs: Doc[]
+  extraFolders?: string[]
   onSelect: (doc: Doc) => void
+  onFolderFocus?: (path: string) => void
   initialExpanded: string[]
   onExpandChange: (expanded: string[]) => void
 }
@@ -50,9 +52,36 @@ function sortTreeRecursively(nodes: TreeNode[]): void {
 }
 
 // Doc[] 배열을 디렉토리 트리 구조로 변환한다.
-function buildTree(docs: Doc[], rootPath: string): TreeNode[] {
+function buildTree(docs: Doc[], rootPath: string, extraFolders: string[] = []): TreeNode[] {
   const nodeMap = new Map<string, TreeNode>()
   nodeMap.set(rootPath, { id: rootPath, name: '', children: [] })
+
+  const ensureFolder = (folderPath: string) => {
+    if (folderPath === rootPath) return
+    if (!folderPath.startsWith(rootPath + '/')) return
+    const rel = folderPath.slice(rootPath.length + 1)
+    const parts = rel.split('/').filter(Boolean)
+    let currentPath = rootPath
+
+    for (const part of parts) {
+      const fullPath = currentPath + '/' + part
+      let node = nodeMap.get(fullPath)
+      if (!node) {
+        node = { id: fullPath, name: part, children: [] }
+        nodeMap.set(fullPath, node)
+        const parent = nodeMap.get(currentPath)
+        if (parent) {
+          parent.children = parent.children ?? []
+          parent.children.push(node)
+        }
+      } else {
+        node.children = node.children ?? []
+      }
+      currentPath = fullPath
+    }
+  }
+
+  for (const folder of extraFolders) ensureFolder(folder)
 
   for (const doc of docs) {
     // rootPath 기준 상대 경로 계산
@@ -87,6 +116,8 @@ function buildTree(docs: Doc[], rootPath: string): TreeNode[] {
           parent.children.push(node)
         }
       }
+      const existing = nodeMap.get(fullPath)
+      if (existing && isLast) existing.doc = doc
 
       currentPath = fullPath
     }
@@ -180,7 +211,15 @@ function getAssetIcon(name: string) {
   return classifyAsset(name) === 'image' ? <ImageIcon /> : <FileIcon />
 }
 
-function FileTreeNode({ node, style }: { node: NodeApi<TreeNode>; style: React.CSSProperties }) {
+function FileTreeNode({
+  node,
+  style,
+  onFolderFocus,
+}: {
+  node: NodeApi<TreeNode>
+  style: React.CSSProperties
+  onFolderFocus?: (path: string) => void
+}) {
   const { t } = useTranslation()
   const isDir = !!node.data.children || node.isInternal
   const isSelected = node.isSelected
@@ -223,7 +262,10 @@ function FileTreeNode({ node, style }: { node: NodeApi<TreeNode>; style: React.C
       }}
       onClick={() => {
         // 폴더는 펼침/접힘, 파일은 선택. select는 onSelect 콜백을 트리거한다.
-        if (isDir) node.toggle()
+        if (isDir) {
+          onFolderFocus?.(node.id)
+          node.toggle()
+        }
         else node.select()
       }}
     >
@@ -264,7 +306,9 @@ export function FileTree({
   projectId,
   rootPath,
   docs,
+  extraFolders = [],
   onSelect,
+  onFolderFocus,
   initialExpanded,
   onExpandChange,
 }: FileTreeProps) {
@@ -306,7 +350,7 @@ export function FileTree({
     )
   }, [docs, searchQuery])
 
-  const treeData = useMemo(() => buildTree(filteredDocs, rootPath), [filteredDocs, rootPath])
+  const treeData = useMemo(() => buildTree(filteredDocs, rootPath, extraFolders), [filteredDocs, rootPath, extraFolders])
 
   // 검색 중일 때는 모든 노드를 펼침 (매칭 파일의 부모 폴더 자동 expand)
   // 초기 expanded 설정: initialExpanded가 없으면 depth 2까지 기본 펼침
@@ -416,7 +460,7 @@ export function FileTree({
   // projectId가 바뀌면 tree 갱신을 위해 key로 처리됨 (parent에서 key=projectId 사용)
   void projectId
 
-  if (docs.length === 0) {
+  if (docs.length === 0 && extraFolders.length === 0) {
     return (
       <div style={{ padding: 'var(--sp-4)', color: 'var(--text-muted)', fontSize: 'var(--fs-sm)' }}>
         {t('fileTree.noDocs')}
@@ -469,7 +513,7 @@ export function FileTree({
           ref={containerRef}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
         >
-          {filteredDocs.length > 0 && containerHeight > 0 && (
+          {treeData.length > 0 && containerHeight > 0 && (
             <Tree<TreeNode>
               ref={treeRef}
               data={treeData}
@@ -483,7 +527,7 @@ export function FileTree({
               height={containerHeight}
               className="file-tree"
             >
-              {FileTreeNode}
+              {(props) => <FileTreeNode {...props} onFolderFocus={onFolderFocus} />}
             </Tree>
           )}
         </div>

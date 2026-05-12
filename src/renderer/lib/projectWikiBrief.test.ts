@@ -6,6 +6,7 @@ import {
   formatProjectWikiHandoffBrief,
   formatProjectWikiOnboardingBrief,
   formatProjectWikiTaskPrompt,
+  formatProjectWikiWorkspaceSnapshot,
 } from './projectWikiBrief'
 import type { ProjectWikiSummary } from './projectWiki'
 import type { ProjectWikiGitContext } from './projectWikiGit'
@@ -98,14 +99,13 @@ describe('buildProjectWikiBrief', () => {
     expect(brief.headline).toBe('Markwand')
     expect(brief.overview).toContain('Markwand turns scattered AI-generated project notes into a living project map.')
     expect(brief.overview).toContain('1 documents changed in the last 7 days, so this project is currently active.')
-    expect(brief.overview).toContain('3 reference issues need review before treating the docs as fully trustworthy.')
+    expect(brief.overview).toContain('Use the suggested reading path and evidence docs as the starting map before acting.')
     expect(brief.evidence).toHaveLength(1)
   })
 })
 
-describe('formatProjectWikiHandoffBrief', () => {
-  it('formats an AI-ready markdown handoff with evidence and risk context', () => {
-    const handoffSummary = summary({
+function richSummary() {
+  return summary({
       clusters: [{ key: 'overview', count: 1, docs: [{ path: doc.path, name: doc.name, reason: 'recent', score: 1 }] }],
       docDebt: [{
         path: '/project/risky.md',
@@ -165,6 +165,51 @@ describe('formatProjectWikiHandoffBrief', () => {
         docs: [{ path: '/project/risky.md', name: 'risky.md', reason: 'risk', score: 40 }],
       }],
     })
+}
+
+function richGitContext(): ProjectWikiGitContext {
+  return {
+    branch: 'main',
+    recentCommitCount: 6,
+    changedFileCount: 4,
+    dirtyCount: 1,
+    changedAreas: ['src/renderer', 'scripts/deploy'],
+    situation: {
+      kind: 'workInProgress',
+      priority: 'medium',
+      changedArea: 'src/renderer',
+      focusDoc: { path: doc.path, name: doc.name, role: 'currentGuide', ageDays: 45 },
+    },
+    insights: [{
+      kind: 'currentGuideCheck',
+      priority: 'medium',
+      doc: { path: doc.path, name: doc.name, role: 'currentGuide', ageDays: 45 },
+      changedFile: 'src/renderer/ProjectView.tsx',
+    }],
+  }
+}
+
+describe('formatProjectWikiWorkspaceSnapshot', () => {
+  it('formats a compact shareable health snapshot for teammates', () => {
+    const text = formatProjectWikiWorkspaceSnapshot('markwand', richSummary(), richGitContext())
+
+    expect(text).toContain('# Workspace Snapshot: markwand')
+    expect(text).toContain('## Health')
+    expect(text).toContain('- Trust score: 74/100 (watch)')
+    expect(text).toContain('- Activity: 1 docs changed in the last 7 days; 2 unread docs.')
+    expect(text).toContain('## Recommended Next Action')
+    expect(text).toContain('- Repair risky document references (high)')
+    expect(text).toContain('## Recent Change Flow')
+    expect(text).toContain('- Branch: main')
+    expect(text).toContain('## Risk Board')
+    expect(text).toContain('- risky.md: 1 broken, 1 stale refs, action fix (/project/risky.md)')
+    expect(text).toContain('## Team Note')
+  })
+})
+
+describe('formatProjectWikiHandoffBrief', () => {
+  it('formats an AI-ready markdown handoff with evidence and risk context', () => {
+    const handoffSummary = richSummary()
     const brief = buildProjectWikiBrief(
       'markwand',
       handoffSummary,
@@ -178,25 +223,7 @@ describe('formatProjectWikiHandoffBrief', () => {
       ]
     )
 
-    const gitContext: ProjectWikiGitContext = {
-      branch: 'main',
-      recentCommitCount: 6,
-      changedFileCount: 4,
-      dirtyCount: 1,
-      changedAreas: ['src/renderer', 'scripts/deploy'],
-      situation: {
-        kind: 'workInProgress',
-        priority: 'medium',
-        changedArea: 'src/renderer',
-        focusDoc: { path: doc.path, name: doc.name, role: 'currentGuide', ageDays: 45 },
-      },
-      insights: [{
-        kind: 'currentGuideCheck',
-        priority: 'medium',
-        doc: { path: doc.path, name: doc.name, role: 'currentGuide', ageDays: 45 },
-        changedFile: 'src/renderer/ProjectView.tsx',
-      }],
-    }
+    const gitContext = richGitContext()
 
     const text = formatProjectWikiHandoffBrief('markwand', handoffSummary, brief, gitContext)
 
@@ -290,7 +317,6 @@ describe('formatProjectWikiOnboardingBrief', () => {
     expect(text).toContain('- Markwand turns scattered markdown into a project map.')
     expect(text).toContain('1. README.md - /project/README.md')
     expect(text).toContain('2. docs/plan.md - /project/docs/plan.md')
-    expect(text).toContain('- Reference status: 1 broken links, 2 stale refs to review')
     expect(text).toContain('## Documents That May Need Cleanup')
     expect(text).toContain('- docs/plan.md: score 44, role workLog, reasons risk (/project/docs/plan.md)')
     expect(text).toContain('## Suggested First Actions')
@@ -332,6 +358,7 @@ describe('formatProjectWikiTaskPrompt', () => {
     expect(text).toContain('# AI Task: Repair risky document references')
     expect(text).toContain('Project: markwand')
     expect(text).toContain('Trust score: 61/100 (watch)')
+    expect(text).toContain('Docs: 2 markdown, 0 image/assets')
     expect(text).toContain('## Why This Task Now')
     expect(text).toContain('- riskRefs: 3 (-30 pts)')
     expect(text).toContain('- risky.md: /project/risky.md')

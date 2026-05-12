@@ -70,11 +70,8 @@ export function buildProjectWikiBrief(
     overview.push(`${summary.recentDocs} documents changed in the last 7 days, so this project is currently active.`)
   }
 
-  const issueCount = summary.risks.missingRefs + summary.risks.staleRefs
-  if (issueCount > 0) {
-    overview.push(`${issueCount} reference issues need review before treating the docs as fully trustworthy.`)
-  } else if (summary.markdownDocs > 0) {
-    overview.push('No broken or stale references are currently visible in the loaded drift reports.')
+  if (summary.markdownDocs > 0) {
+    overview.push('Use the suggested reading path and evidence docs as the starting map before acting.')
   }
 
   return {
@@ -160,14 +157,13 @@ export function formatProjectWikiTaskPrompt(
   summary: ProjectWikiSummary,
   task: WikiSuggestedTask
 ): string {
-  const issueCount = summary.risks.missingRefs + summary.risks.staleRefs
   const lines = [
     `# AI Task: ${taskTitles[task.intent]}`,
     '',
     `Project: ${projectName}`,
     `Priority: ${task.priority}`,
     `Trust score: ${summary.trust.score}/100 (${summary.trust.level})`,
-    `Reference issues: ${issueCount} (${summary.risks.missingRefs} broken, ${summary.risks.staleRefs} stale)`,
+    `Docs: ${summary.markdownDocs} markdown, ${summary.imageDocs} image/assets`,
     `Unread docs: ${summary.unreadDocs}`,
     '',
     '## Goal',
@@ -243,13 +239,81 @@ function formatDocLine(doc: { name: string; path: string }): string {
   return `- ${doc.name}: ${doc.path}`
 }
 
+export function formatProjectWikiWorkspaceSnapshot(
+  projectName: string,
+  summary: ProjectWikiSummary,
+  gitContext?: ProjectWikiGitContext | null
+): string {
+  const recommendedTask = summary.suggestedTasks[0]
+  const lines: string[] = [
+    `# Workspace Snapshot: ${projectName}`,
+    '',
+    '> Share this Markwand snapshot with a teammate before planning, review, or AI handoff.',
+    '',
+    '## Health',
+    `- Trust score: ${summary.trust.score}/100 (${summary.trust.level})`,
+    `- Docs: ${summary.markdownDocs} markdown, ${summary.imageDocs} image/assets`,
+    `- Activity: ${summary.recentDocs} docs changed in the last 7 days; ${summary.unreadDocs} unread docs.`,
+    `- Reading: ${pulseFocusText[summary.pulse.focus]}`,
+    '',
+    '## Recommended Next Action',
+    recommendedTask
+      ? `- ${taskTitles[recommendedTask.intent]} (${recommendedTask.priority})`
+      : '- Read the suggested starting docs and confirm whether any current guide is stale.',
+    recommendedTask
+      ? `- ${taskPrompts[recommendedTask.intent]}`
+      : '- Keep changes small and evidence-linked.',
+    '',
+  ]
+
+  const gitLines = formatProjectWikiGitContext(gitContext)
+  if (gitLines.length > 0) {
+    lines.push('## Recent Change Flow')
+    lines.push(...gitLines)
+    lines.push('')
+  }
+
+  if (summary.risks.docsWithRisk.length > 0) {
+    lines.push('## Risk Board')
+    for (const item of summary.risks.docsWithRisk.slice(0, 5)) {
+      const action = item.action ? `, action ${item.action}` : ''
+      lines.push(`- ${item.name}: ${item.missing} broken, ${item.stale} stale refs${action} (${item.path})`)
+    }
+    lines.push('')
+  }
+
+  if (summary.onboardingPath.length > 0) {
+    lines.push('## Read First')
+    for (const item of summary.onboardingPath.slice(0, 5)) {
+      lines.push(formatDocLine(item))
+    }
+    lines.push('')
+  }
+
+  if (summary.trust.signals.length > 0) {
+    lines.push('## Trust Signals')
+    for (const signal of summary.trust.signals.slice(0, 5)) {
+      const impact = signal.impact > 0 ? `+${signal.impact}` : String(signal.impact)
+      lines.push(`- ${signal.key}: ${signal.count} (${impact} pts)`)
+    }
+    lines.push('')
+  }
+
+  lines.push(
+    '## Team Note',
+    '- Old plans, work logs, and archives may be useful historical context rather than docs that must be rewritten.',
+    '- Current guides and operational docs carry the highest execution risk; verify those before acting.'
+  )
+
+  return lines.join('\n').trimEnd()
+}
+
 export function formatProjectWikiHandoffBrief(
   projectName: string,
   summary: ProjectWikiSummary,
   brief: ProjectWikiBrief | null,
   gitContext?: ProjectWikiGitContext | null
 ): string {
-  const issueCount = summary.risks.missingRefs + summary.risks.staleRefs
   const recommendedTask = summary.suggestedTasks[0]
   const markwandReading = recommendedTask ? taskSituationText[recommendedTask.intent] : pulseFocusText[summary.pulse.focus]
   const lines: string[] = [
@@ -270,13 +334,12 @@ export function formatProjectWikiHandoffBrief(
     `- Project: ${projectName}`,
     `- Markwand reading: ${markwandReading}`,
     `- Trust score: ${summary.trust.score}/100 (${summary.trust.level})`,
-    `- Reference issues: ${issueCount} (${summary.risks.missingRefs} broken, ${summary.risks.staleRefs} stale)`,
     `- Activity: ${summary.recentDocs} docs changed in the last 7 days; ${summary.unreadDocs} unread docs.`,
     '',
     '## Guardrails',
     '- Do not treat old plans, work logs, or archived notes as docs that must be updated automatically.',
     '- Current guides and operational docs are the highest-risk docs to verify before implementation, deploy, migration, or incident work.',
-    '- Separate verified facts from assumptions. Ask for confirmation when a reference is broken, ambiguous, or missing from the loaded docs.',
+    '- Separate verified facts from assumptions. Ask for confirmation when project context is ambiguous or missing from the loaded docs.',
     '- Keep actions small and evidence-linked; do not rewrite broad documentation unless the task explicitly asks for it.',
     '',
     '## Project Snapshot',
@@ -411,7 +474,6 @@ export function formatProjectWikiOnboardingBrief(
   summary: ProjectWikiSummary,
   brief: ProjectWikiBrief | null
 ): string {
-  const issueCount = summary.risks.missingRefs + summary.risks.staleRefs
   const lines: string[] = [
     `# Onboarding Brief: ${projectName}`,
     '',
@@ -443,7 +505,6 @@ export function formatProjectWikiOnboardingBrief(
     '',
     '## Check Before Acting',
     `- Trust score: ${summary.trust.score}/100 (${summary.trust.level})`,
-    `- Reference status: ${summary.risks.missingRefs} broken links, ${summary.risks.staleRefs} stale refs to review`,
     `- Unread docs: ${summary.unreadDocs}`,
     `- Recent activity: ${summary.recentDocs} docs changed in the last 7 days`
   )
@@ -468,7 +529,7 @@ export function formatProjectWikiOnboardingBrief(
     for (const task of summary.suggestedTasks.slice(0, 3)) {
       lines.push(`- ${taskTitles[task.intent]} (${task.priority})`)
     }
-  } else if (issueCount === 0) {
+  } else {
     lines.push('', '## Suggested First Action', '- Follow the reading order and capture any missing assumptions before changing code.')
   }
 

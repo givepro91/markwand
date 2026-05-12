@@ -56,6 +56,88 @@ const RefreshIcon = () => (
   </svg>
 )
 
+function FirstProjectAhaPrompt({
+  project,
+  onOpen,
+}: {
+  project: Project
+  onOpen: (project: Project) => void
+}) {
+  const { t } = useTranslation()
+  const docCountLabel = project.docCount >= 0
+    ? t('project.docCount', { count: project.docCount })
+    : t('project.analyzing')
+
+  return (
+    <section
+      aria-label={t('allProjects.aha.aria')}
+      style={{
+        marginBottom: 'var(--sp-4)',
+        border: '1px solid color-mix(in srgb, var(--accent) 30%, var(--border))',
+        borderRadius: 'var(--r-xl)',
+        padding: 'var(--sp-4)',
+        background:
+          'linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent) 0%, var(--bg-elev) 72%)',
+        boxShadow: 'var(--shadow-sm)',
+        display: 'flex',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        gap: 'var(--sp-4)',
+        alignItems: 'center',
+      }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
+          <span
+            style={{
+              fontSize: 'var(--fs-xs)',
+              fontWeight: 'var(--fw-semibold)',
+              color: 'var(--accent)',
+            }}
+          >
+            {t('allProjects.aha.badge')}
+          </span>
+          <span style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-xs)' }}>
+            {docCountLabel}
+          </span>
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <h3
+            style={{
+              margin: 0,
+              color: 'var(--text)',
+              fontSize: 'var(--fs-lg)',
+              fontWeight: 'var(--fw-semibold)',
+            }}
+          >
+            {t('allProjects.aha.title', { name: project.name })}
+          </h3>
+          <p
+            style={{
+              margin: 'var(--sp-1) 0 0',
+              color: 'var(--text-muted)',
+              fontSize: 'var(--fs-sm)',
+              lineHeight: 'var(--lh-relaxed)',
+            }}
+          >
+            {t('allProjects.aha.desc')}
+          </p>
+        </div>
+      </div>
+      <span style={{ flexShrink: 0 }}>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => onOpen(project)}
+          aria-label={t('allProjects.aha.openAria', { name: project.name })}
+        >
+          {t('allProjects.aha.open')}
+        </Button>
+      </span>
+    </section>
+  )
+}
+
 export function AllProjectsView({ workspaceId, onOpenProject }: AllProjectsViewProps) {
   const { t } = useTranslation()
   const {
@@ -102,6 +184,7 @@ export function AllProjectsView({ workspaceId, onOpenProject }: AllProjectsViewP
   }, [isFilterActive])
 
   const sorted = useMemo(() => sortProjects(projects, sortOrder), [projects, sortOrder])
+  const firstProjectAha = !isFilterActive && !loading && !error && sorted.length === 1 ? sorted[0] : null
 
   const filteredDocs = useMemo(() => {
     if (!isFilterActive) return []
@@ -314,6 +397,12 @@ export function AllProjectsView({ workspaceId, onOpenProject }: AllProjectsViewP
 
       {/* 메인 콘텐츠 */}
       <div style={{ flex: 1, overflow: 'auto', padding: '0 var(--sp-6) var(--sp-6)' }}>
+        {firstProjectAha && (
+          <FirstProjectAhaPrompt
+            project={firstProjectAha}
+            onOpen={onOpenProject}
+          />
+        )}
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--sp-12)' }}>
             <StatusMessage variant="loading">{t('allProjects.scanning')}</StatusMessage>

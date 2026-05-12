@@ -5,6 +5,7 @@ import type { Doc, GitPulseSummary } from '../../preload/types'
 import {
   formatProjectWikiHandoffBrief,
   formatProjectWikiOnboardingBrief,
+  formatProjectWikiWorkspaceSnapshot,
   formatProjectWikiTaskPrompt,
   type ProjectWikiBrief,
 } from '../lib/projectWikiBrief'
@@ -1637,15 +1638,21 @@ function ProjectBriefCard({
   )
 }
 
-function WikiSectionNav() {
+function WikiSectionNav({
+  showReferenceAudit,
+  showRisks,
+}: {
+  showReferenceAudit: boolean
+  showRisks: boolean
+}) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const sections = [
     { id: 'project-wiki-brief', label: t('projectWiki.navBrief') },
-    { id: 'project-wiki-link-graph', label: t('projectWiki.navLinks') },
+    ...(showReferenceAudit ? [{ id: 'project-wiki-link-graph', label: t('projectWiki.navLinks') }] : []),
     { id: 'project-wiki-ai-tasks', label: t('projectWiki.navTasks') },
     { id: 'project-wiki-start', label: t('projectWiki.navStart') },
-    { id: 'project-wiki-risks', label: t('projectWiki.navRisks') },
+    ...(showRisks ? [{ id: 'project-wiki-risks', label: t('projectWiki.navRisks') }] : []),
   ]
 
   const jumpToSection = (id: string) => {
@@ -1709,6 +1716,7 @@ export function ProjectWikiPanel({
   onOpenDoc,
 }: ProjectWikiPanelProps) {
   const { t } = useTranslation()
+  const [snapshotCopied, setSnapshotCopied] = useState(false)
 
   if (summary.totalDocs === 0) {
     return (
@@ -1725,6 +1733,18 @@ export function ProjectWikiPanel({
   const primarySource = summary.sourceCounts[0]
   const primaryStatus = summary.statusCounts[0]
   const gitContext = buildProjectWikiGitContext(Array.from(docsByPath.values()), gitPulse)
+  const showReferenceAudit = summary.relationships.checkedDocs > 0
+  const showRisks = summary.risks.docsWithRisk.length > 0
+  const handleCopyWorkspaceSnapshot = async () => {
+    try {
+      await navigator.clipboard.writeText(formatProjectWikiWorkspaceSnapshot(projectName, summary, gitContext))
+      setSnapshotCopied(true)
+      toast.success(t('projectWiki.copyWorkspaceSnapshotSuccess'))
+    } catch {
+      setSnapshotCopied(false)
+      toast.error(t('projectWiki.copyWorkspaceSnapshotError'))
+    }
+  }
 
   return (
     <div
@@ -1757,7 +1777,17 @@ export function ProjectWikiPanel({
             {primarySource && <Badge variant="marker" size="sm">{primarySource.source}</Badge>}
             {primaryStatus && <Badge variant="success" size="sm">{primaryStatus.status}</Badge>}
           </div>
-          <WikiSectionNav />
+          <div style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'flex-start', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCopyWorkspaceSnapshot}
+              aria-label={t('projectWiki.copyWorkspaceSnapshotAria')}
+            >
+              {snapshotCopied ? t('projectWiki.copyWorkspaceSnapshotDone') : t('projectWiki.copyWorkspaceSnapshot')}
+            </Button>
+            <WikiSectionNav showReferenceAudit={showReferenceAudit} showRisks={showRisks} />
+          </div>
         </div>
         <h1
           style={{
@@ -1826,16 +1856,17 @@ export function ProjectWikiPanel({
         <Metric label={t('projectWiki.metrics.docs')} value={summary.markdownDocs} />
         <Metric label={t('projectWiki.metrics.recent')} value={summary.recentDocs} />
         <Metric label={t('projectWiki.metrics.unread')} value={summary.unreadDocs} />
-        <Metric label={t('projectWiki.metrics.risks')} value={summary.risks.missingRefs + summary.risks.staleRefs} />
       </div>
 
       <TrustDiagnostics summary={summary} />
 
-      <RelationshipGraph
-        summary={summary}
-        docsByPath={docsByPath}
-        onOpenDoc={onOpenDoc}
-      />
+      {showReferenceAudit && (
+        <RelationshipGraph
+          summary={summary}
+          docsByPath={docsByPath}
+          onOpenDoc={onOpenDoc}
+        />
+      )}
 
       <Section id="project-wiki-ai-tasks" title={t('projectWiki.aiTasksTitle')}>
         <AiTaskSuggestions
@@ -1886,29 +1917,31 @@ export function ProjectWikiPanel({
           />
         </Section>
 
-        <Section id="project-wiki-risks" title={t('projectWiki.riskTitle')}>
-          <RiskList
-            items={summary.risks.docsWithRisk}
-            docsByPath={docsByPath}
-            empty={t('projectWiki.riskEmpty')}
-            missingLabel={t('projectWiki.riskMissing')}
-            staleLabel={t('projectWiki.riskStale')}
-            onOpenDoc={onOpenDoc}
-          />
-          {(summary.risks.missingRefs > 0 || summary.risks.staleRefs > 0) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                const first = summary.risks.docsWithRisk[0]
-                const doc = first ? docsByPath.get(first.path) : undefined
-                if (doc) onOpenDoc(doc)
-              }}
-            >
-              {t('projectWiki.openTopRisk')}
-            </Button>
-          )}
-        </Section>
+        {showRisks && (
+          <Section id="project-wiki-risks" title={t('projectWiki.riskTitle')}>
+            <RiskList
+              items={summary.risks.docsWithRisk}
+              docsByPath={docsByPath}
+              empty={t('projectWiki.riskEmpty')}
+              missingLabel={t('projectWiki.riskMissing')}
+              staleLabel={t('projectWiki.riskStale')}
+              onOpenDoc={onOpenDoc}
+            />
+            {(summary.risks.missingRefs > 0 || summary.risks.staleRefs > 0) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  const first = summary.risks.docsWithRisk[0]
+                  const doc = first ? docsByPath.get(first.path) : undefined
+                  if (doc) onOpenDoc(doc)
+                }}
+              >
+                {t('projectWiki.openTopRisk')}
+              </Button>
+            )}
+          </Section>
+        )}
 
         <Section title={t('projectWiki.docDebtTitle')}>
           <DocDebtRadar

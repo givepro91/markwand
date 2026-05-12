@@ -4,7 +4,7 @@ import { getExt } from '../../lib/viewable'
 import { useAppStore } from '../state/store'
 import { buildLocalImageSrc } from '../lib/imageSrc'
 
-type FitMode = 'fit' | '100%' | 'fill'
+type FitMode = 'fit' | '100%'
 
 interface ImageViewerProps {
   // 절대 파일 경로. app:// 프로토콜에 그대로 붙여 스트리밍한다.
@@ -25,18 +25,36 @@ function formatBytes(bytes: number): string {
 const FIT_MODES: { id: FitMode; labelKey: string }[] = [
   { id: 'fit', labelKey: 'imageViewer.fitMode' },
   { id: '100%', labelKey: 'imageViewer.actualSize' },
-  { id: 'fill', labelKey: 'imageViewer.fillMode' },
 ]
+
+const MIN_ZOOM = 0.25
+const MAX_ZOOM = 4
+const ZOOM_STEP = 0.25
+
+function clampZoom(value: number): number {
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value))
+}
 
 function ImageViewerInner({ path, name, size, workspaceId }: ImageViewerProps) {
   const { t } = useTranslation()
   const [mode, setMode] = useState<FitMode>('fit')
+  const [zoom, setZoom] = useState(1)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
   const [dims, setDims] = useState<{ w: number; h: number } | null>(null)
   const [errored, setErrored] = useState(false)
+  const [isPanning, setIsPanning] = useState(false)
   // FS9-B — SSH workspace 인 경우 IPC 로 바이너리 수신 후 blob URL 생성.
   // 로컬 workspace 는 기존대로 app://local 직통.
   const [sshBlobUrl, setSshBlobUrl] = useState<string | null>(null)
   const isSsh = workspaceId?.startsWith('ssh:') ?? false
+  const viewportRef = useRef<HTMLDivElement | null>(null)
+  const panRef = useRef<{
+    pointerId: number
+    startX: number
+    startY: number
+    startPanX: number
+    startPanY: number
+  } | null>(null)
   // 각 radio 버튼 ref — arrow-key 이동 후 focus 전이에 사용.
   const radioRefs = useRef<Array<HTMLButtonElement | null>>([])
 
@@ -55,9 +73,14 @@ function ImageViewerInner({ path, name, size, workspaceId }: ImageViewerProps) {
   // errored=true 상태에서 <img>가 언마운트되므로 onLoad가 다시 호출되지 않아
   // 새 경로로 바꿔도 영구 에러 화면에 고착되는 문제를 막는다.
   useEffect(() => {
+    setMode('fit')
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
     setErrored(false)
     setDims(null)
     setSshBlobUrl(null)
+    setIsPanning(false)
+    panRef.current = null
   }, [path])
 
   // FS9-B — SSH 분기. path 또는 workspaceId 변경 시 재요청. cleanup 에서 URL.revokeObjectURL.
@@ -100,6 +123,165 @@ function ImageViewerInner({ path, name, size, workspaceId }: ImageViewerProps) {
     setErrored(true)
   }, [])
 
+  const clampPan = useCallback(
+    (candidate: { x: number; y: number }, nextZoom: number) => {
+      const el = viewportRef.current
+      if (!dims || !el) return { x: 0, y: 0 }
+      const rect = el.getBoundingClientRect()
+      const viewportWidth = el.clientWidth || rect.width
+      const viewportHeight = el.clientHeight || rect.height
+      if (!viewportWidth || !viewportHeight) return candidate
+      const maxX = Math.max(0, (dims.w * nextZoom - viewportWidth) / 2)
+      const maxY = Math.max(0, (dims.h * nextZoom - viewportHeight) / 2)
+      return {
+        x: Math.max(-maxX, Math.min(maxX, candidate.x)),
+        y: Math.max(-maxY, Math.min(maxY, candidate.y)),
+      }
+    },
+    [dims]
+  )
+
+  const canPan = useCallback(
+    (nextZoom = zoom) => {
+      const el = viewportRef.current
+      if (!dims || !el) return false
+      const rect = el.getBoundingClientRect()
+      const viewportWidth = el.clientWidth || rect.width
+      const viewportHeight = el.clientHeight || rect.height
+      if (!viewportWidth || !viewportHeight) return false
+      return dims.w * nextZoom > viewportWidth || dims.h * nextZoom > viewportHeight
+    },
+    [dims, zoom]
+  )
+
+  const selectMode = useCallback((nextMode: FitMode) => {
+    setMode(nextMode)
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
+  }, [])
+
+  const handleZoom = useCallback((direction: 1 | -1) => {
+    setMode('100%')
+    setZoom((current) => {
+      const next = clampZoom(Number((current + direction * ZOOM_STEP).toFixed(2)))
+      setPan((currentPan) => clampPan(currentPan, next))
+      return next
+    })
+  }, [clampPan])
+
+  const handleResetZoom = useCallback(() => {
+    setMode('100%')
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
+  }, [])
+
+  const endPan = useCallback((target?: HTMLDivElement | null) => {
+    const state = panRef.current
+    if (target && state) {
+      try {
+        target.releasePointerCapture(state.pointerId)
+      } catch {
+        // Pointer capture may already be gone after pointercancel.
+      }
+    }
+    panRef.current = null
+    setIsPanning(false)
+  }, [])
+
+  const handlePanStart = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (mode !== '100%' || e.button > 0 || !canPan()) return
+      e.preventDefault()
+      panRef.current = {
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+        startPanX: pan.x,
+        startPanY: pan.y,
+      }
+      setIsPanning(true)
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId)
+      } catch {
+        // jsdom and some browser edge paths may not support capture here.
+      }
+    },
+    [canPan, mode, pan.x, pan.y]
+  )
+
+  const handlePanMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    const state = panRef.current
+    if (!state || e.pointerId !== state.pointerId) return
+    e.preventDefault()
+    const next = {
+      x: state.startPanX + (e.clientX - state.startX),
+      y: state.startPanY + (e.clientY - state.startY),
+    }
+    setPan(clampPan(next, zoom))
+  }, [clampPan, zoom])
+
+  const handlePanEnd = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!panRef.current || e.pointerId !== panRef.current.pointerId) return
+    endPan(e.currentTarget)
+  }, [endPan])
+
+  const handleWheel = useCallback(
+    (e: React.WheelEvent<HTMLDivElement>) => {
+      if (!dims || errored || (isSsh && !sshBlobUrl)) return
+      e.preventDefault()
+      const direction: 1 | -1 = e.deltaY < 0 ? 1 : -1
+      const currentZoom = mode === '100%' ? zoom : 1
+      const nextZoom = clampZoom(Number((currentZoom + direction * ZOOM_STEP).toFixed(2)))
+      if (nextZoom === currentZoom) return
+
+      const el = viewportRef.current
+      const rect = el?.getBoundingClientRect()
+      const viewportCenterX = (rect?.left ?? 0) + (el?.clientWidth || rect?.width || 0) / 2
+      const viewportCenterY = (rect?.top ?? 0) + (el?.clientHeight || rect?.height || 0) / 2
+      const ratio = nextZoom / currentZoom
+      const cursorX = e.clientX - viewportCenterX
+      const cursorY = e.clientY - viewportCenterY
+      const nextPan = {
+        x: pan.x + (cursorX - pan.x) * (1 - ratio),
+        y: pan.y + (cursorY - pan.y) * (1 - ratio),
+      }
+
+      setMode('100%')
+      setZoom(nextZoom)
+      setPan(clampPan(nextPan, nextZoom))
+    },
+    [clampPan, dims, errored, isSsh, mode, pan.x, pan.y, sshBlobUrl, zoom]
+  )
+
+  const toggleActualSize = useCallback(() => {
+    if (!dims || errored || (isSsh && !sshBlobUrl)) return
+    if (mode === '100%') {
+      selectMode('fit')
+      return
+    }
+    handleResetZoom()
+  }, [dims, errored, handleResetZoom, isSsh, mode, selectMode, sshBlobUrl])
+
+  const handleCanvasKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!dims || errored || (isSsh && !sshBlobUrl)) return
+      if (e.key === '+' || e.key === '=') {
+        e.preventDefault()
+        handleZoom(1)
+      } else if (e.key === '-' || e.key === '_') {
+        e.preventDefault()
+        handleZoom(-1)
+      } else if (e.key === '0') {
+        e.preventDefault()
+        handleResetZoom()
+      } else if (e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        selectMode('fit')
+      }
+    },
+    [dims, errored, handleResetZoom, handleZoom, isSsh, selectMode, sshBlobUrl]
+  )
+
   // WAI-ARIA radiogroup 계약: ←/→로 이전/다음, Home/End로 처음/끝. 이동 시 focus+select 동시 전이.
   // radio 그룹 안에서는 양끝에서 감싸는(순환) 동작이 스펙. space/enter는 <button>의 기본 동작으로 setMode가 호출됨.
   const handleRadioKeyDown = useCallback(
@@ -116,23 +298,45 @@ function ImageViewerInner({ path, name, size, workspaceId }: ImageViewerProps) {
       }
       if (nextIdx === null) return
       e.preventDefault()
-      setMode(FIT_MODES[nextIdx].id)
+      selectMode(FIT_MODES[nextIdx].id)
       radioRefs.current[nextIdx]?.focus()
     },
-    []
+    [selectMode]
   )
 
-  // Fit: contain, 최대 영역 내. 100%: 실픽셀. Fill: cover (과하게 크면 잘릴 수 있음).
+  // Fit: contain, 최대 영역 내. 100%: 실픽셀 + transform zoom/pan.
+  const isManualZoom = mode === '100%'
+  const canPanImage = isManualZoom && canPan()
   const imgStyle: React.CSSProperties = {
     display: 'block',
-    maxWidth: mode === '100%' ? 'none' : '100%',
-    maxHeight: mode === '100%' ? 'none' : 'calc(100vh - 220px)',
-    width: mode === 'fill' ? '100%' : 'auto',
-    height: mode === 'fill' ? '100%' : 'auto',
-    objectFit: mode === 'fill' ? 'cover' : 'contain',
+    flexShrink: 0,
+    maxWidth: isManualZoom ? 'none' : '100%',
+    maxHeight: isManualZoom ? 'none' : '100%',
+    width: 'auto',
+    height: 'auto',
+    objectFit: 'contain',
+    transform: isManualZoom ? `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` : undefined,
+    transformOrigin: 'center center',
+    transition: isPanning ? 'none' : 'transform var(--duration-fast) var(--ease-standard)',
+  }
+  if (isManualZoom && dims) {
+    imgStyle.width = `${dims.w}px`
+    imgStyle.height = `${dims.h}px`
   }
 
   const ext = getExt(name) || ''
+  const shortcutKeyStyle: React.CSSProperties = {
+    minWidth: '20px',
+    padding: '1px 5px',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--r-sm)',
+    background: 'var(--bg-elev)',
+    color: 'var(--text)',
+    fontFamily: 'var(--font-mono, monospace)',
+    fontSize: 'var(--fs-xs)',
+    fontWeight: 'var(--fw-semibold)',
+    textAlign: 'center',
+  }
 
   return (
     <div
@@ -141,7 +345,10 @@ function ImageViewerInner({ path, name, size, workspaceId }: ImageViewerProps) {
         display: 'flex',
         flexDirection: 'column',
         gap: 'var(--sp-3)',
+        flex: 1,
         minHeight: 0,
+        minWidth: 0,
+        overflow: 'hidden',
       }}
     >
       {/* 상단 툴바: Fit/100%/Fill 토글 + 파일명 */}
@@ -152,7 +359,9 @@ function ImageViewerInner({ path, name, size, workspaceId }: ImageViewerProps) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          flexWrap: 'wrap',
           gap: 'var(--sp-3)',
+          flexShrink: 0,
           padding: 'var(--sp-2) var(--sp-3)',
           background: 'var(--bg-elev)',
           border: '1px solid var(--border)',
@@ -160,42 +369,151 @@ function ImageViewerInner({ path, name, size, workspaceId }: ImageViewerProps) {
           fontSize: 'var(--fs-sm)',
         }}
       >
-        <div
-          role="radiogroup"
-          aria-label={t('imageViewer.fitAria')}
-          style={{ display: 'flex', gap: 'var(--sp-1)' }}
-        >
-          {FIT_MODES.map((m, idx) => {
-            const active = m.id === mode
-            return (
-              <button
-                key={m.id}
-                ref={(el) => {
-                  radioRefs.current[idx] = el
-                }}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                // roving tabindex — 선택된 라디오만 Tab 타겟. 그룹 내부는 화살표로 이동.
-                tabIndex={active ? 0 : -1}
-                onClick={() => setMode(m.id)}
-                onKeyDown={(e) => handleRadioKeyDown(e, idx)}
-                style={{
-                  padding: 'var(--sp-1) var(--sp-3)',
-                  borderRadius: 'var(--r-sm)',
-                  border: '1px solid var(--border)',
-                  background: active ? 'var(--accent)' : 'var(--bg)',
-                  color: active ? 'var(--bg)' : 'var(--text)',
-                  cursor: 'pointer',
-                  fontWeight: active ? 'var(--fw-medium)' : 'var(--fw-normal)',
-                  fontSize: 'var(--fs-sm)',
-                  fontFamily: 'inherit',
-                }}
-              >
-                {t(m.labelKey)}
-              </button>
-            )
-          })}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
+          <div
+            role="radiogroup"
+            aria-label={t('imageViewer.fitAria')}
+            style={{ display: 'flex', gap: 'var(--sp-1)' }}
+          >
+            {FIT_MODES.map((m, idx) => {
+              const active = m.id === mode
+              return (
+                <button
+                  key={m.id}
+                  ref={(el) => {
+                    radioRefs.current[idx] = el
+                  }}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  // roving tabindex — 선택된 라디오만 Tab 타겟. 그룹 내부는 화살표로 이동.
+                  tabIndex={active ? 0 : -1}
+                  onClick={() => selectMode(m.id)}
+                  onKeyDown={(e) => handleRadioKeyDown(e, idx)}
+                  style={{
+                    padding: 'var(--sp-1) var(--sp-3)',
+                    borderRadius: 'var(--r-sm)',
+                    border: '1px solid var(--border)',
+                    background: active ? 'var(--accent)' : 'var(--bg)',
+                    color: active ? 'var(--bg)' : 'var(--text)',
+                    cursor: 'pointer',
+                    fontWeight: active ? 'var(--fw-medium)' : 'var(--fw-normal)',
+                    fontSize: 'var(--fs-sm)',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {t(m.labelKey)}
+                </button>
+              )
+            })}
+          </div>
+          <div
+            role="group"
+            aria-label={t('imageViewer.zoomAria')}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '28px minmax(56px, auto) 28px',
+              alignItems: 'center',
+              gap: 'var(--sp-1)',
+              padding: '2px',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--r-pill)',
+              background: 'var(--bg)',
+            }}
+          >
+            <button
+              type="button"
+              aria-label={t('imageViewer.zoomOut')}
+              title={t('imageViewer.zoomOut')}
+              disabled={zoom <= MIN_ZOOM}
+              onClick={() => handleZoom(-1)}
+              style={{
+                width: '28px',
+                height: '28px',
+                border: 0,
+                borderRadius: 'var(--r-pill)',
+                background: 'transparent',
+                color: 'var(--text)',
+                cursor: zoom <= MIN_ZOOM ? 'not-allowed' : 'pointer',
+                fontSize: 'var(--fs-md)',
+                fontFamily: 'inherit',
+              }}
+            >
+              −
+            </button>
+            <button
+              type="button"
+              aria-label={t('imageViewer.resetZoom')}
+              title={t('imageViewer.resetZoom')}
+              onClick={handleResetZoom}
+              style={{
+                minWidth: '56px',
+                height: '28px',
+                border: 0,
+                borderRadius: 'var(--r-pill)',
+                background: isManualZoom ? 'var(--bg-elev)' : 'transparent',
+                color: 'var(--text)',
+                cursor: 'pointer',
+                fontSize: 'var(--fs-xs)',
+                fontWeight: 'var(--fw-semibold)',
+                fontFamily: 'var(--font-mono, monospace)',
+              }}
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+            <button
+              type="button"
+              aria-label={t('imageViewer.zoomIn')}
+              title={t('imageViewer.zoomIn')}
+              disabled={zoom >= MAX_ZOOM}
+              onClick={() => handleZoom(1)}
+              style={{
+                width: '28px',
+                height: '28px',
+                border: 0,
+                borderRadius: 'var(--r-pill)',
+                background: 'transparent',
+                color: 'var(--text)',
+                cursor: zoom >= MAX_ZOOM ? 'not-allowed' : 'pointer',
+                fontSize: 'var(--fs-md)',
+                fontFamily: 'inherit',
+              }}
+            >
+              +
+            </button>
+          </div>
+          <div
+            role="note"
+            aria-label={t('imageViewer.shortcutsAria')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 'var(--sp-2)',
+              minWidth: 0,
+              color: 'var(--text-muted)',
+              fontSize: 'var(--fs-xs)',
+              fontFamily: 'var(--font-mono, monospace)',
+            }}
+          >
+            <span style={{ fontWeight: 'var(--fw-semibold)' }}>{t('imageViewer.shortcutsLabel')}</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <kbd style={shortcutKeyStyle}>+ / −</kbd>
+              <span>{t('imageViewer.shortcutZoom')}</span>
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <kbd style={shortcutKeyStyle}>0</kbd>
+              <span>{t('imageViewer.shortcutReset')}</span>
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <kbd style={shortcutKeyStyle}>F</kbd>
+              <span>{t('imageViewer.shortcutFit')}</span>
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <kbd style={shortcutKeyStyle}>{t('imageViewer.shortcutDoubleClickKey')}</kbd>
+              <span>{t('imageViewer.shortcutToggle')}</span>
+            </span>
+          </div>
         </div>
         <span
           title={name}
@@ -213,16 +531,28 @@ function ImageViewerInner({ path, name, size, workspaceId }: ImageViewerProps) {
 
       {/* 이미지 영역 — 체스보드 배경(투명 영역 인지) + 중앙 정렬 */}
       <div
+        ref={viewportRef}
+        role="region"
+        aria-label={t('imageViewer.canvasAria')}
+        aria-keyshortcuts="+ - 0 F"
+        tabIndex={0}
+        onPointerDown={handlePanStart}
+        onPointerMove={handlePanMove}
+        onPointerUp={handlePanEnd}
+        onPointerCancel={handlePanEnd}
+        onDoubleClick={toggleActualSize}
+        onKeyDown={handleCanvasKeyDown}
+        onWheel={handleWheel}
         style={{
           flex: 1,
           minHeight: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 'var(--sp-3)',
           borderRadius: 'var(--r-md)',
           border: '1px solid var(--border)',
-          overflow: mode === '100%' ? 'auto' : 'hidden',
+          overflow: 'hidden',
+          overscrollBehavior: 'contain',
+          cursor: isPanning ? 'grabbing' : canPanImage ? 'grab' : 'default',
+          userSelect: isPanning ? 'none' : undefined,
+          touchAction: 'none',
           // 체스보드(투명 알파 채널 인지) — 전용 대비 토큰 사용.
           // 일반 레이아웃 토큰(--bg/--bg-elev)은 차이가 작아 단색으로 보였다.
           backgroundImage:
@@ -235,49 +565,63 @@ function ImageViewerInner({ path, name, size, workspaceId }: ImageViewerProps) {
           backgroundColor: 'var(--image-checker-a)',
         }}
       >
-        {errored ? (
-          <div
-            role="status"
-            style={{
-              padding: 'var(--sp-6)',
-              color: 'var(--text-muted)',
-              fontSize: 'var(--fs-sm)',
-              textAlign: 'center',
-            }}
-          >
-            <div style={{ fontSize: '32px', marginBottom: 'var(--sp-2)' }} aria-hidden="true">
-              🖼️
+        <div
+          style={{
+            minWidth: '100%',
+            minHeight: '100%',
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 'var(--sp-3)',
+            boxSizing: 'border-box',
+          }}
+        >
+          {errored ? (
+            <div
+              role="status"
+              style={{
+                padding: 'var(--sp-6)',
+                color: 'var(--text-muted)',
+                fontSize: 'var(--fs-sm)',
+                textAlign: 'center',
+              }}
+            >
+              <div style={{ fontSize: '32px', marginBottom: 'var(--sp-2)' }} aria-hidden="true">
+                🖼️
+              </div>
+              {t('imageViewer.loadFailed')}
+              <div style={{ fontSize: 'var(--fs-xs)', marginTop: 'var(--sp-1)' }}>
+                {t('imageViewer.loadFailedDetail')}
+              </div>
             </div>
-            {t('imageViewer.loadFailed')}
-            <div style={{ fontSize: 'var(--fs-xs)', marginTop: 'var(--sp-1)' }}>
-              {t('imageViewer.loadFailedDetail')}
+          ) : isSsh && !sshBlobUrl ? (
+            <div
+              role="status"
+              aria-live="polite"
+              style={{
+                padding: 'var(--sp-6)',
+                color: 'var(--text-muted)',
+                fontSize: 'var(--fs-sm)',
+                textAlign: 'center',
+              }}
+            >
+              <span className="ui-spinner" aria-hidden="true" />
+              <div style={{ marginTop: 'var(--sp-2)' }}>{t('imageViewer.remoteLoading')}</div>
             </div>
-          </div>
-        ) : isSsh && !sshBlobUrl ? (
-          <div
-            role="status"
-            aria-live="polite"
-            style={{
-              padding: 'var(--sp-6)',
-              color: 'var(--text-muted)',
-              fontSize: 'var(--fs-sm)',
-              textAlign: 'center',
-            }}
-          >
-            <span className="ui-spinner" aria-hidden="true" />
-            <div style={{ marginTop: 'var(--sp-2)' }}>{t('imageViewer.remoteLoading')}</div>
-          </div>
-        ) : (
-          <img
-            src={src}
-            alt={name}
-            onLoad={handleLoad}
-            onError={handleError}
-            loading="lazy"
-            draggable={false}
-            style={imgStyle}
-          />
-        )}
+          ) : (
+            <img
+              src={src}
+              alt={name}
+              onLoad={handleLoad}
+              onError={handleError}
+              loading="lazy"
+              draggable={false}
+              style={imgStyle}
+            />
+          )}
+        </div>
       </div>
 
       {/* 푸터 메타 */}
@@ -290,6 +634,7 @@ function ImageViewerInner({ path, name, size, workspaceId }: ImageViewerProps) {
           fontSize: 'var(--fs-xs)',
           color: 'var(--text-muted)',
           fontFamily: 'var(--font-mono, monospace)',
+          flexShrink: 0,
         }}
       >
         {dims ? <span>{dims.w} × {dims.h}</span> : <span>—</span>}

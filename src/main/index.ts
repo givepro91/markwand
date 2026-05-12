@@ -16,6 +16,7 @@ import { registerDriftHandlers } from './ipc/drift'
 import { registerAnnotationHandlers } from './ipc/annotation'
 import { registerSearchHandlers } from './ipc/search'
 import { registerGitHandlers } from './ipc/git'
+import { registerUpdateHandlers } from './ipc/updates'
 import { registerSshIpcHandlers } from './ipc/ssh'
 import { setActiveWebContents as setSshActiveWebContents } from './transport/ssh/hostKeyPromptBridge'
 import { getStore } from './services/store'
@@ -29,6 +30,10 @@ import { parseShellShowItemInput } from './security/validators'
 protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { secure: true, standard: true, supportFetchAPI: true } },
 ])
+
+if (process.env.MARKWAND_USER_DATA_DIR) {
+  app.setPath('userData', process.env.MARKWAND_USER_DATA_DIR)
+}
 
 // chokidar/IPC 비동기 에러가 process를 죽이지 않도록 글로벌 핸들러.
 process.on('unhandledRejection', (reason) => {
@@ -104,6 +109,7 @@ async function initializeApp(): Promise<void> {
   registerAnnotationHandlers()
   registerSearchHandlers()
   registerGitHandlers()
+  registerUpdateHandlers()
   registerShellHandlers()
   registerSshIpcHandlers()
 

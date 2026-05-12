@@ -102,8 +102,40 @@ export interface Doc {
 
 export interface ReadDocResult {
   content: string
+  rawContent?: string
   mtime: number
   frontmatter?: Record<string, unknown>
+}
+
+export interface FsCreateMarkdownInput {
+  projectRoot: string
+  dirPath: string
+  name: string
+}
+
+export interface FsCreateFolderInput {
+  projectRoot: string
+  dirPath: string
+  name: string
+}
+
+export interface FsRenameInput {
+  projectRoot: string
+  path: string
+  newName: string
+}
+
+export interface FsTrashInput {
+  projectRoot: string
+  path: string
+}
+
+export interface FsEntryResult {
+  path: string
+  name: string
+  mtime?: number
+  size?: number
+  frontmatter?: DocFrontmatter
 }
 
 export interface SearchResult {
@@ -164,6 +196,20 @@ export interface ProjectOpenerInfo {
 
 export interface ProjectOpenResult {
   ok: boolean
+  reason?: string
+}
+
+export type UpdateCheckStatus = 'update-available' | 'up-to-date' | 'error'
+
+export interface UpdateCheckResult {
+  status: UpdateCheckStatus
+  currentVersion: string
+  checkedAt: number
+  latestVersion?: string
+  releaseName?: string
+  releaseUrl?: string
+  releaseNotes?: string
+  downloadUrl?: string
   reason?: string
 }
 
@@ -308,6 +354,10 @@ export interface WindowApi {
   }
   fs: {
     readDoc: (path: string) => Promise<ReadDocResult>
+    createMarkdown?: (input: FsCreateMarkdownInput) => Promise<FsEntryResult>
+    createFolder?: (input: FsCreateFolderInput) => Promise<FsEntryResult>
+    rename?: (input: FsRenameInput) => Promise<FsEntryResult>
+    trash?: (input: FsTrashInput) => Promise<FsEntryResult>
     onChange: (cb: (data: FsChangeEvent) => void) => () => void
     onProjectChange: (cb: () => void) => () => void
   }
@@ -321,6 +371,9 @@ export interface WindowApi {
   projectOpeners: {
     list: () => Promise<ProjectOpenerInfo[]>
     open: (projectRoot: string, openerId: ProjectOpenerId) => Promise<ProjectOpenResult>
+  }
+  updates: {
+    check: () => Promise<UpdateCheckResult>
   }
   composer: {
     estimateTokens: (paths: string[]) => Promise<ComposerEstimate>

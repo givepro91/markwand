@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo, type ReactNode, type Ref } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { FileTree } from '../components/FileTree'
 import { MarkdownViewer } from '../components/MarkdownViewer'
@@ -11,7 +12,7 @@ import { DriftPanel, type DriftJumpTarget } from '../components/DriftPanel'
 import { ProjectWikiPanel } from '../components/ProjectWikiPanel'
 import { I18nErrorBoundary } from '../components/ErrorBoundary'
 import { RecentDocsPanel } from '../components/RecentDocsPanel'
-import { Button, EmptyState, IconButton } from '../components/ui'
+import { Button, EmptyState, IconButton, toast } from '../components/ui'
 import { useDocs } from '../hooks/useDocs'
 import { useGitPulse } from '../hooks/useGitPulse'
 import { useProjectWikiBrief } from '../hooks/useProjectWikiBrief'
@@ -23,7 +24,7 @@ import { buildProjectWikiSummary } from '../lib/projectWiki'
 import { classifyAsset } from '../../lib/viewable'
 import { applyMetaFilter } from '../utils/docFilters'
 import { humanizeError } from '../lib/humanizeError'
-import type { Doc } from '../../../src/preload/types'
+import type { Doc, FsEntryResult } from '../../../src/preload/types'
 import type { Heading } from '../components/TableOfContents'
 
 interface ProjectViewProps {
@@ -37,6 +38,29 @@ interface ProjectViewProps {
 
 type DocumentToolsMode = 'all' | 'toc'
 
+type FileActionKind = 'new-markdown' | 'new-folder' | 'rename' | 'trash'
+
+type FileActionDialogState =
+  | {
+      kind: 'new-markdown' | 'new-folder'
+      value: string
+      dirPath: string
+    }
+  | {
+      kind: 'rename'
+      value: string
+      doc: Doc
+    }
+  | {
+      kind: 'trash'
+      value: string
+      doc: Doc
+    }
+
+// File creation/editing needs a real in-app editor flow before it earns UI space.
+// Keep the implementation behind this local gate until that larger workflow is designed.
+const SHOW_FILE_MUTATION_ACTIONS = false
+
 const TocIcon = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
     <path fillRule="evenodd" d="M2 2.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11A.5.5 0 0 1 2 2.5zm0 4a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11A.5.5 0 0 1 2 6.5zm0 4a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6A.5.5 0 0 1 2 10.5z"/>
@@ -49,17 +73,92 @@ const SearchIcon = () => (
   </svg>
 )
 
+const RefreshIcon = ({ spinning }: { spinning?: boolean }) => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 16 16"
+    fill="currentColor"
+    aria-hidden="true"
+    style={{
+      animation: spinning ? 'sidebar-refresh-spin 700ms linear infinite' : undefined,
+    }}
+  >
+    <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z" />
+    <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z" />
+  </svg>
+)
+
 const WikiIcon = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
     <path d="M2.5 2A1.5 1.5 0 0 0 1 3.5v9A1.5 1.5 0 0 0 2.5 14H7a1 1 0 0 1 1 1 .5.5 0 0 0 1 0 1 1 0 0 1 1-1h3.5A1.5 1.5 0 0 0 15 12.5v-9A1.5 1.5 0 0 0 13.5 2H10a2 2 0 0 0-1.5.68A2 2 0 0 0 7 2H2.5Zm0 1H7a1 1 0 0 1 1 1v9.13A2 2 0 0 0 7 13H2.5a.5.5 0 0 1-.5-.5v-9A.5.5 0 0 1 2.5 3ZM9 13.13V4a1 1 0 0 1 1-1h3.5a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5H10a2 2 0 0 0-1 .13Z" />
   </svg>
 )
 
-const ToolsIcon = () => (
+const FolderIcon = () => (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-    <path d="M2 3.5A1.5 1.5 0 0 1 3.5 2h9A1.5 1.5 0 0 1 14 3.5v9a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 12.5v-9Zm1.5-.5a.5.5 0 0 0-.5.5V5h10V3.5a.5.5 0 0 0-.5-.5h-9ZM3 6v6.5a.5.5 0 0 0 .5.5H8V6H3Zm6 0v7h3.5a.5.5 0 0 0 .5-.5V6H9Z" />
+    <path d="M1.75 3A1.75 1.75 0 0 1 3.5 1.25h2.18c.47 0 .92.19 1.25.52L8.16 3h4.34A1.75 1.75 0 0 1 14.25 4.75v6.75a1.75 1.75 0 0 1-1.75 1.75h-9A1.75 1.75 0 0 1 1.75 11.5v-8.5Zm1.75-.75a.75.75 0 0 0-.75.75v8.5c0 .41.34.75.75.75h9c.41 0 .75-.34.75-.75V4.75a.75.75 0 0 0-.75-.75H7.75L6.22 2.47a.75.75 0 0 0-.54-.22H3.5Z" />
   </svg>
 )
+
+const CopyIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+    <path d="M4.5 1.75A1.75 1.75 0 0 1 6.25 0h5.5A1.75 1.75 0 0 1 13.5 1.75v8A1.75 1.75 0 0 1 11.75 11.5h-5.5A1.75 1.75 0 0 1 4.5 9.75v-8Zm1.75-.75a.75.75 0 0 0-.75.75v8c0 .41.34.75.75.75h5.5c.41 0 .75-.34.75-.75v-8a.75.75 0 0 0-.75-.75h-5.5ZM2.5 4.25c0-.41.34-.75.75-.75H4v-1h-.75A1.75 1.75 0 0 0 1.5 4.25v8A1.75 1.75 0 0 0 3.25 14h5.5a1.75 1.75 0 0 0 1.75-1.75v-.75h-1v.75c0 .41-.34.75-.75.75h-5.5a.75.75 0 0 1-.75-.75v-8Z" />
+  </svg>
+)
+
+const NewDocIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 1.75h5.5L13 5.25v8.25a.75.75 0 0 1-.75.75H4a.75.75 0 0 1-.75-.75v-11A.75.75 0 0 1 4 1.75Z" />
+    <path d="M9.5 1.75V5.25H13" />
+    <path d="M8 7.25v4" />
+    <path d="M6 9.25h4" />
+  </svg>
+)
+
+const NewFolderIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M1.75 4.25A1.25 1.25 0 0 1 3 3h2.4l1.4 1.5H13a1.25 1.25 0 0 1 1.25 1.25V12A1.25 1.25 0 0 1 13 13.25H3A1.25 1.25 0 0 1 1.75 12V4.25Z" />
+    <path d="M8 7.25v3.5" />
+    <path d="M6.25 9h3.5" />
+  </svg>
+)
+
+const RenameIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M2.75 11.75 2 14l2.25-.75 7.2-7.2-1.5-1.5-7.2 7.2Z" />
+    <path d="m10 4.5 1.2-1.2a1.06 1.06 0 0 1 1.5 1.5l-1.2 1.2" />
+    <path d="M7.25 14h6" />
+  </svg>
+)
+
+const TrashIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M2.5 4h11" />
+    <path d="M6.25 4V2.75h3.5V4" />
+    <path d="M4 4l.5 9.25a1 1 0 0 0 1 .95h5a1 1 0 0 0 1-.95L12 4" />
+    <path d="M6.75 7v4" />
+    <path d="M9.25 7v4" />
+  </svg>
+)
+
+function dirnameOfPath(absPath: string, fallback: string): string {
+  const idx = absPath.lastIndexOf('/')
+  if (idx <= 0) return fallback
+  return absPath.slice(0, idx)
+}
+
+function fsEntryToDoc(entry: FsEntryResult, projectId: string): Doc {
+  const doc: Doc = {
+    path: entry.path,
+    projectId,
+    name: entry.name,
+    mtime: entry.mtime ?? Date.now(),
+  }
+  if (entry.size !== undefined) doc.size = entry.size
+  if (entry.frontmatter !== undefined) doc.frontmatter = entry.frontmatter
+  return doc
+}
 
 export function ProjectDocReturnBar({
   docName,
@@ -83,17 +182,19 @@ export function ProjectDocReturnBar({
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: 'var(--sp-3)',
-        marginBottom: 'var(--sp-4)',
-        padding: 'var(--sp-3) var(--sp-4)',
+        gap: 'var(--sp-2)',
+        boxSizing: 'border-box',
+        margin: '0 0 var(--sp-4)',
+        padding: 'var(--sp-2) var(--sp-8)',
         border: '1px solid var(--border)',
-        borderRadius: 'var(--r-xl)',
-        background: 'var(--surface-glass)',
-        backdropFilter: 'blur(14px)',
+        borderLeft: 0,
+        borderRight: 0,
+        borderRadius: 0,
+        background: 'var(--bg-elev)',
         boxShadow: 'var(--shadow-sm)',
       }}
     >
-      <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+      <div style={{ minWidth: 0, maxWidth: '100%', flex: '0 1 240px', display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
         <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 'var(--fw-medium)' }}>
           {t('projectWiki.readingDoc')}
         </span>
@@ -102,6 +203,7 @@ export function ProjectDocReturnBar({
             color: 'var(--text)',
             fontSize: 'var(--fs-sm)',
             fontWeight: 'var(--fw-semibold)',
+            minWidth: 0,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -111,18 +213,21 @@ export function ProjectDocReturnBar({
         </strong>
       </div>
       <div
+        data-project-doc-actions=""
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'flex-end',
           flexWrap: 'wrap',
           gap: 'var(--sp-2)',
-          flexShrink: 0,
+          flex: '1 1 520px',
+          minWidth: 0,
+          maxWidth: '100%',
         }}
       >
         {actions}
         <Button
-          variant="primary"
+          variant="ghost"
           size="sm"
           onClick={onReturnToWiki}
           aria-label={t('projectWiki.returnToWikiAria')}
@@ -238,6 +343,7 @@ export function ProjectActionButton({
       style={{
         minHeight: '32px',
         minWidth: '32px',
+        maxWidth: '100%',
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -266,15 +372,314 @@ export function ProjectActionButton({
       }}
     >
       {icon}
-      <span>{label}</span>
+      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
     </button>
+  )
+}
+
+function DocumentCopyMenu({
+  includeMarkdownSource,
+  onCopyMarkdownSource,
+  onCopyTitle,
+  onCopyPath,
+}: {
+  includeMarkdownSource: boolean
+  onCopyMarkdownSource: () => void | Promise<void>
+  onCopyTitle: () => void | Promise<void>
+  onCopyPath: () => void | Promise<void>
+}) {
+  const { t } = useTranslation()
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number; width: number } | null>(null)
+
+  const updateMenuPosition = useCallback(() => {
+    const button = buttonRef.current
+    if (!button) return
+    const rect = button.getBoundingClientRect()
+    const width = 220
+    const viewportWidth = window.innerWidth || 1024
+    setMenuPosition({
+      top: rect.bottom + 8,
+      left: Math.min(Math.max(12, rect.right - width), Math.max(12, viewportWidth - width - 12)),
+      width,
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!menuOpen) return
+    updateMenuPosition()
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node
+      if (buttonRef.current?.contains(target) || menuRef.current?.contains(target)) return
+      setMenuOpen(false)
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false)
+    }
+    window.addEventListener('resize', updateMenuPosition)
+    document.addEventListener('scroll', updateMenuPosition, true)
+    document.addEventListener('mousedown', handlePointerDown)
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('resize', updateMenuPosition)
+      document.removeEventListener('scroll', updateMenuPosition, true)
+      document.removeEventListener('mousedown', handlePointerDown)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [menuOpen, updateMenuPosition])
+
+  const runMenuAction = useCallback((action: () => void | Promise<void>) => {
+    setMenuOpen(false)
+    void action()
+  }, [])
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        aria-label={t('projectView.copyMenuAria')}
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+        title={t('projectView.copyMenuAria')}
+        onClick={() => {
+          updateMenuPosition()
+          setMenuOpen((prev) => !prev)
+        }}
+        style={{
+          minHeight: '32px',
+          minWidth: '32px',
+          maxWidth: '100%',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px',
+          padding: '0 10px',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--r-pill)',
+          background: 'var(--surface-glass)',
+          color: 'var(--text)',
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          fontSize: 'var(--fs-sm)',
+          fontWeight: 'var(--fw-semibold)',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <CopyIcon />
+        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('projectView.copyMenu')}</span>
+      </button>
+      {menuOpen && menuPosition && createPortal(
+        <div
+          ref={menuRef}
+          role="menu"
+          aria-label={t('projectView.copyMenuAria')}
+          style={{
+            position: 'fixed',
+            top: menuPosition.top,
+            left: menuPosition.left,
+            width: menuPosition.width,
+            padding: 'var(--sp-2)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--r-lg)',
+            background: 'var(--surface-glass)',
+            backdropFilter: 'blur(18px)',
+            boxShadow: 'var(--shadow-lg)',
+            zIndex: 'var(--z-modal)',
+          }}
+        >
+          {includeMarkdownSource && (
+            <button
+              type="button"
+              role="menuitem"
+              aria-label={t('projectView.copyMarkdownSourceAria')}
+              onClick={() => runMenuAction(onCopyMarkdownSource)}
+              style={copyMenuItemStyle}
+            >
+              {t('projectView.copyMarkdownSource')}
+            </button>
+          )}
+          <button
+            type="button"
+            role="menuitem"
+            aria-label={t('projectView.copyTitleAria')}
+            onClick={() => runMenuAction(onCopyTitle)}
+            style={copyMenuItemStyle}
+          >
+            {t('projectView.copyTitle')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            aria-label={t('projectView.copyPathAria')}
+            onClick={() => runMenuAction(onCopyPath)}
+            style={copyMenuItemStyle}
+          >
+            {t('projectView.copyPath')}
+          </button>
+        </div>,
+        document.body
+      )}
+    </>
+  )
+}
+
+const copyMenuItemStyle = {
+  width: '100%',
+  minHeight: '34px',
+  display: 'flex',
+  alignItems: 'center',
+  padding: '0 var(--sp-3)',
+  border: 0,
+  borderRadius: 'var(--r-md)',
+  background: 'transparent',
+  color: 'var(--text)',
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  fontSize: 'var(--fs-sm)',
+  fontWeight: 'var(--fw-medium)',
+  textAlign: 'left' as const,
+}
+
+function FileActionDialog({
+  state,
+  busy,
+  onChange,
+  onClose,
+  onSubmit,
+}: {
+  state: FileActionDialogState
+  busy: boolean
+  onChange: (value: string) => void
+  onClose: () => void
+  onSubmit: () => void
+}) {
+  const { t } = useTranslation()
+  const isTrash = state.kind === 'trash'
+  const titleKey: Record<FileActionKind, string> = {
+    'new-markdown': 'fileTree.newMarkdownDialogTitle',
+    'new-folder': 'fileTree.newFolderDialogTitle',
+    rename: 'fileTree.renameDialogTitle',
+    trash: 'fileTree.trashDialogTitle',
+  }
+  const confirmKey: Record<FileActionKind, string> = {
+    'new-markdown': 'fileTree.newMarkdownConfirm',
+    'new-folder': 'fileTree.newFolderConfirm',
+    rename: 'fileTree.renameConfirm',
+    trash: 'fileTree.trashConfirmButton',
+  }
+  const description = isTrash
+    ? t('fileTree.trashDialogDesc', { name: state.doc.name })
+    : state.kind === 'rename'
+      ? t('fileTree.renameDialogDesc', { name: state.doc.name })
+      : t('fileTree.createDialogDesc', { dir: state.dirPath })
+
+  return createPortal(
+    <div
+      role="presentation"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 'var(--z-modal)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 'var(--sp-4)',
+        background: 'color-mix(in srgb, var(--bg) 52%, transparent)',
+        backdropFilter: 'blur(8px)',
+      }}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <form
+        role="dialog"
+        aria-modal="true"
+        aria-label={t(titleKey[state.kind])}
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (!isTrash && state.value.trim().length === 0) return
+          onSubmit()
+        }}
+        style={{
+          width: 'min(420px, 100%)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 'var(--sp-4)',
+          padding: 'var(--sp-5)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--r-xl)',
+          background: 'var(--bg-elev)',
+          boxShadow: 'var(--shadow-lg)',
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-1)' }}>
+          <strong style={{ fontSize: 'var(--fs-lg)', color: 'var(--text)' }}>
+            {t(titleKey[state.kind])}
+          </strong>
+          <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', lineHeight: 'var(--lh-relaxed)' }}>
+            {description}
+          </span>
+        </div>
+        {!isTrash && (
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
+            <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 'var(--fw-medium)' }}>
+              {t('fileTree.fileNameLabel')}
+            </span>
+            <input
+              autoFocus
+              value={state.value}
+              onChange={(e) => onChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault()
+                  onClose()
+                }
+              }}
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--r-md)',
+                background: 'var(--bg)',
+                color: 'var(--text)',
+                padding: 'var(--sp-2) var(--sp-3)',
+                fontFamily: 'inherit',
+                fontSize: 'var(--fs-sm)',
+                outline: 'none',
+              }}
+            />
+          </label>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
+          <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={busy}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            type="submit"
+            variant={isTrash ? 'danger' : 'primary'}
+            size="sm"
+            disabled={busy || (!isTrash && state.value.trim().length === 0)}
+          >
+            {busy ? t('common.loading') : t(confirmKey[state.kind])}
+          </Button>
+        </div>
+      </form>
+    </div>,
+    document.body,
   )
 }
 
 export function getDocumentStickyOffset(container: HTMLElement): number {
   const returnBar = container.querySelector<HTMLElement>('[data-project-doc-return-bar]')
   if (!returnBar) return 16
-  return Math.ceil(returnBar.getBoundingClientRect().height + 24)
+  return Math.ceil(returnBar.getBoundingClientRect().height + 12)
+}
+
+export function getDocumentRailWidth(tool: 'issues' | 'toc'): string {
+  return tool === 'toc' ? 'clamp(220px, 18vw, 280px)' : 'clamp(300px, 24vw, 360px)'
 }
 
 export function getTocActionState({
@@ -319,7 +724,7 @@ const ChevronRightIcon = () => (
 
 export function ProjectView({ projectId, projectRoot, projectName, initialDocPath, onSeeMoreRecent }: ProjectViewProps) {
   const { t } = useTranslation()
-  const { docs, isScanning } = useDocs(projectId)
+  const { docs, scanDocs, isScanning } = useDocs(projectId)
   const gitPulse = useGitPulse(projectRoot)
   const metaFilter = useAppStore((s) => s.metaFilter)
   // FS9-B — 현재 프로젝트가 속한 workspace id. SSH 이면 MarkdownViewer 가 이미지 IPC 경유.
@@ -346,6 +751,11 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
 
   const [selectedDoc, setSelectedDoc] = useState<Doc | null>(null)
   const [docContent, setDocContent] = useState<string>('')
+  const [docSource, setDocSource] = useState<string>('')
+  const [targetDir, setTargetDir] = useState(projectRoot)
+  const [knownEmptyFolders, setKnownEmptyFolders] = useState<string[]>([])
+  const [fileDialog, setFileDialog] = useState<FileActionDialogState | null>(null)
+  const [fileActionBusy, setFileActionBusy] = useState(false)
   const [initialExpanded, setInitialExpanded] = useState<string[]>([])
   const [headings, setHeadings] = useState<Heading[]>([])
   const [showToc, setShowToc] = useState(false)
@@ -367,18 +777,19 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
   const setPendingDocOpen = useAppStore((s) => s.setPendingDocOpen)
   const lastViewedDocs = useAppStore((s) => s.lastViewedDocs)
   const setLastViewedDoc = useAppStore((s) => s.setLastViewedDoc)
-  const driftReports = useAppStore((s) => s.driftReports)
   const readDocs = useAppStore((s) => s.readDocs)
 
   const docsByPath = useMemo(() => new Map(docs.map((doc) => [doc.path, doc])), [docs])
   const wikiSummary = useMemo(
-    () => buildProjectWikiSummary(docs, driftReports, readDocs),
-    [docs, driftReports, readDocs]
+    () => buildProjectWikiSummary(docs, {}, readDocs),
+    [docs, readDocs]
   )
   const { brief: wikiBrief, loading: wikiBriefLoading } = useProjectWikiBrief(projectName, wikiSummary, docsByPath)
-  const selectedIsMarkdown = selectedDoc ? classifyAsset(selectedDoc.path) === 'md' : false
-  const selectedDriftReport = selectedDoc ? driftReports[selectedDoc.path] : undefined
-  const hasDriftTool = Boolean(!showWiki && selectedIsMarkdown && selectedDriftReport?.references.length)
+  const selectedAssetKind = selectedDoc ? classifyAsset(selectedDoc.path) : null
+  const selectedIsMarkdown = selectedAssetKind === 'md'
+  const selectedIsImage = selectedAssetKind === 'image'
+  const imageDocumentMode = Boolean(!showWiki && selectedIsImage)
+  const hasDriftTool = false
   const hasTocTool = Boolean(!showWiki && selectedIsMarkdown && showToc && headings.length > 0)
   const canShowDriftTool = documentToolsMode === 'all' && hasDriftTool
   const activeRightTool = activeDocumentTool === 'toc' && hasTocTool ? 'toc' : canShowDriftTool ? 'issues' : 'toc'
@@ -391,12 +802,20 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
       scrollContainerRef.current?.scrollTo({ top: 0 })
     })
   }, [])
+  const handleRefreshFileTree = useCallback(() => {
+    if (!projectId) return
+    scanDocs(projectId, { force: true })
+  }, [projectId, scanDocs])
+
+  useEffect(() => {
+    setTargetDir(projectRoot)
+    setKnownEmptyFolders([])
+  }, [projectRoot])
 
   useEffect(() => {
     if (!selectedDoc || !selectedIsMarkdown) return
-    setShowDocumentTools(true)
-    setDocumentToolsMode('all')
-    setActiveDocumentTool('issues')
+    setDocumentToolsMode('toc')
+    setActiveDocumentTool('toc')
   }, [selectedDoc?.path, selectedIsMarkdown])
 
   useEffect(() => {
@@ -559,6 +978,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
   const loadDoc = useCallback(async (doc: Doc) => {
     setSelectedDoc(doc)
     setShowWiki(false)
+    setTargetDir(dirnameOfPath(doc.path, projectRoot))
     setHeadings([])
     // F4: 마지막 본 문서 갱신
     setLastViewedDoc(projectId, doc.path)
@@ -567,18 +987,21 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
     // docContent는 MarkdownViewer 전용이므로 빈 문자열로 초기화.
     if (classifyAsset(doc.path) === 'image') {
       setDocContent('')
+      setDocSource('')
       return
     }
 
     try {
       const result = await window.api.fs.readDoc(doc.path)
       setDocContent(result.content)
+      setDocSource(result.rawContent ?? result.content)
     } catch (err) {
       console.error('문서 읽기 실패:', err)
       const msg = err instanceof Error ? err.message : String(err)
       setDocContent(humanizeError(t, msg))
+      setDocSource('')
     }
-  }, [projectId, setLastViewedDoc])
+  }, [projectId, projectRoot, setLastViewedDoc])
 
   // F3: pendingDocOpen 처리 — docs 로드 후 한 번만 실행
   useEffect(() => {
@@ -711,6 +1134,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
       setSelectedDoc(fakeDoc)
       setShowWiki(false)
       setDocContent('')
+      setDocSource('')
       setLastViewedDoc(projectId, absPath)
       return
     }
@@ -726,6 +1150,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
       setSelectedDoc(fakeDoc)
       setShowWiki(false)
       setDocContent(result.content)
+      setDocSource(result.rawContent ?? result.content)
       setLastViewedDoc(projectId, absPath)
     } catch (err) {
       console.error('내부 링크 이동 실패:', err)
@@ -773,6 +1198,172 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
     setFindResult(null)
     findControllerRef.current?.clear()
   }, [])
+
+  const handleRevealCurrentDoc = useCallback(async () => {
+    if (!selectedDoc) return
+    try {
+      await window.api.shell.revealInFinder(selectedDoc.path)
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err)
+      toast.error(t('projectView.revealCurrentError', { reason }))
+    }
+  }, [selectedDoc, t])
+
+  const handleCopyMarkdownSource = useCallback(async () => {
+    const source = docSource || docContent
+    try {
+      await navigator.clipboard.writeText(source)
+      toast.success(t('projectView.copyMarkdownSourceSuccess'))
+    } catch {
+      toast.error(t('projectView.copyMarkdownSourceError'))
+    }
+  }, [docContent, docSource, t])
+
+  const handleCopyDocTitle = useCallback(async () => {
+    if (!selectedDoc) return
+    try {
+      await navigator.clipboard.writeText(selectedDoc.name)
+      toast.success(t('projectView.copyTitleSuccess'))
+    } catch {
+      toast.error(t('projectView.copyTitleError'))
+    }
+  }, [selectedDoc, t])
+
+  const handleCopyDocPath = useCallback(async () => {
+    if (!selectedDoc) return
+    try {
+      await navigator.clipboard.writeText(selectedDoc.path)
+      toast.success(t('projectView.copyPathSuccess'))
+    } catch {
+      toast.error(t('projectView.copyPathError'))
+    }
+  }, [selectedDoc, t])
+
+  const mutationErrorReason = useCallback((err: unknown) => (
+    err instanceof Error ? err.message : String(err)
+  ), [])
+
+  const closeFileDialog = useCallback(() => {
+    if (fileActionBusy) return
+    setFileDialog(null)
+  }, [fileActionBusy])
+
+  const handleFileDialogChange = useCallback((value: string) => {
+    setFileDialog((prev) => (prev ? { ...prev, value } : prev))
+  }, [])
+
+  const handleOpenCreateMarkdown = useCallback(() => {
+    if (isSshProject) return
+    setFileDialog({ kind: 'new-markdown', value: 'untitled.md', dirPath: targetDir })
+  }, [isSshProject, targetDir])
+
+  const handleOpenCreateFolder = useCallback(() => {
+    if (isSshProject) return
+    setFileDialog({ kind: 'new-folder', value: 'docs', dirPath: targetDir })
+  }, [isSshProject, targetDir])
+
+  const handleOpenRenameSelected = useCallback(() => {
+    if (!selectedDoc || isSshProject) return
+    setFileDialog({ kind: 'rename', value: selectedDoc.name, doc: selectedDoc })
+  }, [isSshProject, selectedDoc])
+
+  const handleOpenTrashSelected = useCallback(() => {
+    if (!selectedDoc || isSshProject) return
+    setFileDialog({ kind: 'trash', value: selectedDoc.name, doc: selectedDoc })
+  }, [isSshProject, selectedDoc])
+
+  const handleSubmitFileAction = useCallback(async () => {
+    if (!fileDialog || fileActionBusy) return
+    const value = fileDialog.value.trim()
+    if (fileDialog.kind !== 'trash' && !value) return
+    setFileActionBusy(true)
+    try {
+      if (fileDialog.kind === 'new-markdown') {
+        const createMarkdown = window.api.fs.createMarkdown
+        if (!createMarkdown) {
+          toast.error(t('fileTree.actionsUnavailable'))
+          return
+        }
+        const result = await createMarkdown({ projectRoot, dirPath: fileDialog.dirPath, name: value })
+        const nextDoc = fsEntryToDoc(result, projectId)
+        scanDocs(projectId, { force: true })
+        await loadDoc(nextDoc)
+        setFileDialog(null)
+        toast.success(t('fileTree.newMarkdownSuccess', { name: result.name }))
+        return
+      }
+
+      if (fileDialog.kind === 'new-folder') {
+        const createFolder = window.api.fs.createFolder
+        if (!createFolder) {
+          toast.error(t('fileTree.actionsUnavailable'))
+          return
+        }
+        const result = await createFolder({ projectRoot, dirPath: fileDialog.dirPath, name: value })
+        setKnownEmptyFolders((prev) => (
+          prev.includes(result.path) ? prev : [...prev, result.path]
+        ))
+        setTargetDir(result.path)
+        scanDocs(projectId, { force: true })
+        setFileDialog(null)
+        toast.success(t('fileTree.newFolderSuccess', { name: result.name }))
+        return
+      }
+
+      if (fileDialog.kind === 'rename') {
+        const rename = window.api.fs.rename
+        if (!rename) {
+          toast.error(t('fileTree.actionsUnavailable'))
+          return
+        }
+        const result = await rename({ projectRoot, path: fileDialog.doc.path, newName: value })
+        const nextDoc = fsEntryToDoc(result, projectId)
+        scanDocs(projectId, { force: true })
+        await loadDoc(nextDoc)
+        setFileDialog(null)
+        toast.success(t('fileTree.renameSuccess', { name: result.name }))
+        return
+      }
+
+      if (fileDialog.kind === 'trash') {
+        const trash = window.api.fs.trash
+        if (!trash) {
+          toast.error(t('fileTree.actionsUnavailable'))
+          return
+        }
+        await trash({ projectRoot, path: fileDialog.doc.path })
+        setSelectedDoc(null)
+        setDocContent('')
+        setDocSource('')
+        setShowWiki(true)
+        scanDocs(projectId, { force: true })
+        setFileDialog(null)
+        toast.success(t('fileTree.trashSuccess', { name: fileDialog.doc.name }))
+      }
+    } catch (err) {
+      const reason = mutationErrorReason(err)
+      if (fileDialog.kind === 'new-markdown') {
+        toast.error(t('fileTree.newMarkdownError', { reason }))
+      } else if (fileDialog.kind === 'new-folder') {
+        toast.error(t('fileTree.newFolderError', { reason }))
+      } else if (fileDialog.kind === 'rename') {
+        toast.error(t('fileTree.renameError', { reason }))
+      } else {
+        toast.error(t('fileTree.trashError', { reason }))
+      }
+    } finally {
+      setFileActionBusy(false)
+    }
+  }, [fileActionBusy, fileDialog, loadDoc, mutationErrorReason, projectId, projectRoot, scanDocs, t])
+
+  /*
+   * Electron renderer does not support native window.prompt()/confirm().
+   * File operations must go through the in-app dialog above.
+   */
+  const handleCreateMarkdown = handleOpenCreateMarkdown
+  const handleCreateFolder = handleOpenCreateFolder
+  const handleRenameSelected = handleOpenRenameSelected
+  const handleTrashSelected = handleOpenTrashSelected
 
   // DriftPanel 각 ref 에서 "위치로 이동" 누르면 검색 UI를 열지 않고 해당 소스 라인으로 바로 스크롤한다.
   const handleJumpToRef = useCallback((target: DriftJumpTarget) => {
@@ -837,57 +1428,62 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
     container.scrollTo({ top: offset, behavior: 'smooth' })
   }, [headings])
 
-  const documentActions = !showWiki && selectedDoc && classifyAsset(selectedDoc.path) === 'md' ? (
+  const documentActions = !showWiki && selectedDoc ? (
     <>
-      {showFind ? (
-        <ProjectFindControls
-          value={findQuery}
-          result={findResult}
-          inputRef={findInputRef}
-          onChange={handleFindChange}
-          onPrev={handleFindPrev}
-          onNext={handleFindNext}
-          onClose={handleCloseFind}
-        />
-      ) : (
-        <ProjectActionButton
-          icon={<SearchIcon />}
-          label={t('projectView.findShort')}
-          aria-label={t('projectView.findInDoc')}
-          active={false}
-          onClick={() => setShowFind(true)}
-        />
+      {!isSshProject && (
+        <>
+          <ProjectActionButton
+            icon={<FolderIcon />}
+            label={t('projectView.revealCurrent')}
+            ariaLabel={t('projectView.revealCurrentAria')}
+            active={false}
+            onClick={handleRevealCurrentDoc}
+          />
+          <ProjectOpenMenu projectRoot={selectedDoc.path} variant="compact" />
+        </>
       )}
-      {hasDriftTool && (
-        <ProjectActionButton
-          icon={<ToolsIcon />}
-          label={t('projectView.issuesTab')}
-          aria-label={t('projectView.documentTools')}
-          active={showRightRail && documentToolsMode === 'all'}
-          onClick={() => {
-            if (showRightRail && documentToolsMode === 'all') {
-              setShowDocumentTools(false)
-            } else {
-              setDocumentToolsMode('all')
-              setShowDocumentTools(true)
-              setActiveDocumentTool(hasDriftTool ? 'issues' : 'toc')
-            }
-          }}
-        />
-      )}
-      <ProjectActionButton
-        icon={<TocIcon />}
-        label={t('projectView.tocTab')}
-        aria-label={t('projectView.tocToggle')}
-        active={showTocRail}
-        onClick={() => {
-          const next = getTocActionState({ showTocRail, hasDriftTool, documentToolsMode })
-          setShowToc(next.showToc)
-          setShowDocumentTools(next.showDocumentTools)
-          setActiveDocumentTool(next.activeDocumentTool)
-          setDocumentToolsMode(next.documentToolsMode)
-        }}
+      <DocumentCopyMenu
+        includeMarkdownSource={selectedIsMarkdown}
+        onCopyMarkdownSource={handleCopyMarkdownSource}
+        onCopyTitle={handleCopyDocTitle}
+        onCopyPath={handleCopyDocPath}
       />
+      {selectedIsMarkdown && (
+        <>
+          {showFind ? (
+            <ProjectFindControls
+              value={findQuery}
+              result={findResult}
+              inputRef={findInputRef}
+              onChange={handleFindChange}
+              onPrev={handleFindPrev}
+              onNext={handleFindNext}
+              onClose={handleCloseFind}
+            />
+          ) : (
+            <ProjectActionButton
+              icon={<SearchIcon />}
+              label={t('projectView.findShort')}
+              ariaLabel={t('projectView.findInDoc')}
+              active={false}
+              onClick={() => setShowFind(true)}
+            />
+          )}
+          <ProjectActionButton
+            icon={<TocIcon />}
+            label={t('projectView.tocTab')}
+            ariaLabel={t('projectView.tocToggle')}
+            active={showTocRail}
+            onClick={() => {
+              const next = getTocActionState({ showTocRail, hasDriftTool, documentToolsMode })
+              setShowToc(next.showToc)
+              setShowDocumentTools(next.showDocumentTools)
+              setActiveDocumentTool(next.activeDocumentTool)
+              setDocumentToolsMode(next.documentToolsMode)
+            }}
+          />
+        </>
+      )}
     </>
   ) : null
 
@@ -919,26 +1515,92 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
               gap: 'var(--sp-2)',
             }}
           >
-            <span
-              style={{
-                fontSize: 'var(--fs-xs)',
-                fontWeight: 'var(--fw-semibold)',
-                color: 'var(--text-muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {projectName}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', minWidth: 0 }}>
+              <span
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  fontSize: 'var(--fs-xs)',
+                  fontWeight: 'var(--fw-semibold)',
+                  color: 'var(--text-muted)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {projectName}
+              </span>
+              <IconButton
+                aria-label={t('fileTree.refreshAria')}
+                title={t('fileTree.refreshTitle')}
+                size="sm"
+                variant="ghost"
+                onClick={handleRefreshFileTree}
+                disabled={isScanning}
+              >
+                <RefreshIcon spinning={isScanning} />
+              </IconButton>
+            </div>
             <AiHandoffButton projectName={projectName} summary={wikiSummary} brief={wikiBrief} />
             <ProjectOpenMenu
               projectRoot={projectRoot}
               disabled={isSshProject}
               disabledReason={t('projectOpen.sshDisabled')}
             />
+            {SHOW_FILE_MUTATION_ACTIONS && (
+              <div
+                role="toolbar"
+                aria-label={t('fileTree.actionsAria')}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+                  gap: 'var(--sp-1)',
+                }}
+              >
+                <IconButton
+                  aria-label={t('fileTree.newMarkdownAria')}
+                  title={isSshProject ? t('fileTree.localOnlyTitle') : t('fileTree.newMarkdownTitle', { dir: targetDir })}
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleCreateMarkdown}
+                  disabled={isSshProject}
+                >
+                  <NewDocIcon />
+                </IconButton>
+                <IconButton
+                  aria-label={t('fileTree.newFolderAria')}
+                  title={isSshProject ? t('fileTree.localOnlyTitle') : t('fileTree.newFolderTitle', { dir: targetDir })}
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleCreateFolder}
+                  disabled={isSshProject}
+                >
+                  <NewFolderIcon />
+                </IconButton>
+                <IconButton
+                  aria-label={t('fileTree.renameAria')}
+                  title={!selectedDoc ? t('fileTree.selectFileFirst') : t('fileTree.renameTitle')}
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleRenameSelected}
+                  disabled={isSshProject || !selectedDoc}
+                >
+                  <RenameIcon />
+                </IconButton>
+                <IconButton
+                  aria-label={t('fileTree.trashAria')}
+                  title={!selectedDoc ? t('fileTree.selectFileFirst') : t('fileTree.trashTitle')}
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleTrashSelected}
+                  disabled={isSshProject || !selectedDoc}
+                >
+                  <TrashIcon />
+                </IconButton>
+              </div>
+            )}
           </div>
           {/* 최근 7일 문서 — FileTree 위 별도 섹션. 시각 구분(다른 배경 + 굵은 borderBottom).
               빈 상태(7일 내 수정 0건)일 땐 컴포넌트 자체가 null 반환해 헷갈림 방지.
@@ -980,7 +1642,9 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
                 projectId={projectId}
                 rootPath={projectRoot}
                 docs={filteredDocs}
+                extraFolders={knownEmptyFolders}
                 onSelect={loadDoc}
+                onFolderFocus={setTargetDir}
                 initialExpanded={initialExpanded}
                 onExpandChange={handleExpandChange}
               />
@@ -1028,11 +1692,15 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
 
         {/* F2: 중앙 마크다운 뷰어 — ref 부착 */}
         <div
+          data-project-scroll-container=""
           ref={scrollContainerRef}
           style={{
             flex: 1,
-            overflow: 'auto',
-            padding: 'var(--sp-6) var(--sp-8)',
+            minWidth: 0,
+            overflow: imageDocumentMode ? 'hidden' : 'auto',
+            display: imageDocumentMode ? 'flex' : undefined,
+            flexDirection: imageDocumentMode ? 'column' : undefined,
+            padding: selectedDoc && !showWiki ? 0 : 'var(--sp-6) var(--sp-8)',
             position: 'relative',
             background:
               'radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 8%, transparent) 0, transparent 32%), var(--bg)',
@@ -1094,7 +1762,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
                 onReturnToWiki={handleReturnToWiki}
                 actions={documentActions}
               />
-              {classifyAsset(selectedDoc.path) === 'image' ? (
+              {selectedIsImage ? (
                 <I18nErrorBoundary resetKey={selectedDoc.path}>
                   <ImageViewer
                     path={selectedDoc.path}
@@ -1105,13 +1773,18 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
                 </I18nErrorBoundary>
               ) : (
                 <I18nErrorBoundary resetKey={selectedDoc.path}>
-                  <MarkdownViewer
-                    content={docContent}
-                    basePath={selectedDoc.path}
-                    onDocNavigate={handleDocNavigate}
-                    onHeadings={setHeadings}
-                    workspaceId={currentWorkspaceId}
-                  />
+                  <div
+                    data-project-document-body=""
+                    style={{ padding: '0 var(--sp-8) var(--sp-6)' }}
+                  >
+                    <MarkdownViewer
+                      content={docContent}
+                      basePath={selectedDoc.path}
+                      onDocNavigate={handleDocNavigate}
+                      onHeadings={setHeadings}
+                      workspaceId={currentWorkspaceId}
+                    />
+                  </div>
                 </I18nErrorBoundary>
               )}
             </>
@@ -1130,12 +1803,15 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
           <aside
             aria-label={t('projectView.documentTools')}
             style={{
-              width: activeRightTool === 'issues' ? 'clamp(320px, 32vw, 380px)' : 'clamp(320px, 30vw, 440px)',
+              width: getDocumentRailWidth(activeRightTool),
               flexShrink: 0,
+              minHeight: 0,
+              height: '100%',
               borderLeft: '1px solid var(--border)',
               background: 'color-mix(in srgb, var(--bg-elev) 92%, var(--bg))',
               overflow: 'auto',
-              padding: 'var(--sp-4) var(--sp-3)',
+              overscrollBehavior: 'contain',
+              padding: activeRightTool === 'toc' ? 'var(--sp-3) var(--sp-2)' : 'var(--sp-4) var(--sp-3)',
               display: 'flex',
               flexDirection: 'column',
               gap: 'var(--sp-4)',
@@ -1249,9 +1925,9 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
               <section
                 style={{
                   border: '1px solid var(--border)',
-                  borderRadius: 'var(--r-xl)',
+                  borderRadius: 'var(--r-lg)',
                   background: 'var(--bg-elev)',
-                  padding: 'var(--sp-3)',
+                  padding: 'var(--sp-2)',
                   boxShadow: 'var(--shadow-sm)',
                 }}
               >
@@ -1261,6 +1937,15 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
           </aside>
         )}
       </div>
+      {SHOW_FILE_MUTATION_ACTIONS && fileDialog && (
+        <FileActionDialog
+          state={fileDialog}
+          busy={fileActionBusy}
+          onChange={handleFileDialogChange}
+          onClose={closeFileDialog}
+          onSubmit={handleSubmitFileAction}
+        />
+      )}
     </div>
   )
 }

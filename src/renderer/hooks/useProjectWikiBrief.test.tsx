@@ -179,7 +179,7 @@ describe('useProjectWikiBrief', () => {
     expect(result.current.brief?.headline).toBe('Stable Project')
   })
 
-  it('updates risk wording without rereading document evidence', async () => {
+  it('updates activity wording without rereading document evidence', async () => {
     const readDoc = vi.fn(async (): Promise<ReadDocResult> => ({
       content: '# Risky Project\n\nThis project brief evidence should be reused while risk counts change.',
       mtime: 1,
@@ -189,8 +189,8 @@ describe('useProjectWikiBrief', () => {
     const doc = makeDoc('README.md')
     const docsByPath = new Map([[doc.path, doc]])
     const initialSummary = makeSummary([makeLink(doc)])
-    const riskySummary = makeSummary([makeLink(doc)], {
-      risks: { missingRefs: 2, staleRefs: 0, docsWithRisk: [] },
+    const activeSummary = makeSummary([makeLink(doc)], {
+      recentDocs: 2,
     })
 
     const { result, rerender } = renderHook(
@@ -201,11 +201,11 @@ describe('useProjectWikiBrief', () => {
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(readDoc).toHaveBeenCalledTimes(1)
 
-    rerender({ summary: riskySummary })
+    rerender({ summary: activeSummary })
 
     await waitFor(() => {
       expect(result.current.brief?.overview).toContain(
-        '2 reference issues need review before treating the docs as fully trustworthy.'
+        '2 documents changed in the last 7 days, so this project is currently active.'
       )
     })
     expect(readDoc).toHaveBeenCalledTimes(1)

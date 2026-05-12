@@ -107,6 +107,62 @@ export function parseReadDocInput(raw: unknown): { path: string } {
   return z.object({ path: PathInput }).parse(raw)
 }
 
+const FsEntryNameInput = z
+  .string()
+  .min(1)
+  .max(180)
+  .transform((value) => value.trim())
+  .refine((value) => value.length > 0, { message: 'INVALID_NAME' })
+  .refine((value) => value !== '.' && value !== '..', { message: 'INVALID_NAME' })
+  .refine((value) => !value.includes('\0'), { message: 'INVALID_NAME' })
+  .refine((value) => !/[\\/]/.test(value), { message: 'INVALID_NAME' })
+
+export function parseFsCreateMarkdownInput(raw: unknown): {
+  projectRoot: string
+  dirPath: string
+  name: string
+} {
+  return z.object({
+    projectRoot: PathInput,
+    dirPath: PathInput,
+    name: FsEntryNameInput,
+  }).parse(raw)
+}
+
+export function parseFsCreateFolderInput(raw: unknown): {
+  projectRoot: string
+  dirPath: string
+  name: string
+} {
+  return z.object({
+    projectRoot: PathInput,
+    dirPath: PathInput,
+    name: FsEntryNameInput,
+  }).parse(raw)
+}
+
+export function parseFsRenameInput(raw: unknown): {
+  projectRoot: string
+  path: string
+  newName: string
+} {
+  return z.object({
+    projectRoot: PathInput,
+    path: PathInput,
+    newName: FsEntryNameInput,
+  }).parse(raw)
+}
+
+export function parseFsTrashInput(raw: unknown): {
+  projectRoot: string
+  path: string
+} {
+  return z.object({
+    projectRoot: PathInput,
+    path: PathInput,
+  }).parse(raw)
+}
+
 export function parseClaudeOpenInput(raw: unknown): { dir: string; terminal: TerminalType } {
   return z
     .object({

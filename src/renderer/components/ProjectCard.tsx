@@ -1,8 +1,6 @@
-import { memo, useMemo } from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Card, StatusMessage } from './ui'
-import { useAppStore } from '../state/store'
-import { isDriftRefIgnored } from '../lib/driftRefKey'
 import type { Project } from '../../../src/preload/types'
 
 interface ProjectCardProps {
@@ -24,32 +22,6 @@ const FinderIcon = () => (
 export const ProjectCard = memo(function ProjectCard({ project, onOpen }: ProjectCardProps) {
   const { t } = useTranslation()
   const docCount = project.docCount
-  const driftReports = useAppStore((s) => s.driftReports)
-  const ignoredDriftRefs = useAppStore((s) => s.ignoredDriftRefs)
-
-  // 이 프로젝트에 속한 리포트만 합산, 무시된 참조는 제외.
-  const driftCounts = useMemo(() => {
-    let missing = 0
-    let stale = 0
-    for (const r of Object.values(driftReports)) {
-      if (r.projectRoot !== project.root) continue
-      const ignored = ignoredDriftRefs[r.docPath]
-      if (!ignored || ignored.length === 0) {
-        missing += r.counts.missing
-        stale += r.counts.stale
-        continue
-      }
-      const ignoredSet = new Set(ignored)
-      for (const ref of r.references) {
-        if (isDriftRefIgnored(ignoredSet, ref)) continue
-        if (ref.status === 'missing') missing++
-        else if (ref.status === 'stale') stale++
-      }
-    }
-    return { missing, stale }
-  }, [driftReports, ignoredDriftRefs, project.root])
-
-  const hasDrift = driftCounts.missing > 0 || driftCounts.stale > 0
 
   return (
     <Card padding="sm" interactive onClick={() => onOpen(project)}>
@@ -117,29 +89,6 @@ export const ProjectCard = memo(function ProjectCard({ project, onOpen }: Projec
               <StatusMessage variant="loading" inline>{t('project.analyzing')}</StatusMessage>
             ) : (
               <span>{t('project.docCount', { count: docCount })}</span>
-            )}
-            {hasDrift && (
-              <span
-                title={t('project.driftTitle', { missing: driftCounts.missing, stale: driftCounts.stale })}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  fontSize: 'var(--fs-xs)',
-                  fontWeight: 'var(--fw-medium)',
-                  padding: '1px 6px',
-                  borderRadius: 'var(--r-pill)',
-                  background: driftCounts.missing > 0 ? 'var(--color-danger-bg)' : 'var(--color-warning-bg)',
-                  color: driftCounts.missing > 0 ? 'var(--color-danger)' : 'var(--color-warning)',
-                  lineHeight: 1.3,
-                }}
-              >
-                {driftCounts.missing > 0 && driftCounts.stale > 0
-                  ? t('project.driftBadgeMixed', { missing: driftCounts.missing, stale: driftCounts.stale })
-                  : driftCounts.missing > 0
-                    ? t('project.driftBadgeMissing', { count: driftCounts.missing })
-                    : t('project.driftBadgeStale', { count: driftCounts.stale })}
-              </span>
             )}
           </div>
           <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>

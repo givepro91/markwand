@@ -42,15 +42,14 @@ export function useProjectWikiBrief(
   const summarySignal = [
     summary.markdownDocs,
     summary.recentDocs,
-    summary.risks.missingRefs,
-    summary.risks.staleRefs,
+    summary.unreadDocs,
   ].join(':')
   const [evidenceState, setEvidenceState] = useState<WikiEvidenceState>({ signature: '', evidence: [] })
   const [loading, setLoading] = useState(false)
   const brief = useMemo(() => {
     if (docs.length === 0 || evidenceState.signature !== signature || evidenceState.evidence.length === 0) return null
     return buildProjectWikiBrief(projectName, summary, evidenceState.evidence)
-    // summarySignal keeps the brief's activity/risk sentences fresh without rereading doc bodies.
+    // summarySignal keeps the brief's activity/doc-count sentences fresh without rereading doc bodies.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectName, signature, summarySignal, evidenceState])
 

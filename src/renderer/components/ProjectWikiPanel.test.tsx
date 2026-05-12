@@ -182,6 +182,32 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
     expect(writeText.mock.calls[0][0]).toContain('## What I Need From You')
   })
 
+  it('copies a team-readable project health snapshot from the wiki header', async () => {
+    renderWithProviders(
+      <ProjectWikiPanel
+        projectName="markwand"
+        summary={summary}
+        gitPulse={gitPulse}
+        gitPulseLoading={false}
+        brief={brief}
+        briefLoading={false}
+        docsByPath={new Map([[doc.path, doc]])}
+        onOpenDoc={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'projectWiki.copyWorkspaceSnapshotAria' }))
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce())
+    const copied = writeText.mock.calls[0][0]
+    expect(copied).toContain('# Workspace Snapshot: markwand')
+    expect(copied).toContain('## Health')
+    expect(copied).toContain('- Trust score: 70/100 (watch)')
+    expect(copied).toContain('## Recent Change Flow')
+    expect(copied).toContain('- Branch: main')
+    expect(copied).toContain('## Team Note')
+  })
+
   it('keeps wiki section navigation collapsed until the user asks for it', async () => {
     renderWithProviders(
       <ProjectWikiPanel
@@ -202,6 +228,49 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
 
     expect(screen.getByRole('button', { name: 'projectWiki.navBrief' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'projectWiki.navRisks' })).toBeInTheDocument()
+  })
+
+  it('hides reference audit sections when no verified audit is part of the default summary', () => {
+    const quietSummary: ProjectWikiSummary = {
+      ...summary,
+      relationships: {
+        checkedDocs: 0,
+        totalRefs: 0,
+        okRefs: 0,
+        missingRefs: 0,
+        staleRefs: 0,
+        hubs: [],
+        riskyLinks: [],
+      },
+      risks: { missingRefs: 0, staleRefs: 0, docsWithRisk: [] },
+      suggestedTasks: [],
+      pulse: {
+        tone: 'healthy',
+        focus: 'readFirst',
+        reasons: ['healthy'],
+        primaryDoc: { path: doc.path, name: doc.name, reason: 'entrypoint', score: 100 },
+        actionTaskId: null,
+      },
+    }
+
+    renderWithProviders(
+      <ProjectWikiPanel
+        projectName="markwand"
+        summary={quietSummary}
+        brief={null}
+        briefLoading={false}
+        docsByPath={new Map([[doc.path, doc]])}
+        onOpenDoc={vi.fn()}
+      />
+    )
+
+    expect(screen.queryByText('projectWiki.linkGraphTitle')).not.toBeInTheDocument()
+    expect(screen.queryByText('projectWiki.riskTitle')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'projectWiki.navToggle' }))
+
+    expect(screen.queryByRole('button', { name: 'projectWiki.navLinks' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'projectWiki.navRisks' })).not.toBeInTheDocument()
   })
 
   it('copies a focused AI task prompt from the suggested task card', async () => {

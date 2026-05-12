@@ -33,6 +33,25 @@ function isBareFileName(s: string): boolean {
   return !cleaned.includes('/') && !cleaned.includes('\\') && hasKnownFileExtension(cleaned) && PATH_CHAR_RE.test(cleaned)
 }
 
+function lookupSuffixFor(s: string): string | undefined {
+  const cleaned = stripPathExtras(s)
+  if (!cleaned || isWindowsAbsolutePath(cleaned) || path.isAbsolute(cleaned)) return undefined
+  const segs = cleaned.split(/[/\\]/).filter(Boolean)
+  while (segs[0] === '.' || segs[0] === '..') segs.shift()
+  if (segs.length < 2) return undefined
+  if (segs.includes('..')) return undefined
+  if (!hasKnownFileExtension(cleaned)) return undefined
+  return segs.join('/')
+}
+
+function lookupBasenameFor(s: string, bareFileName: boolean): string | undefined {
+  const cleaned = stripPathExtras(s)
+  if (bareFileName) return cleaned
+  if (!cleaned.startsWith('./') && !cleaned.startsWith('../')) return undefined
+  if (!hasKnownFileExtension(cleaned)) return undefined
+  return path.basename(cleaned)
+}
+
 // Path 후보 허용 문자 화이트리스트.
 // 영/숫자, `_-./\+@~#` 만 허용. 공백·수식기호(×,÷,±,%,&,|,=,$)·괄호·쉼표·따옴표·한글 등이 섞이면 path 아님.
 // 한글 파일명은 이 regex 에서 제외됨 — 수식 false positive (`원`, `면적`) 를 거르기 위한 절충.
@@ -63,6 +82,13 @@ const FILE_EXTENSIONS = new Set([
   'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'pdf',
 ])
 
+const DOCUMENT_LINK_EXTENSIONS = new Set(['md', 'mdx', 'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'])
+const SOURCE_CODE_EXTENSIONS = new Set([
+  'css', 'js', 'jsx', 'ts', 'tsx', 'mjs', 'cjs', 'vue', 'svelte',
+  'py', 'rb', 'go', 'rs', 'java', 'kt', 'swift', 'c', 'h', 'cpp', 'hpp', 'cs',
+  'sh', 'bash', 'zsh', 'fish', 'sql', 'graphql', 'gql',
+])
+
 function getLastExtension(s: string): string | null {
   const cleaned = stripPathExtras(s)
   const segs = cleaned.split(/[/\\]/).filter(Boolean)
@@ -81,12 +107,22 @@ function isDirectoryLikePath(s: string): boolean {
 }
 
 function shouldReportMissing(rawPath: string, kind: ReferenceKind): boolean {
+  const cleaned = stripPathExtras(rawPath)
   if (isDirectoryLikePath(rawPath)) return false
+  if (/\.\.\.|YYYY|XXXX|TODO/i.test(cleaned)) return false
+  if (/(^|[/\\])[^/\\]*\.local\.[^/\\]+$/i.test(cleaned)) return false
   // Extensionless refs such as `@/api/v1`, `origin/main`, or `docs/plans`
   // are too ambiguous to report as broken. If the target exists we still keep
   // the relationship, but a miss stays silent to avoid slash-heavy prose noise.
+  const ext = getLastExtension(rawPath)
+  if (!ext) return false
+  if (kind === 'plain') return false
   if (kind === 'at') return hasKnownFileExtension(rawPath)
-  return hasKnownFileExtension(rawPath)
+  if (DOCUMENT_LINK_EXTENSIONS.has(ext)) return true
+  if (SOURCE_CODE_EXTENSIONS.has(ext)) {
+    return cleaned.startsWith('./') || cleaned.startsWith('../')
+  }
+  return false
 }
 
 function isInsideRoot(absPath: string, projectRoot: string): boolean {
@@ -215,8 +251,18 @@ function buildFallbackPaths(
   docDir?: string
 ): string[] {
   const projectRootFallback = docDir ? resolveRef(rawPath, kind, projectRoot) : undefined
+  const duplicateLeadingSegmentFallback = docDir ? resolveDuplicateLeadingSegmentFallback(rawPath, docDir) : undefined
   const projectSuffixFallback = resolveProjectSuffixFallback(rawPath, projectRoot)
-  return uniqueFallbackPaths([projectRootFallback, projectSuffixFallback], primary)
+  return uniqueFallbackPaths([projectRootFallback, duplicateLeadingSegmentFallback, projectSuffixFallback], primary)
+}
+
+function resolveDuplicateLeadingSegmentFallback(rawPath: string, docDir: string): string | null {
+  const cleaned = stripPathExtras(rawPath)
+  if (!cleaned || path.isAbsolute(cleaned) || isWindowsAbsolutePath(cleaned)) return null
+  const parts = cleaned.split(/[/\\]/).filter(Boolean)
+  if (parts.length < 2) return null
+  if (parts[0] !== path.basename(docDir)) return null
+  return path.resolve(path.dirname(docDir), cleaned)
 }
 
 function pushReference(results: Reference[], ref: Reference): void {
@@ -303,6 +349,7 @@ export function extractReferences(
         pushReference(results, {
           raw: rawMatch,
           resolvedPath,
+          lookupSuffix: lookupSuffixFor(pathPart.replace(/^\//, '')),
           reportMissing: shouldReportMissing(pathPart, 'at'),
           kind: 'at',
           line: lineNum,
@@ -328,7 +375,8 @@ export function extractReferences(
           resolvedPath: primary,
           fallbackPath: fallbackPaths[0],
           fallbackPaths: fallbackPaths.length > 0 ? fallbackPaths : undefined,
-          lookupBasename: bareFileName ? stripPathExtras(inner) : undefined,
+          lookupBasename: lookupBasenameFor(inner, bareFileName),
+          lookupSuffix: lookupSuffixFor(inner),
           reportMissing: shouldReportMissing(inner, 'inline'),
           kind: 'inline',
           line: lineNum,
@@ -355,6 +403,7 @@ export function extractReferences(
           resolvedPath: primary,
           fallbackPath: fallbackPaths[0],
           fallbackPaths: fallbackPaths.length > 0 ? fallbackPaths : undefined,
+          lookupSuffix: lookupSuffixFor(rawPath),
           reportMissing: shouldReportMissing(rawPath, 'plain'),
           kind: 'plain',
           line: lineNum,
@@ -388,7 +437,8 @@ export function extractReferences(
               resolvedPath: primary,
               fallbackPath: fallbackPaths[0],
               fallbackPaths: fallbackPaths.length > 0 ? fallbackPaths : undefined,
-              lookupBasename: isBareFileName(hint.pathStr) ? stripPathExtras(hint.pathStr) : undefined,
+              lookupBasename: lookupBasenameFor(hint.pathStr, isBareFileName(hint.pathStr)),
+              lookupSuffix: lookupSuffixFor(hint.pathStr),
               reportMissing: shouldReportMissing(hint.pathStr, 'hint'),
               kind: 'hint',
               line: lineNum,

@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspacePicker } from './WorkspacePicker'
 import { ThemeToggle } from './ThemeToggle'
 import { Settings } from './Settings'
 import { ProductGuideModal } from './ProductGuideModal'
-import { IconButton } from './ui'
+import { IconButton, toast } from './ui'
 import { useTheme } from '../hooks/useTheme'
-import type { Workspace, ViewMode } from '../../../src/preload/types'
+import type { UpdateCheckResult, Workspace, ViewMode } from '../../../src/preload/types'
 
 interface SidebarProps {
   workspaces: Workspace[]
@@ -88,6 +88,8 @@ const VIEW_TAB_KEYS: { value: ViewMode; labelKey: string; titleKey: string }[] =
   { value: 'project', labelKey: 'sidebar.tabs.project', titleKey: 'sidebar.tabs.projectTitle' },
 ]
 
+const UPDATE_AUTO_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000
+
 export function Sidebar({
   workspaces,
   activeWorkspaceId,
@@ -104,8 +106,113 @@ export function Sidebar({
   const { t } = useTranslation()
   const { theme, setTheme } = useTheme()
   const [guideOpen, setGuideOpen] = useState(false)
+  const [updateChecking, setUpdateChecking] = useState(false)
+  const [updateAvailable, setUpdateAvailable] = useState<{
+    version: string
+    releaseUrl?: string
+    downloadUrl?: string
+    releaseName?: string
+  } | null>(null)
   ensureSpinStyle()
   const refreshDisabled = !activeWorkspaceId || isRefreshing
+  const updateAvailableVersion = updateAvailable?.version ?? null
+  const updateLabel = updateChecking
+    ? t('updates.checking')
+    : updateAvailableVersion
+      ? t('updates.availableAria', { version: updateAvailableVersion })
+      : t('updates.checkAria', { version: __APP_VERSION__ })
+  const updateTitle = updateAvailableVersion
+    ? t('updates.availableTitle', { version: updateAvailableVersion })
+    : updateLabel
+
+  const applyUpdateResult = (result: UpdateCheckResult, notify: boolean) => {
+    if (result.status === 'update-available') {
+      const version = result.latestVersion ?? result.releaseName ?? ''
+      const targetUrl = result.downloadUrl ?? result.releaseUrl
+      setUpdateAvailable(version ? {
+        version,
+        releaseUrl: result.releaseUrl,
+        downloadUrl: result.downloadUrl,
+        releaseName: result.releaseName,
+      } : null)
+      if (notify) {
+        toast.info(t('updates.available', { version }), {
+          durationMs: 8000,
+          action: targetUrl
+            ? {
+                label: result.downloadUrl ? t('updates.openDownload') : t('updates.openRelease'),
+                onClick: () => {
+                  void window.api.shell.openExternal(targetUrl)
+                },
+              }
+            : undefined,
+        })
+      }
+      return
+    }
+
+    if (result.status === 'up-to-date') {
+      setUpdateAvailable(null)
+      if (notify) toast.success(t('updates.upToDate', { version: result.currentVersion }))
+      return
+    }
+
+    if (notify) {
+      toast.error(t('updates.checkFailed', {
+        reason: result.reason ?? t('updates.unknownError'),
+      }))
+    }
+  }
+
+  useEffect(() => {
+    let active = true
+    const runAutoCheck = () => {
+      const checkUpdates = window.api.updates?.check
+      if (!checkUpdates) return
+      void checkUpdates()
+        .then((result) => {
+          if (!active) return
+          applyUpdateResult(result, false)
+        })
+        .catch(() => {})
+    }
+
+    runAutoCheck()
+    const interval = window.setInterval(runAutoCheck, UPDATE_AUTO_CHECK_INTERVAL_MS)
+
+    return () => {
+      active = false
+      window.clearInterval(interval)
+    }
+  }, [])
+
+  const handleCheckForUpdates = async () => {
+    if (updateChecking) return
+    const checkUpdates = window.api.updates?.check
+    if (!checkUpdates) {
+      toast.error(t('updates.preloadUnavailable'))
+      return
+    }
+    setUpdateChecking(true)
+    try {
+      const result = await checkUpdates()
+      applyUpdateResult(result, true)
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err)
+      toast.error(t('updates.checkFailed', { reason }))
+    } finally {
+      setUpdateChecking(false)
+    }
+  }
+
+  const handleUpdateButtonClick = () => {
+    const targetUrl = updateAvailable?.downloadUrl ?? updateAvailable?.releaseUrl
+    if (updateAvailable && targetUrl) {
+      void window.api.shell.openExternal(targetUrl)
+      return
+    }
+    void handleCheckForUpdates()
+  }
 
   return (
     <header
@@ -199,19 +306,38 @@ export function Sidebar({
         >
           <RefreshIcon spinning={isRefreshing} />
         </IconButton>
-        <span
-          aria-label={t('sidebar.version', { version: __APP_VERSION__ })}
-          title={t('sidebar.version', { version: __APP_VERSION__ })}
+        <button
+          type="button"
+          aria-label={updateLabel}
+          title={updateTitle}
+          onClick={handleUpdateButtonClick}
+          disabled={updateChecking}
           style={{
+            border: updateAvailableVersion
+              ? '1px solid color-mix(in srgb, var(--accent) 35%, transparent)'
+              : '1px solid transparent',
+            borderRadius: 'var(--r-pill)',
+            background: updateAvailableVersion
+              ? 'color-mix(in srgb, var(--accent) 12%, transparent)'
+              : 'transparent',
             fontSize: 'var(--fs-xs)',
-            color: 'var(--text-muted)',
+            color: updateAvailableVersion ? 'var(--accent)' : 'var(--text-muted)',
             fontVariantNumeric: 'tabular-nums',
+            fontFamily: 'inherit',
+            fontWeight: updateAvailableVersion ? 'var(--fw-medium)' : 'var(--fw-normal)',
+            padding: '2px 6px',
             userSelect: 'text',
             whiteSpace: 'nowrap',
+            cursor: updateChecking ? 'wait' : 'pointer',
+            opacity: updateChecking ? 0.72 : 1,
           }}
         >
-          v{__APP_VERSION__}
-        </span>
+          {updateChecking
+            ? t('updates.checkingShort')
+            : updateAvailableVersion
+              ? t('updates.availableBadge')
+              : `v${__APP_VERSION__}`}
+        </button>
         <ThemeToggle value={theme} onChange={setTheme} />
         <Settings />
       </div>

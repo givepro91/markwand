@@ -8,7 +8,7 @@
  */
 import { describe, it, expect, vi } from 'vitest'
 import type { Workspace } from '../../preload/types'
-import { resolveTransportForPath } from './fs'
+import { normalizeMarkdownFileName, normalizeRenameFileName, resolveTransportForPath } from './fs'
 import { localTransport } from '../transport/local'
 
 vi.mock('../services/store', () => ({
@@ -87,5 +87,20 @@ describe('resolveTransportForPath', () => {
   it('SSH workspace 밖 경로 — null 반환 (transport 생성 시도 없음)', async () => {
     const result = await resolveTransportForPath('/home/carol/other/x.md', [sshWs])
     expect(result).toBeNull()
+  })
+})
+
+describe('file mutation helpers', () => {
+  it('새 마크다운 이름에 .md 확장자를 보강하고 다른 확장자는 거부', () => {
+    expect(normalizeMarkdownFileName('daily-note')).toBe('daily-note.md')
+    expect(normalizeMarkdownFileName('daily-note.md')).toBe('daily-note.md')
+    expect(() => normalizeMarkdownFileName('daily-note.txt')).toThrow('INVALID_MARKDOWN_EXTENSION')
+  })
+
+  it('rename 입력에 확장자가 없으면 기존 확장자를 보존하고 viewable 확장자만 허용', () => {
+    expect(normalizeRenameFileName('spec.md', 'proposal')).toBe('proposal.md')
+    expect(normalizeRenameFileName('screen.png', 'hero')).toBe('hero.png')
+    expect(() => normalizeRenameFileName('spec.md', 'proposal.txt')).toThrow('UNSUPPORTED_FILE_TYPE')
+    expect(() => normalizeRenameFileName('spec.md', 'proposal.png')).toThrow('INVALID_RENAME_EXTENSION')
   })
 })

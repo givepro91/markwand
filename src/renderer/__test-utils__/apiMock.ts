@@ -1,4 +1,5 @@
 import { vi } from 'vitest'
+import type { Doc, ReadDocResult, UpdateCheckResult } from '../../preload/types'
 
 type AnyFn = (...args: unknown[]) => unknown
 
@@ -25,12 +26,17 @@ export function createApiMock(overrides: Record<string, unknown> = {}) {
     },
     project: {
       scan: vi.fn(() => ok([])),
-      scanDocs: vi.fn(() => ok([])),
+      scanDocs: vi.fn(() => ok<Doc[]>([])),
       getDocCount: vi.fn(() => ok(0)),
       gitSummary: vi.fn(() => ok({ available: false, reason: 'not-git' })),
+      onDocsChunk: vi.fn(() => unsubscribe),
     },
     fs: {
-      readDoc: vi.fn(() => ok({ text: '', frontmatter: null })),
+      readDoc: vi.fn(() => ok<ReadDocResult>({ content: '', mtime: 0 })),
+      createMarkdown: vi.fn(() => ok({ path: '/project/untitled.md', name: 'untitled.md', mtime: 1, size: 12 })),
+      createFolder: vi.fn(() => ok({ path: '/project/docs', name: 'docs', mtime: 1, size: 64 })),
+      rename: vi.fn(() => ok({ path: '/project/renamed.md', name: 'renamed.md', mtime: 1, size: 12 })),
+      trash: vi.fn(() => ok({ path: '/project/old.md', name: 'old.md', mtime: 1, size: 12 })),
       readImage: vi.fn(() => ok({ data: '', mime: 'image/png' })),
       onChange: vi.fn(() => unsubscribe),
       onProjectChange: vi.fn(() => unsubscribe),
@@ -51,6 +57,14 @@ export function createApiMock(overrides: Record<string, unknown> = {}) {
     projectOpeners: {
       list: vi.fn(() => ok([{ id: 'finder', label: 'Finder', available: true }])),
       open: vi.fn(() => ok({ ok: true })),
+    },
+    updates: {
+      check: vi.fn(() => ok<UpdateCheckResult>({
+        status: 'up-to-date',
+        currentVersion: '0.0.0',
+        latestVersion: '0.0.0',
+        checkedAt: 0,
+      })),
     },
     annotation: {
       load: vi.fn(() => ok({ version: 1 as const, annotations: [] })),

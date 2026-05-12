@@ -49,6 +49,14 @@ contextBridge.exposeInMainWorld('api', {
 
   fs: {
     readDoc: (path: string) => ipcRenderer.invoke('fs:read-doc', { path }),
+    createMarkdown: (input: { projectRoot: string; dirPath: string; name: string }) =>
+      ipcRenderer.invoke('fs:create-markdown', input),
+    createFolder: (input: { projectRoot: string; dirPath: string; name: string }) =>
+      ipcRenderer.invoke('fs:create-folder', input),
+    rename: (input: { projectRoot: string; path: string; newName: string }) =>
+      ipcRenderer.invoke('fs:rename', input),
+    trash: (input: { projectRoot: string; path: string }) =>
+      ipcRenderer.invoke('fs:trash', input),
     onChange: (cb: (data: FsChangeEvent) => void) => {
       const wrapper = (_event: Electron.IpcRendererEvent, data: FsChangeEvent) => cb(data)
       ipcRenderer.on('fs:change', wrapper)
@@ -82,6 +90,10 @@ contextBridge.exposeInMainWorld('api', {
     list: () => ipcRenderer.invoke('project-openers:list'),
     open: (projectRoot: string, openerId: ProjectOpenerId) =>
       ipcRenderer.invoke('project-openers:open', { projectRoot, openerId }),
+  },
+
+  updates: {
+    check: () => ipcRenderer.invoke('updates:check'),
   },
 
   composer: {

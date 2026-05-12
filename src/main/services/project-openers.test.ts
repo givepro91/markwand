@@ -62,6 +62,67 @@ describe('project-openers', () => {
     expect(openPath).toHaveBeenCalledWith('/Users/alice/work/app')
   })
 
+  it('opens file targets directly in IDEs', async () => {
+    const execa = vi.fn(async (file: string, args?: string[]) => {
+      if (file === '/usr/bin/which' && args?.[0] === 'code') return { stdout: '/opt/homebrew/bin/code' }
+      return { stdout: '' }
+    })
+
+    const result = await openProjectWithOpener('/Users/alice/work/app/docs/spec.md', 'vscode', {
+      platform: 'darwin',
+      stat: vi.fn(async () => ({ isFile: () => true, isDirectory: () => false })),
+      access: vi.fn(async () => {
+        throw new Error('ENOENT')
+      }),
+      execa,
+    })
+
+    expect(result.ok).toBe(true)
+    expect(execa).toHaveBeenCalledWith('/opt/homebrew/bin/code', ['/Users/alice/work/app/docs/spec.md'], { timeout: 10_000 })
+  })
+
+  it('reveals file targets in Finder instead of opening only the containing folder', async () => {
+    const openPath = vi.fn(async () => '')
+    const showItemInFolder = vi.fn()
+
+    const result = await openProjectWithOpener('/Users/alice/work/app/docs/spec.md', 'finder', {
+      platform: 'darwin',
+      stat: vi.fn(async () => ({ isFile: () => true, isDirectory: () => false })),
+      openPath,
+      showItemInFolder,
+    })
+
+    expect(result.ok).toBe(true)
+    expect(showItemInFolder).toHaveBeenCalledWith('/Users/alice/work/app/docs/spec.md')
+    expect(openPath).not.toHaveBeenCalled()
+  })
+
+  it('opens terminals at the containing folder when the target is a file', async () => {
+    const execa = vi.fn(async (file: string, args?: string[], options?: Record<string, unknown>) => {
+      if (file === '/usr/bin/which') throw new Error('not found')
+      void args
+      void options
+      return { stdout: '' }
+    })
+
+    const result = await openProjectWithOpener('/Users/alice/work/app/docs/spec.md', 'terminal', {
+      platform: 'darwin',
+      stat: vi.fn(async () => ({ isFile: () => true, isDirectory: () => false })),
+      access: vi.fn(async (target: string) => {
+        if (target.includes('Terminal.app')) return
+        throw new Error('ENOENT')
+      }),
+      execa,
+    })
+
+    expect(result.ok).toBe(true)
+    const osascriptCall = execa.mock.calls.find(([file]) => file === 'osascript')
+    expect(osascriptCall?.[2]).toMatchObject({
+      env: expect.objectContaining({ TARGET_DIR: '/Users/alice/work/app/docs' }),
+      timeout: 10_000,
+    })
+  })
+
   it('opens iTerm2 through its actual AppleScript application name', async () => {
     const execa = vi.fn(async (file: string, args?: string[]) => {
       if (file === '/usr/bin/which') throw new Error('not found')
