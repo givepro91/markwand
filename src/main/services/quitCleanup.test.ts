@@ -3,11 +3,12 @@ import {
   DEFAULT_QUIT_CLEANUP_TIMEOUT_MS,
   hideWindowsForFastQuit,
   runQuitCleanup,
+  startFastQuit,
 } from './quitCleanup'
 
 describe('runQuitCleanup', () => {
   it('keeps the default watchdog short enough for Cmd+Q to feel instant', () => {
-    expect(DEFAULT_QUIT_CLEANUP_TIMEOUT_MS).toBeLessThanOrEqual(500)
+    expect(DEFAULT_QUIT_CLEANUP_TIMEOUT_MS).toBeLessThanOrEqual(150)
   })
 
   it('waits for transport and watcher cleanup when both complete quickly', async () => {
@@ -54,6 +55,22 @@ describe('runQuitCleanup', () => {
       '[main] before-quit cleanup error: Error: ssh dispose failed',
     )
   })
+
+  it('logs synchronous cleanup failures through the same quit path', async () => {
+    const disposeAll = vi.fn(() => {
+      throw new Error('pool import state invalid')
+    })
+    const stopWatcher = vi.fn(async () => undefined)
+    const log = vi.fn()
+
+    await expect(
+      runQuitCleanup({ disposeAll, stopWatcher, timeoutMs: 100, log }),
+    ).resolves.toBe('completed')
+
+    expect(log).toHaveBeenCalledWith(
+      '[main] before-quit cleanup error: Error: pool import state invalid',
+    )
+  })
 })
 
 describe('hideWindowsForFastQuit', () => {
@@ -65,5 +82,38 @@ describe('hideWindowsForFastQuit', () => {
 
     expect(live.hide).toHaveBeenCalledTimes(1)
     expect(destroyed.hide).not.toHaveBeenCalled()
+  })
+})
+
+describe('startFastQuit', () => {
+  it('hides windows synchronously and exits on the next tick without waiting for cleanup', async () => {
+    vi.useFakeTimers()
+    const live = { isDestroyed: vi.fn(() => false), hide: vi.fn() }
+    const clearStartupWatcher = vi.fn()
+    const exit = vi.fn()
+    const disposeAll = vi.fn(() => new Promise<void>(() => undefined))
+    const stopWatcher = vi.fn(async () => undefined)
+    const log = vi.fn()
+
+    startFastQuit({
+      windows: [live],
+      clearStartupWatcher,
+      exit,
+      disposeAll,
+      stopWatcher,
+      timeoutMs: 100,
+      log,
+    })
+
+    expect(clearStartupWatcher).toHaveBeenCalledOnce()
+    expect(live.hide).toHaveBeenCalledOnce()
+    expect(exit).not.toHaveBeenCalled()
+
+    await new Promise<void>((resolve) => process.nextTick(resolve))
+
+    expect(exit).toHaveBeenCalledOnce()
+    expect(log).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(100)
+    vi.useRealTimers()
   })
 })

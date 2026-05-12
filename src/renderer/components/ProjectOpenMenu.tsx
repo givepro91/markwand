@@ -213,14 +213,12 @@ export function ProjectOpenMenu({ projectRoot, disabled = false, disabledReason,
             textOverflow: 'ellipsis',
           }}
         >
-            <span aria-hidden="true">{selectedOpener ? openerGlyph[selectedOpener.id] : '⌂'}</span>
-          <span style={{ maxWidth: isCompact ? '96px' : undefined, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <span aria-hidden="true">{selectedOpener ? openerGlyph[selectedOpener.id] : '⌂'}</span>
+          <span style={{ maxWidth: isCompact ? '132px' : undefined, overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {launchingId
               ? t('projectOpen.opening')
               : selectedOpener
-                ? isCompact
-                  ? selectedOpener.label
-                  : t('projectOpen.openWithShort', { app: selectedOpener.label })
+                ? isCompact ? selectedOpener.label : t('projectOpen.openWithShort', { app: selectedOpener.label })
                 : t('projectOpen.none')}
           </span>
         </button>

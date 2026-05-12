@@ -57,6 +57,8 @@ describe('ProjectDocReturnBar', () => {
     )
 
     expect(screen.getByText('README.md')).toBeInTheDocument()
+    expect(screen.getByText('projectWiki.currentDoc')).toBeInTheDocument()
+    expect(screen.queryByText('projectWiki.readingDoc')).not.toBeInTheDocument()
     expect(screen.getByText('README.md').closest('[data-project-doc-return-bar]')).toBeInTheDocument()
     await userEvent.setup().click(screen.getByRole('button', { name: 'projectWiki.returnToWikiAria' }))
 
@@ -81,7 +83,7 @@ describe('ProjectDocReturnBar', () => {
       margin: '0 0 var(--sp-4)',
       padding: 'var(--sp-2) var(--sp-8)',
     })
-    expect(actions).toHaveStyle({ minWidth: '0', maxWidth: '100%', flex: '1 1 520px' })
+    expect(actions).toHaveStyle({ minWidth: '0', maxWidth: '100%', flex: '0 1 auto', flexWrap: 'nowrap' })
   })
 
   it('keeps expanded document search inside the compact reading bar', () => {
@@ -215,6 +217,11 @@ describe('ProjectDocReturnBar', () => {
     )
 
     await waitFor(() => expect(api.fs.readDoc).toHaveBeenCalledWith(doc.path))
+
+    const tocButton = await screen.findByRole('button', { name: 'projectView.tocOpen' })
+    expect(screen.queryByRole('button', { name: 'projectView.tocToggle' })).not.toBeInTheDocument()
+    fireEvent.click(tocButton)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'projectView.tocClose' })).toBeInTheDocument())
 
     expect(screen.queryByRole('menuitem', { name: 'projectView.copyMarkdownSourceAria' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'projectView.copyMenuAria' }))

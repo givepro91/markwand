@@ -194,9 +194,9 @@ export function ProjectDocReturnBar({
         boxShadow: 'var(--shadow-sm)',
       }}
     >
-      <div style={{ minWidth: 0, maxWidth: '100%', flex: '0 1 240px', display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
+      <div style={{ minWidth: 0, maxWidth: '100%', flex: '1 1 160px', display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
         <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 'var(--fw-medium)' }}>
-          {t('projectWiki.readingDoc')}
+          {t('projectWiki.currentDoc')}
         </span>
         <strong
           style={{
@@ -218,9 +218,9 @@ export function ProjectDocReturnBar({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'flex-end',
-          flexWrap: 'wrap',
-          gap: 'var(--sp-2)',
-          flex: '1 1 520px',
+          flexWrap: 'nowrap',
+          gap: '6px',
+          flex: '0 1 auto',
           minWidth: 0,
           maxWidth: '100%',
         }}
@@ -1472,7 +1472,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
           <ProjectActionButton
             icon={<TocIcon />}
             label={t('projectView.tocTab')}
-            ariaLabel={t('projectView.tocToggle')}
+            ariaLabel={showTocRail ? t('projectView.tocClose') : t('projectView.tocOpen')}
             active={showTocRail}
             onClick={() => {
               const next = getTocActionState({ showTocRail, hasDriftTool, documentToolsMode })

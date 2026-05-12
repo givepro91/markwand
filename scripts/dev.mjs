@@ -22,7 +22,10 @@ const NOISE_PATTERNS = [
 
 const child = spawn('pnpm', ['exec', 'electron-vite', 'dev'], {
   stdio: ['inherit', 'inherit', 'pipe'],
-  env: process.env,
+  env: {
+    ...process.env,
+    MARKWAND_DEV_WRAPPER_PID: String(process.pid),
+  },
 })
 
 let buf = ''
@@ -45,7 +48,26 @@ const forwardSignal = (sig) => () => {
 process.on('SIGINT', forwardSignal('SIGINT'))
 process.on('SIGTERM', forwardSignal('SIGTERM'))
 
+let fastQuitRequested = false
+let fastQuitTimer = null
+let forceKillTimer = null
+process.on('SIGUSR2', () => {
+  fastQuitRequested = true
+  if (fastQuitTimer) return
+  fastQuitTimer = setTimeout(() => {
+    if (!child.killed) child.kill('SIGTERM')
+    forceKillTimer = setTimeout(() => {
+      if (!child.killed) child.kill('SIGKILL')
+    }, 500)
+    forceKillTimer.unref?.()
+  }, 500)
+  fastQuitTimer.unref?.()
+})
+
 child.on('exit', (code, signal) => {
+  if (fastQuitTimer) clearTimeout(fastQuitTimer)
+  if (forceKillTimer) clearTimeout(forceKillTimer)
+  if (fastQuitRequested) process.exit(0)
   if (signal) process.kill(process.pid, signal)
   else process.exit(code ?? 0)
 })

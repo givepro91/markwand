@@ -19,10 +19,11 @@ import { registerGitHandlers } from './ipc/git'
 import { registerUpdateHandlers } from './ipc/updates'
 import { registerSshIpcHandlers } from './ipc/ssh'
 import { setActiveWebContents as setSshActiveWebContents } from './transport/ssh/hostKeyPromptBridge'
+import { disposeAll } from './transport/pool'
 import { getStore } from './services/store'
 import { startWatcher, stopWatcher } from './services/watcher'
-import { hideWindowsForFastQuit, runQuitCleanup } from './services/quitCleanup'
-import { getDevRendererUrl, shouldAutoOpenDevTools } from './services/runtimeMode'
+import { startFastQuit } from './services/quitCleanup'
+import { getDevRendererUrl, getDevWrapperPid, shouldAutoOpenDevTools } from './services/runtimeMode'
 import { shouldStartStartupWatcher } from './services/startupWatchPolicy'
 import { parseShellShowItemInput } from './security/validators'
 
@@ -83,6 +84,12 @@ async function createWindow(): Promise<BrowserWindow> {
   mainWindow = win
   // M3 S2 — SSH host key prompt / transport status 이벤트 대상 webContents 주입.
   setSshActiveWebContents(win.webContents)
+  win.on('close', (event) => {
+    quitTrace('window close')
+    if (quitCleanupStarted) return
+    event.preventDefault()
+    beginFastQuit()
+  })
   win.on('closed', () => {
     mainWindow = null
     setSshActiveWebContents(null)
@@ -137,6 +144,11 @@ async function initializeApp(): Promise<void> {
 let mainWindow: BrowserWindow | null = null
 let startupWatcherTimer: ReturnType<typeof setTimeout> | null = null
 
+function quitTrace(message: string): void {
+  if (process.env.MARKWAND_QUIT_TRACE !== '1') return
+  process.stderr.write(`[quit ${Date.now()}] ${message}\n`)
+}
+
 function registerShellHandlers(): void {
   ipcMain.handle('shell:reveal', async (_event, raw: unknown) => {
     const { path: itemPath } = parseShellShowItemInput(raw)
@@ -150,6 +162,7 @@ app.whenReady().then(async () => {
   // macOS dock 아이콘 클릭 / 알트탭 복귀 — 창이 없으면 만들고, 있으면 강제 표시·포커스.
   // 사용자가 다른 앱 보고 돌아왔을 때 창이 안 보이는 문제 fix.
   app.on('activate', async () => {
+    if (quitCleanupStarted) return
     if (mainWindow && !mainWindow.isDestroyed()) {
       if (mainWindow.isMinimized()) mainWindow.restore()
       mainWindow.show()
@@ -169,30 +182,57 @@ app.on('browser-window-blur', () => {
 })
 
 app.on('window-all-closed', () => {
+  quitTrace('window-all-closed')
+  if (quitCleanupStarted) return
   // Markwand는 백그라운드 상주 앱이 아니므로 macOS에서도 마지막 창을 닫으면 종료한다.
-  app.quit()
+  beginFastQuit()
 })
 
 // M3 S3 — 앱 종료 시 SSH transport pool 전체 정리 (dispose 역순) + local watcher 종료.
 let quitCleanupStarted = false
-app.on('before-quit', (event) => {
-  if (quitCleanupStarted) return
-  quitCleanupStarted = true
-  event.preventDefault()
-  if (startupWatcherTimer) {
-    clearTimeout(startupWatcherTimer)
-    startupWatcherTimer = null
-  }
-  hideWindowsForFastQuit(BrowserWindow.getAllWindows())
+function clearStartupWatcher(): void {
+  if (!startupWatcherTimer) return
+  clearTimeout(startupWatcherTimer)
+  startupWatcherTimer = null
+}
 
-  void (async () => {
-    try {
-      const { disposeAll } = await import('./transport/pool')
-      await runQuitCleanup({ disposeAll, stopWatcher })
-    } catch (err) {
-      process.stderr.write(`[main] before-quit cleanup setup error: ${String(err)}\n`)
-    } finally {
-      app.exit(0)
-    }
-  })()
+function beginFastQuit(): void {
+  quitTrace('beginFastQuit')
+  quitCleanupStarted = true
+  startFastQuit({
+    windows: BrowserWindow.getAllWindows(),
+    clearStartupWatcher,
+    disposeAll,
+    stopWatcher,
+    exit: forceExitApp,
+  })
+  notifyDevWrapperFastQuit()
+}
+
+function forceExitApp(): void {
+  quitTrace('process.kill(SIGKILL)')
+  try {
+    // Electron can keep the main PID alive for seconds after process.exit/app.exit in dev.
+    // The quit path already hid windows and kicked off best-effort cleanup, so end the PID.
+    process.kill(process.pid, 'SIGKILL')
+  } catch {
+    process.exit(0)
+  }
+}
+
+function notifyDevWrapperFastQuit(): void {
+  const pid = getDevWrapperPid(app.isPackaged, process.env)
+  if (!pid || pid === process.pid) return
+  try {
+    process.kill(pid, 'SIGUSR2')
+  } catch {
+    // dev wrapper may have already exited.
+  }
+}
+
+app.on('before-quit', (event) => {
+  quitTrace('before-quit')
+  if (quitCleanupStarted) return
+  event.preventDefault()
+  beginFastQuit()
 })
