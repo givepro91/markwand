@@ -1,10 +1,10 @@
-# macOS Installation Guide — v0.4.0-beta.13
+# macOS Installation Guide — v0.4.0-beta.14
 
 > **English** · [한국어](./install-macos.md)
 
 Markwand is distributed as a **free beta ZIP** without the Apple Developer Program. The app is ad-hoc signed, so it still shows a macOS warning on first launch, but installation does not require Terminal for the normal path.
 
-> Release notes: [release-notes/v0.4.0-beta.13.md](./release-notes/v0.4.0-beta.13.md)
+> Release notes: [release-notes/v0.4.0-beta.14.md](./release-notes/v0.4.0-beta.14.md)
 
 ---
 
@@ -12,24 +12,24 @@ Markwand is distributed as a **free beta ZIP** without the Apple Developer Progr
 
 Choose the file for your Mac:
 
-- **Apple Silicon (M1 / M2 / M3 / M4)**: `Markwand-0.4.0-beta.13-arm64-free.zip`
-- **Intel Mac**: `Markwand-0.4.0-beta.13-x64-free.zip`
+- **Apple Silicon (M1 / M2 / M3 / M4)**: `Markwand-0.4.0-beta.14-arm64-free.zip`
+- **Intel Mac**: `Markwand-0.4.0-beta.14-x64-free.zip`
 
 Latest release: https://github.com/givepro91/markwand/releases
 
 ## 2. Verify SHA-256 (optional)
 
 ```bash
-shasum -a 256 ~/Downloads/Markwand-0.4.0-beta.13-arm64-free.zip
+shasum -a 256 ~/Downloads/Markwand-0.4.0-beta.14-arm64-free.zip
 # or
-shasum -a 256 ~/Downloads/Markwand-0.4.0-beta.13-x64-free.zip
+shasum -a 256 ~/Downloads/Markwand-0.4.0-beta.14-x64-free.zip
 ```
 
 Expected hashes:
 
 ```text
-1eb41629215dc87bde629e0d79024b5a8eef1afa78942a95bd6809a323d15ecc  Markwand-0.4.0-beta.13-arm64-free.zip
-8a2b4ff04bfc17b79d1f47a716c73110a3b8a5601ded8b964fa3e17313ec4dcd  Markwand-0.4.0-beta.13-x64-free.zip
+b8eaf255a8e4fc8c77743e362789b95ed88cfa9fcfd2d038929f6502212c8004  Markwand-0.4.0-beta.14-arm64-free.zip
+77d1c0c5c6b9f7acf599a0d0238b5cc236417ee0397f44621a86d15e2df6081c  Markwand-0.4.0-beta.14-x64-free.zip
 ```
 
 ## 3. Unzip and move to Applications
@@ -61,4 +61,4 @@ open /Applications/Markwand.app
 
 ## Note
 
-A fully smooth double-click installer requires Apple Developer Program membership, Developer ID signing, and notarization. beta.13 intentionally prioritizes the shortest free distribution path.
+A fully smooth double-click installer requires Apple Developer Program membership, Developer ID signing, and notarization. beta.14 intentionally prioritizes the shortest free distribution path.

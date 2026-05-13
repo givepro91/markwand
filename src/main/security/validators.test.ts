@@ -180,6 +180,28 @@ describe('ALLOWED_PREFS_KEYS — activeProjectId 통과 (FS-RT-2)', () => {
   })
 })
 
+describe('ALLOWED_PREFS_KEYS — project tabs prefs 통과', () => {
+  it('parsePrefsGetInput — openProjectTabs/projectViewSessions 키 통과', () => {
+    expect(() => parsePrefsGetInput({ key: 'openProjectTabs' })).not.toThrow()
+    expect(() => parsePrefsGetInput({ key: 'projectViewSessions' })).not.toThrow()
+  })
+
+  it('parsePrefsSetInput — 열린 탭 목록 저장 통과', () => {
+    const out = parsePrefsSetInput({ key: 'openProjectTabs', value: ['p1', 'p2'] })
+    expect(out.key).toBe('openProjectTabs')
+    expect(out.value).toEqual(['p1', 'p2'])
+  })
+
+  it('parsePrefsSetInput — 프로젝트별 뷰 세션 저장 통과', () => {
+    const value = {
+      p1: { selectedDocPath: '/proj/a.md', showWiki: false, scrollTop: 120 },
+    }
+    const out = parsePrefsSetInput({ key: 'projectViewSessions', value })
+    expect(out.key).toBe('projectViewSessions')
+    expect(out.value).toEqual(value)
+  })
+})
+
 describe('Project opener IPC input — enum allowlist', () => {
   it('parseProjectOpenInput — 허용된 opener id 통과', () => {
     const parsed = parseProjectOpenInput({ projectRoot: '/Users/alice/workspace/app', openerId: 'vscode' })

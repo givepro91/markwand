@@ -113,15 +113,14 @@ function FirstProjectAhaCard({
     <section
       id="project-wiki-aha"
       style={{
-        border: '1px solid color-mix(in srgb, var(--accent) 30%, var(--border))',
-        borderRadius: 'var(--r-xl)',
-        padding: 'var(--sp-5)',
-        background:
-          'radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--accent) 18%, transparent) 0, transparent 34%), linear-gradient(135deg, var(--bg-elev) 0%, var(--bg) 100%)',
-        boxShadow: 'var(--shadow-md)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--r-lg)',
+        padding: 'var(--sp-4)',
+        background: 'var(--bg-elev)',
+        boxShadow: 'var(--shadow-sm)',
         display: 'grid',
         gridTemplateColumns: 'minmax(0, 1fr) auto',
-        gap: 'var(--sp-4)',
+        gap: 'var(--sp-3)',
         alignItems: 'center',
         minWidth: 0,
       }}
@@ -132,7 +131,7 @@ function FirstProjectAhaCard({
           <Badge variant={hasRisk ? 'danger' : 'default'} size="sm">{t(`projectWiki.aha.action.${action}.badge`)}</Badge>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-1)', minWidth: 0 }}>
-          <h2 style={{ margin: 0, color: 'var(--text)', fontSize: 'var(--fs-xl)', fontWeight: 'var(--fw-bold)', letterSpacing: '-0.02em' }}>
+          <h2 style={{ margin: 0, color: 'var(--text)', fontSize: 'var(--fs-lg)', fontWeight: 'var(--fw-semibold)' }}>
             {t(`projectWiki.aha.action.${action}.title`)}
           </h2>
           <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--fs-sm)', lineHeight: 'var(--lh-relaxed)' }}>
@@ -140,13 +139,6 @@ function FirstProjectAhaCard({
               doc: action === 'openRisk' ? riskDocLink?.name : startDocLink?.name,
             })}
           </p>
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
-          <Badge variant={brief ? 'success' : 'default'} size="sm">{t('projectWiki.aha.step.brief')}</Badge>
-          <Badge variant={summary.risks.missingRefs + summary.risks.staleRefs > 0 ? 'danger' : 'success'} size="sm">
-            {t('projectWiki.aha.step.risks')}
-          </Badge>
-          <Badge variant={brief ? 'marker' : 'default'} size="sm">{t('projectWiki.aha.step.handoff')}</Badge>
         </div>
       </div>
 
@@ -627,7 +619,7 @@ function ProjectPulseCard({
           ))}
         </div>
         <div>
-          <h2 style={{ margin: 0, color: 'var(--text)', fontSize: 'var(--fs-xl)', fontWeight: 'var(--fw-bold)', letterSpacing: '-0.02em' }}>
+          <h2 style={{ margin: 0, color: 'var(--text)', fontSize: 'var(--fs-xl)', fontWeight: 'var(--fw-bold)', letterSpacing: 0 }}>
             {t(`projectWiki.pulse.focus.${pulse.focus}.title`)}
           </h2>
           <p style={{ margin: 'var(--sp-2) 0 0', color: 'var(--text-muted)', fontSize: 'var(--fs-sm)', lineHeight: 'var(--lh-relaxed)' }}>
@@ -1641,9 +1633,11 @@ function ProjectBriefCard({
 function WikiSectionNav({
   showReferenceAudit,
   showRisks,
+  onNavigate,
 }: {
   showReferenceAudit: boolean
   showRisks: boolean
+  onNavigate?: () => void
 }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -1656,8 +1650,12 @@ function WikiSectionNav({
   ]
 
   const jumpToSection = (id: string) => {
+    onNavigate?.()
     const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
-    document.getElementById(id)?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
+    const schedule = window.requestAnimationFrame ?? ((callback: FrameRequestCallback) => window.setTimeout(callback, 0))
+    schedule(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
+    })
   }
 
   return (
@@ -1717,6 +1715,7 @@ export function ProjectWikiPanel({
 }: ProjectWikiPanelProps) {
   const { t } = useTranslation()
   const [snapshotCopied, setSnapshotCopied] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(false)
 
   if (summary.totalDocs === 0) {
     return (
@@ -1730,8 +1729,6 @@ export function ProjectWikiPanel({
     )
   }
 
-  const primarySource = summary.sourceCounts[0]
-  const primaryStatus = summary.statusCounts[0]
   const gitContext = buildProjectWikiGitContext(Array.from(docsByPath.values()), gitPulse)
   const showReferenceAudit = summary.relationships.checkedDocs > 0
   const showRisks = summary.risks.docsWithRisk.length > 0
@@ -1749,11 +1746,11 @@ export function ProjectWikiPanel({
   return (
     <div
       style={{
-        maxWidth: '980px',
+        maxWidth: '900px',
         margin: '0 auto',
         display: 'flex',
         flexDirection: 'column',
-        gap: 'var(--sp-6)',
+        gap: 'var(--sp-4)',
       }}
     >
       <header
@@ -1761,11 +1758,7 @@ export function ProjectWikiPanel({
           display: 'flex',
           flexDirection: 'column',
           gap: 'var(--sp-3)',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--r-xl)',
-          padding: 'var(--sp-6)',
-          background: 'var(--surface-wash), var(--bg-elev)',
-          boxShadow: 'var(--shadow-sm)',
+          padding: 'var(--sp-2) 0 var(--sp-1)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--sp-3)', flexWrap: 'wrap' }}>
@@ -1774,8 +1767,6 @@ export function ProjectWikiPanel({
             <Badge variant={summary.trust.level === 'weak' ? 'danger' : summary.trust.level === 'strong' ? 'success' : 'default'} size="sm">
               {t('projectWiki.trustBadge', { score: summary.trust.score })}
             </Badge>
-            {primarySource && <Badge variant="marker" size="sm">{primarySource.source}</Badge>}
-            {primaryStatus && <Badge variant="success" size="sm">{primaryStatus.status}</Badge>}
           </div>
           <div style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'flex-start', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             <Button
@@ -1786,7 +1777,11 @@ export function ProjectWikiPanel({
             >
               {snapshotCopied ? t('projectWiki.copyWorkspaceSnapshotDone') : t('projectWiki.copyWorkspaceSnapshot')}
             </Button>
-            <WikiSectionNav showReferenceAudit={showReferenceAudit} showRisks={showRisks} />
+            <WikiSectionNav
+              showReferenceAudit={showReferenceAudit}
+              showRisks={showRisks}
+              onNavigate={() => setDetailsOpen(true)}
+            />
           </div>
         </div>
         <h1
@@ -1795,7 +1790,7 @@ export function ProjectWikiPanel({
             fontSize: 'var(--fs-2xl)',
             fontWeight: 'var(--fw-bold)',
             color: 'var(--text)',
-            letterSpacing: '-0.02em',
+            letterSpacing: 0,
           }}
         >
           {t('projectWiki.title', { name: projectName })}
@@ -1820,21 +1815,6 @@ export function ProjectWikiPanel({
         onOpenDoc={onOpenDoc}
       />
 
-      <ProjectPulseCard
-        projectName={projectName}
-        summary={summary}
-        docsByPath={docsByPath}
-        onOpenDoc={onOpenDoc}
-      />
-
-      <GitPulseCard
-        pulse={gitPulse}
-        context={gitContext}
-        docsByPath={docsByPath}
-        onOpenDoc={onOpenDoc}
-        loading={gitPulseLoading}
-      />
-
       <ProjectBriefCard
         projectName={projectName}
         summary={summary}
@@ -1844,29 +1824,6 @@ export function ProjectWikiPanel({
         docsByPath={docsByPath}
         onOpenDoc={onOpenDoc}
       />
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-          gap: 'var(--sp-3)',
-        }}
-      >
-        <TrustMetric summary={summary} />
-        <Metric label={t('projectWiki.metrics.docs')} value={summary.markdownDocs} />
-        <Metric label={t('projectWiki.metrics.recent')} value={summary.recentDocs} />
-        <Metric label={t('projectWiki.metrics.unread')} value={summary.unreadDocs} />
-      </div>
-
-      <TrustDiagnostics summary={summary} />
-
-      {showReferenceAudit && (
-        <RelationshipGraph
-          summary={summary}
-          docsByPath={docsByPath}
-          onOpenDoc={onOpenDoc}
-        />
-      )}
 
       <Section id="project-wiki-ai-tasks" title={t('projectWiki.aiTasksTitle')}>
         <AiTaskSuggestions
@@ -1878,107 +1835,182 @@ export function ProjectWikiPanel({
         />
       </Section>
 
-      <div
+      <details
+        open={detailsOpen}
+        onToggle={(event) => setDetailsOpen(event.currentTarget.open)}
         style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
-          gap: 'var(--sp-6)',
-          alignItems: 'start',
-          minWidth: 0,
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--r-lg)',
+          background: 'var(--bg-elev)',
+          boxShadow: 'var(--shadow-sm)',
+          overflow: 'hidden',
         }}
       >
-        <Section title={t('projectWiki.knowledgeTitle')}>
-          <KnowledgeMap
-            clusters={summary.clusters}
+        <summary
+          style={{
+            cursor: 'pointer',
+            padding: 'var(--sp-4)',
+            color: 'var(--text)',
+            fontSize: 'var(--fs-sm)',
+            fontWeight: 'var(--fw-semibold)',
+            listStyle: 'none',
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--sp-3)', flexWrap: 'wrap' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
+              <span aria-hidden="true" style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-md)', lineHeight: 1 }}>
+                {detailsOpen ? '-' : '+'}
+              </span>
+              {detailsOpen ? t('projectWiki.detailsHide') : t('projectWiki.detailsToggle')}
+            </span>
+            <span style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-xs)', fontWeight: 'var(--fw-regular)', minWidth: 'min(100%, 220px)' }}>
+              {t('projectWiki.detailsHint')}
+            </span>
+          </span>
+        </summary>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-5)', padding: '0 var(--sp-4) var(--sp-4)' }}>
+          <ProjectPulseCard
+            projectName={projectName}
+            summary={summary}
             docsByPath={docsByPath}
             onOpenDoc={onOpenDoc}
           />
-        </Section>
 
-        <Section title={t('projectWiki.roleMapTitle')}>
-          <RoleMap
-            groups={summary.roleGroups ?? []}
+          <GitPulseCard
+            pulse={gitPulse}
+            context={gitContext}
             docsByPath={docsByPath}
             onOpenDoc={onOpenDoc}
+            loading={gitPulseLoading}
           />
-        </Section>
 
-        <Section id="project-wiki-start" title={t('projectWiki.onboardingTitle')}>
-          <DocList
-            items={summary.onboardingPath}
-            docsByPath={docsByPath}
-            empty={t('projectWiki.onboardingEmpty')}
-            onOpenDoc={onOpenDoc}
-            renderMeta={(item) => (
-              <Badge variant={item.reason === 'entrypoint' ? 'success' : 'default'} size="sm">
-                {t(`projectWiki.reason.${item.reason}`)}
-              </Badge>
-            )}
-          />
-        </Section>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+              gap: 'var(--sp-3)',
+            }}
+          >
+            <TrustMetric summary={summary} />
+            <Metric label={t('projectWiki.metrics.docs')} value={summary.markdownDocs} />
+            <Metric label={t('projectWiki.metrics.recent')} value={summary.recentDocs} />
+            <Metric label={t('projectWiki.metrics.unread')} value={summary.unreadDocs} />
+          </div>
 
-        {showRisks && (
-          <Section id="project-wiki-risks" title={t('projectWiki.riskTitle')}>
-            <RiskList
-              items={summary.risks.docsWithRisk}
+          <TrustDiagnostics summary={summary} />
+
+          {showReferenceAudit && (
+            <RelationshipGraph
+              summary={summary}
               docsByPath={docsByPath}
-              empty={t('projectWiki.riskEmpty')}
-              missingLabel={t('projectWiki.riskMissing')}
-              staleLabel={t('projectWiki.riskStale')}
               onOpenDoc={onOpenDoc}
             />
-            {(summary.risks.missingRefs > 0 || summary.risks.staleRefs > 0) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  const first = summary.risks.docsWithRisk[0]
-                  const doc = first ? docsByPath.get(first.path) : undefined
-                  if (doc) onOpenDoc(doc)
-                }}
-              >
-                {t('projectWiki.openTopRisk')}
-              </Button>
+          )}
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
+              gap: 'var(--sp-5)',
+              alignItems: 'start',
+              minWidth: 0,
+            }}
+          >
+            <Section title={t('projectWiki.knowledgeTitle')}>
+              <KnowledgeMap
+                clusters={summary.clusters}
+                docsByPath={docsByPath}
+                onOpenDoc={onOpenDoc}
+              />
+            </Section>
+
+            <Section title={t('projectWiki.roleMapTitle')}>
+              <RoleMap
+                groups={summary.roleGroups ?? []}
+                docsByPath={docsByPath}
+                onOpenDoc={onOpenDoc}
+              />
+            </Section>
+
+            <Section id="project-wiki-start" title={t('projectWiki.onboardingTitle')}>
+              <DocList
+                items={summary.onboardingPath}
+                docsByPath={docsByPath}
+                empty={t('projectWiki.onboardingEmpty')}
+                onOpenDoc={onOpenDoc}
+                renderMeta={(item) => (
+                  <Badge variant={item.reason === 'entrypoint' ? 'success' : 'default'} size="sm">
+                    {t(`projectWiki.reason.${item.reason}`)}
+                  </Badge>
+                )}
+              />
+            </Section>
+
+            {showRisks && (
+              <Section id="project-wiki-risks" title={t('projectWiki.riskTitle')}>
+                <RiskList
+                  items={summary.risks.docsWithRisk}
+                  docsByPath={docsByPath}
+                  empty={t('projectWiki.riskEmpty')}
+                  missingLabel={t('projectWiki.riskMissing')}
+                  staleLabel={t('projectWiki.riskStale')}
+                  onOpenDoc={onOpenDoc}
+                />
+                {(summary.risks.missingRefs > 0 || summary.risks.staleRefs > 0) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const first = summary.risks.docsWithRisk[0]
+                      const doc = first ? docsByPath.get(first.path) : undefined
+                      if (doc) onOpenDoc(doc)
+                    }}
+                  >
+                    {t('projectWiki.openTopRisk')}
+                  </Button>
+                )}
+              </Section>
             )}
-          </Section>
-        )}
 
-        <Section title={t('projectWiki.docDebtTitle')}>
-          <DocDebtRadar
-            items={summary.docDebt}
-            docsByPath={docsByPath}
-            onOpenDoc={onOpenDoc}
-          />
-        </Section>
+            <Section title={t('projectWiki.docDebtTitle')}>
+              <DocDebtRadar
+                items={summary.docDebt}
+                docsByPath={docsByPath}
+                onOpenDoc={onOpenDoc}
+              />
+            </Section>
 
-        <Section title={t('projectWiki.decisionsTitle')}>
-          <DecisionTimeline
-            items={summary.decisionTimeline}
-            docsByPath={docsByPath}
-            onOpenDoc={onOpenDoc}
-          />
-        </Section>
+            <Section title={t('projectWiki.decisionsTitle')}>
+              <DecisionTimeline
+                items={summary.decisionTimeline}
+                docsByPath={docsByPath}
+                onOpenDoc={onOpenDoc}
+              />
+            </Section>
 
-        <Section title={t('projectWiki.facetsTitle')}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
-            {summary.sourceCounts.map((item) => (
-              <Badge key={`source:${item.source}`} variant="marker" size="sm">
-                {item.source} {item.count}
-              </Badge>
-            ))}
-            {summary.statusCounts.map((item) => (
-              <Badge key={`status:${item.status}`} variant="default" size="sm">
-                {item.status} {item.count}
-              </Badge>
-            ))}
-            {summary.sourceCounts.length === 0 && summary.statusCounts.length === 0 && (
-              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--fs-sm)' }}>
-                {t('projectWiki.facetsEmpty')}
-              </p>
-            )}
+            <Section title={t('projectWiki.facetsTitle')}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
+                {summary.sourceCounts.map((item) => (
+                  <Badge key={`source:${item.source}`} variant="marker" size="sm">
+                    {item.source} {item.count}
+                  </Badge>
+                ))}
+                {summary.statusCounts.map((item) => (
+                  <Badge key={`status:${item.status}`} variant="default" size="sm">
+                    {item.status} {item.count}
+                  </Badge>
+                ))}
+                {summary.sourceCounts.length === 0 && summary.statusCounts.length === 0 && (
+                  <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--fs-sm)' }}>
+                    {t('projectWiki.facetsEmpty')}
+                  </p>
+                )}
+              </div>
+            </Section>
           </div>
-        </Section>
-      </div>
+        </div>
+      </details>
     </div>
   )
 }

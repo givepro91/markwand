@@ -722,6 +722,15 @@ const ChevronRightIcon = () => (
   </svg>
 )
 
+function scrollContainerTo(container: HTMLElement | null, top: number): void {
+  if (!container) return
+  if (typeof container.scrollTo === 'function') {
+    container.scrollTo({ top })
+    return
+  }
+  container.scrollTop = top
+}
+
 export function ProjectView({ projectId, projectRoot, projectName, initialDocPath, onSeeMoreRecent }: ProjectViewProps) {
   const { t } = useTranslation()
   const { docs, scanDocs, isScanning } = useDocs(projectId)
@@ -748,6 +757,9 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
     () => (isFilterActive ? applyMetaFilter(docs, metaFilter) : docs),
     [docs, metaFilter, isFilterActive]
   )
+  const initialViewSessionRef = useRef(useAppStore.getState().projectViewSessions[projectId])
+  const viewSession = initialViewSessionRef.current
+  const setProjectViewSession = useAppStore((s) => s.setProjectViewSession)
 
   const [selectedDoc, setSelectedDoc] = useState<Doc | null>(null)
   const [docContent, setDocContent] = useState<string>('')
@@ -765,10 +777,12 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
   const [documentToolsMode, setDocumentToolsMode] = useState<DocumentToolsMode>('all')
   const [findQuery, setFindQuery] = useState('')
   const [findResult, setFindResult] = useState<{ active: number; total: number } | null>(null)
-  const [showWiki, setShowWiki] = useState(true)
+  const [showWiki, setShowWiki] = useState(() => viewSession?.showWiki ?? true)
   const findInputRef = useRef<HTMLInputElement | null>(null)
   const findDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const findControllerRef = useRef<FindController | null>(null)
+  const docLoadSeqRef = useRef(0)
+  const pendingScrollRestoreRef = useRef<number | null>(null)
   // F2: 마크다운 스크롤 컨테이너 ref — TOC scrollIntoView 타깃
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
 
@@ -796,12 +810,22 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
   const showRightRail = showDocumentTools && (canShowDriftTool || hasTocTool)
   const showDriftRail = showRightRail && activeRightTool === 'issues' && canShowDriftTool
   const showTocRail = showRightRail && activeRightTool === 'toc' && hasTocTool
-  const handleReturnToWiki = useCallback(() => {
-    setShowWiki(true)
+  const scheduleScrollRestore = useCallback((scrollTop: number) => {
+    pendingScrollRestoreRef.current = scrollTop
     requestAnimationFrame(() => {
-      scrollContainerRef.current?.scrollTo({ top: 0 })
+      const next = pendingScrollRestoreRef.current
+      if (next === null) return
+      pendingScrollRestoreRef.current = null
+      scrollContainerTo(scrollContainerRef.current, next)
     })
   }, [])
+  const handleReturnToWiki = useCallback(() => {
+    setShowWiki(true)
+    setProjectViewSession(projectId, { showWiki: true, scrollTop: 0 })
+    requestAnimationFrame(() => {
+      scrollContainerTo(scrollContainerRef.current, 0)
+    })
+  }, [projectId, setProjectViewSession])
   const handleRefreshFileTree = useCallback(() => {
     if (!projectId) return
     scanDocs(projectId, { force: true })
@@ -849,6 +873,28 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
       unmountedRef.current = true
     }
   }, [])
+
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+    let rafId: number | null = null
+    const saveScroll = () => {
+      rafId = null
+      setProjectViewSession(projectId, { scrollTop: container.scrollTop })
+    }
+    const onScroll = () => {
+      if (rafId !== null) return
+      rafId = requestAnimationFrame(saveScroll)
+    }
+    container.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      container.removeEventListener('scroll', onScroll)
+      if (rafId !== null) cancelAnimationFrame(rafId)
+      if (useAppStore.getState().openProjectTabs.includes(projectId)) {
+        setProjectViewSession(projectId, { scrollTop: container.scrollTop })
+      }
+    }
+  }, [projectId, setProjectViewSession])
 
   // prefs 복원. 이미 드래그 중이면 응답 무시 — IPC race 로 드래그 중인 폭이 튀어오르지 않게.
   useEffect(() => {
@@ -975,11 +1021,18 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
     })
   }, [])
 
-  const loadDoc = useCallback(async (doc: Doc) => {
+  const loadDoc = useCallback(async (doc: Doc, opts?: { restoreScrollTop?: number }) => {
+    const loadSeq = ++docLoadSeqRef.current
+    const scrollTop = opts?.restoreScrollTop ?? 0
     setSelectedDoc(doc)
     setShowWiki(false)
     setTargetDir(dirnameOfPath(doc.path, projectRoot))
     setHeadings([])
+    setProjectViewSession(projectId, {
+      selectedDocPath: doc.path,
+      showWiki: false,
+      scrollTop,
+    })
     // F4: 마지막 본 문서 갱신
     setLastViewedDoc(projectId, doc.path)
 
@@ -988,20 +1041,27 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
     if (classifyAsset(doc.path) === 'image') {
       setDocContent('')
       setDocSource('')
+      scheduleScrollRestore(scrollTop)
       return
     }
 
+    setDocContent('')
+    setDocSource('')
     try {
       const result = await window.api.fs.readDoc(doc.path)
+      if (unmountedRef.current || loadSeq !== docLoadSeqRef.current) return
       setDocContent(result.content)
       setDocSource(result.rawContent ?? result.content)
+      scheduleScrollRestore(scrollTop)
     } catch (err) {
+      if (unmountedRef.current || loadSeq !== docLoadSeqRef.current) return
       console.error('문서 읽기 실패:', err)
       const msg = err instanceof Error ? err.message : String(err)
       setDocContent(humanizeError(t, msg))
       setDocSource('')
+      scheduleScrollRestore(scrollTop)
     }
-  }, [projectId, projectRoot, setLastViewedDoc])
+  }, [projectId, projectRoot, scheduleScrollRestore, setLastViewedDoc, setProjectViewSession, t])
 
   // F3: pendingDocOpen 처리 — docs 로드 후 한 번만 실행
   useEffect(() => {
@@ -1018,12 +1078,17 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
     if (docs.length === 0) return
     // pendingDocOpen이 이 프로젝트 대상이면 pendingDocOpen이 우선
     if (pendingDocOpen?.projectId === projectId) return
-    const savedPath = lastViewedDocs[projectId]
+    if (viewSession?.showWiki === true) return
+    const savedPath = viewSession?.selectedDocPath ?? lastViewedDocs[projectId]
     if (!savedPath) return
     // 이미 선택된 문서가 있으면 복원 불필요
     if (selectedDoc) return
     const doc = docs.find((d) => d.path === savedPath)
-    if (doc) loadDoc(doc)
+    if (doc) {
+      const restoreScrollTop =
+        savedPath === viewSession?.selectedDocPath ? viewSession?.scrollTop ?? 0 : 0
+      loadDoc(doc, { restoreScrollTop })
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docs, projectId])
 
@@ -1122,6 +1187,7 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
   }, [showFind, selectedDoc])
 
   const handleDocNavigate = useCallback(async (absPath: string) => {
+    const loadSeq = ++docLoadSeqRef.current
     // MarkdownViewer의 내부 링크 내비게이션은 `.md` 만 이 콜백을 호출하도록 설계돼 있으나,
     // 방어적으로 이미지 경로가 들어오면 readDoc 스킵하고 뷰어 전환만 수행.
     if (classifyAsset(absPath) === 'image') {
@@ -1136,10 +1202,19 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
       setDocContent('')
       setDocSource('')
       setLastViewedDoc(projectId, absPath)
+      setProjectViewSession(projectId, {
+        selectedDocPath: absPath,
+        showWiki: false,
+        scrollTop: 0,
+      })
+      scheduleScrollRestore(0)
       return
     }
+    setDocContent('')
+    setDocSource('')
     try {
       const result = await window.api.fs.readDoc(absPath)
+      if (unmountedRef.current || loadSeq !== docLoadSeqRef.current) return
       const fakeDoc: Doc = {
         path: absPath,
         projectId,
@@ -1152,10 +1227,17 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
       setDocContent(result.content)
       setDocSource(result.rawContent ?? result.content)
       setLastViewedDoc(projectId, absPath)
+      setProjectViewSession(projectId, {
+        selectedDocPath: absPath,
+        showWiki: false,
+        scrollTop: 0,
+      })
+      scheduleScrollRestore(0)
     } catch (err) {
+      if (unmountedRef.current || loadSeq !== docLoadSeqRef.current) return
       console.error('내부 링크 이동 실패:', err)
     }
-  }, [projectId, setLastViewedDoc])
+  }, [projectId, scheduleScrollRestore, setLastViewedDoc, setProjectViewSession])
 
   const handleExpandChange = useCallback(async (expanded: string[]) => {
     const stored = await window.api.prefs.get('treeExpanded')
@@ -1737,7 +1819,13 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
                 aria-pressed={showWiki}
                 size="sm"
                 variant={showWiki ? 'primary' : 'ghost'}
-                onClick={() => setShowWiki((p) => !p)}
+                onClick={() => {
+                  setShowWiki((prev) => {
+                    const next = !prev
+                    setProjectViewSession(projectId, { showWiki: next })
+                    return next
+                  })
+                }}
               >
                 <WikiIcon />
               </IconButton>

@@ -12,6 +12,11 @@ beforeEach(() => {
   useAppStore.setState({
     readDocs: {},
     trackReadDocs: true,
+    activeProjectId: null,
+    openProjectTabs: [],
+    recentlyClosedProjectTabs: [],
+    projectViewSessions: {},
+    viewMode: 'all',
   })
 })
 
@@ -343,5 +348,249 @@ describe('appendDocs — path 기준 dedup (스크롤 보존 핵심)', () => {
     expect(s.docs).toHaveLength(2)
     expect(s.docsByProject.get('p1')).toHaveLength(1)
     expect(s.docsByProject.get('p2')).toHaveLength(1)
+  })
+})
+
+describe('project tabs — 열린 프로젝트 세션 격리', () => {
+  it('setActiveProjectId가 탭을 열고 중복 추가하지 않는다', () => {
+    useAppStore.getState().setActiveProjectId('p1')
+    useAppStore.getState().setActiveProjectId('p1')
+    useAppStore.getState().setActiveProjectId('p2')
+
+    const s = useAppStore.getState()
+    expect(s.activeProjectId).toBe('p2')
+    expect(s.openProjectTabs).toEqual(['p1', 'p2'])
+  })
+
+  it('active 탭을 닫으면 오른쪽 이웃, 없으면 왼쪽 이웃으로 이동한다', () => {
+    useAppStore.setState({
+      activeProjectId: 'p2',
+      openProjectTabs: ['p1', 'p2', 'p3'],
+      projectViewSessions: {
+        p2: { selectedDocPath: '/p2/a.md', showWiki: false, scrollTop: 50 },
+      },
+      viewMode: 'project',
+    })
+
+    useAppStore.getState().closeProjectTab('p2')
+    expect(useAppStore.getState().openProjectTabs).toEqual(['p1', 'p3'])
+    expect(useAppStore.getState().activeProjectId).toBe('p3')
+    expect(useAppStore.getState().projectViewSessions.p2).toBeUndefined()
+    expect(useAppStore.getState().recentlyClosedProjectTabs[0]).toMatchObject({
+      projectId: 'p2',
+      session: { selectedDocPath: '/p2/a.md', showWiki: false, scrollTop: 50 },
+    })
+
+    useAppStore.getState().closeProjectTab('p3')
+    expect(useAppStore.getState().activeProjectId).toBe('p1')
+  })
+
+  it('마지막 탭을 닫으면 프로젝트 목록으로 돌아간다', () => {
+    useAppStore.setState({
+      activeProjectId: 'p1',
+      openProjectTabs: ['p1'],
+      viewMode: 'project',
+    })
+
+    useAppStore.getState().closeProjectTab('p1')
+    const s = useAppStore.getState()
+    expect(s.openProjectTabs).toEqual([])
+    expect(s.activeProjectId).toBeNull()
+    expect(s.viewMode).toBe('all')
+  })
+
+  it('재스캔 후 사라진 프로젝트 탭과 세션을 정리한다', () => {
+    useAppStore.setState({
+      activeProjectId: 'p2',
+      openProjectTabs: ['p1', 'p2', 'p3'],
+      projectViewSessions: {
+        p1: { selectedDocPath: '/p1/a.md', showWiki: false, scrollTop: 10 },
+        p2: { selectedDocPath: '/p2/a.md', showWiki: false, scrollTop: 20 },
+        p3: { selectedDocPath: '/p3/a.md', showWiki: false, scrollTop: 30 },
+      },
+      viewMode: 'project',
+    })
+
+    useAppStore.getState().pruneProjectTabs(new Set(['p1', 'p3']))
+    const s = useAppStore.getState()
+    expect(s.openProjectTabs).toEqual(['p1', 'p3'])
+    expect(s.activeProjectId).toBe('p1')
+    expect(s.projectViewSessions.p2).toBeUndefined()
+  })
+
+  it('마지막으로 닫은 프로젝트 탭을 세션과 함께 다시 연다', () => {
+    useAppStore.setState({
+      activeProjectId: 'p2',
+      openProjectTabs: ['p1', 'p2'],
+      recentlyClosedProjectTabs: [],
+      projectViewSessions: {
+        p2: { selectedDocPath: '/p2/a.md', showWiki: false, scrollTop: 80 },
+      },
+      viewMode: 'project',
+    })
+
+    useAppStore.getState().closeProjectTab('p2')
+    expect(useAppStore.getState().projectViewSessions.p2).toBeUndefined()
+
+    useAppStore.getState().reopenClosedProjectTab()
+    const s = useAppStore.getState()
+    expect(s.openProjectTabs).toEqual(['p1', 'p2'])
+    expect(s.activeProjectId).toBe('p2')
+    expect(s.viewMode).toBe('project')
+    expect(s.projectViewSessions.p2).toEqual({
+      selectedDocPath: '/p2/a.md',
+      showWiki: false,
+      scrollTop: 80,
+    })
+    expect(s.recentlyClosedProjectTabs).toEqual([])
+  })
+
+  it('다른 프로젝트 탭을 모두 닫고 닫은 탭 스택에 보존한다', () => {
+    useAppStore.setState({
+      activeProjectId: 'p3',
+      openProjectTabs: ['p1', 'p2', 'p3'],
+      recentlyClosedProjectTabs: [],
+      projectViewSessions: {
+        p1: { selectedDocPath: '/p1/a.md', showWiki: true, scrollTop: 10 },
+        p3: { selectedDocPath: '/p3/a.md', showWiki: false, scrollTop: 30 },
+      },
+      viewMode: 'project',
+    })
+
+    useAppStore.getState().closeOtherProjectTabs('p2')
+    const s = useAppStore.getState()
+    expect(s.openProjectTabs).toEqual(['p2'])
+    expect(s.activeProjectId).toBe('p2')
+    expect(s.projectViewSessions).toEqual({})
+    expect(s.recentlyClosedProjectTabs).toMatchObject([
+      { projectId: 'p1', session: { selectedDocPath: '/p1/a.md', showWiki: true, scrollTop: 10 } },
+      { projectId: 'p3', session: { selectedDocPath: '/p3/a.md', showWiki: false, scrollTop: 30 } },
+    ])
+  })
+
+  it('대상 오른쪽 프로젝트 탭만 닫고 활성 탭이 닫히면 대상 탭으로 이동한다', () => {
+    useAppStore.setState({
+      activeProjectId: 'p3',
+      openProjectTabs: ['p1', 'p2', 'p3', 'p4'],
+      recentlyClosedProjectTabs: [],
+      projectViewSessions: {
+        p3: { selectedDocPath: '/p3/a.md', showWiki: false, scrollTop: 30 },
+      },
+      viewMode: 'project',
+    })
+
+    useAppStore.getState().closeProjectTabsToRight('p2')
+    const s = useAppStore.getState()
+    expect(s.openProjectTabs).toEqual(['p1', 'p2'])
+    expect(s.activeProjectId).toBe('p2')
+    expect(s.projectViewSessions.p3).toBeUndefined()
+    expect(s.recentlyClosedProjectTabs).toMatchObject([
+      { projectId: 'p3', session: { selectedDocPath: '/p3/a.md', showWiki: false, scrollTop: 30 } },
+      { projectId: 'p4', session: null },
+    ])
+  })
+
+  it('이미 다시 열린 프로젝트는 닫은 탭 스택에서 제거한다', () => {
+    useAppStore.setState({
+      openProjectTabs: ['p1'],
+      recentlyClosedProjectTabs: [
+        { projectId: 'p2', session: { selectedDocPath: null, showWiki: true, scrollTop: 0 } },
+      ],
+    })
+
+    useAppStore.getState().setActiveProjectId('p2')
+    const s = useAppStore.getState()
+    expect(s.openProjectTabs).toEqual(['p1', 'p2'])
+    expect(s.recentlyClosedProjectTabs).toEqual([])
+  })
+
+  it('재스캔 후 사라진 프로젝트는 닫은 탭 복구 스택에서도 제거한다', () => {
+    useAppStore.setState({
+      openProjectTabs: ['p1'],
+      recentlyClosedProjectTabs: [
+        { projectId: 'p2', session: { selectedDocPath: '/p2/a.md', showWiki: true, scrollTop: 10 } },
+        { projectId: 'p3', session: null },
+      ],
+    })
+
+    useAppStore.getState().pruneProjectTabs(new Set(['p1', 'p3']))
+    expect(useAppStore.getState().recentlyClosedProjectTabs).toEqual([
+      { projectId: 'p3', session: null },
+    ])
+  })
+
+  it('저장된 프로젝트별 뷰 세션 묶음을 복원한다', () => {
+    useAppStore.getState().setProjectViewSessions({
+      p1: { selectedDocPath: '/p1/a.md', showWiki: false, scrollTop: 30 },
+      p2: { selectedDocPath: null, showWiki: true, scrollTop: 0 },
+    })
+
+    expect(useAppStore.getState().projectViewSessions).toEqual({
+      p1: { selectedDocPath: '/p1/a.md', showWiki: false, scrollTop: 30 },
+      p2: { selectedDocPath: null, showWiki: true, scrollTop: 0 },
+    })
+  })
+
+  it('커맨드 팔레트 openDoc도 프로젝트 탭을 연다', () => {
+    useAppStore.getState().openDoc('p9', '/p9/spec.md')
+    const s = useAppStore.getState()
+    expect(s.activeProjectId).toBe('p9')
+    expect(s.openProjectTabs).toEqual(['p9'])
+    expect(s.pendingDocOpen).toEqual({ projectId: 'p9', path: '/p9/spec.md' })
+    expect(s.viewMode).toBe('project')
+  })
+
+  it('N번째 프로젝트 탭을 활성화한다', () => {
+    useAppStore.setState({
+      activeProjectId: 'p1',
+      openProjectTabs: ['p1', 'p2', 'p3'],
+      viewMode: 'all',
+    })
+
+    useAppStore.getState().activateProjectTabAt(1)
+    expect(useAppStore.getState().activeProjectId).toBe('p2')
+    expect(useAppStore.getState().viewMode).toBe('project')
+
+    useAppStore.getState().activateProjectTabAt(9)
+    expect(useAppStore.getState().activeProjectId).toBe('p2')
+  })
+
+  it('이전/다음 프로젝트 탭을 순환 이동한다', () => {
+    useAppStore.setState({
+      activeProjectId: 'p1',
+      openProjectTabs: ['p1', 'p2', 'p3'],
+      viewMode: 'project',
+    })
+
+    useAppStore.getState().activateAdjacentProjectTab(-1)
+    expect(useAppStore.getState().activeProjectId).toBe('p3')
+
+    useAppStore.getState().activateAdjacentProjectTab(1)
+    expect(useAppStore.getState().activeProjectId).toBe('p1')
+  })
+
+  it('프로젝트 탭을 대상 탭 앞으로 이동한다', () => {
+    useAppStore.setState({
+      activeProjectId: 'p2',
+      openProjectTabs: ['p1', 'p2', 'p3'],
+      projectViewSessions: {
+        p2: { selectedDocPath: '/p2/a.md', showWiki: false, scrollTop: 20 },
+      },
+      viewMode: 'project',
+    })
+
+    useAppStore.getState().moveProjectTab('p3', 'p1')
+    let s = useAppStore.getState()
+    expect(s.openProjectTabs).toEqual(['p3', 'p1', 'p2'])
+    expect(s.activeProjectId).toBe('p2')
+    expect(s.projectViewSessions.p2).toEqual({
+      selectedDocPath: '/p2/a.md',
+      showWiki: false,
+      scrollTop: 20,
+    })
+
+    useAppStore.getState().moveProjectTab('missing', 'p1')
+    s = useAppStore.getState()
+    expect(s.openProjectTabs).toEqual(['p3', 'p1', 'p2'])
   })
 })

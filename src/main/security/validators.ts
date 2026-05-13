@@ -34,6 +34,9 @@ export const ALLOWED_PREFS_KEYS = new Set([
   // 프로젝트 자동 복원. 미복원 시 viewMode='project' 인데 activeProjectId=null 인 모순
   // 상태가 발생해 좌측 트리/실시간 watcher 'add' 가 안 보이는 문제 (사용자 보고 — 1234.md 누락).
   'activeProjectId',
+  // Project Tabs — 열린 탭 목록과 탭별 선택 문서/위키/스크롤 상태.
+  'openProjectTabs',
+  'projectViewSessions',
   'readDocs',
   'viewLayout',
   'trackReadDocs',

@@ -43,10 +43,46 @@ export interface MetaFilter {
   updatedRange: UpdatedRange
 }
 
+export interface ProjectViewSession {
+  selectedDocPath: string | null
+  showWiki: boolean
+  scrollTop: number
+}
+
+interface ClosedProjectTab {
+  projectId: string
+  session: ProjectViewSession | null
+}
+
+const MAX_RECENTLY_CLOSED_PROJECT_TABS = 10
+
+function withoutClosedProjectTab(stack: ClosedProjectTab[], projectId: string): ClosedProjectTab[] {
+  return stack.filter((tab) => tab.projectId !== projectId)
+}
+
+function stackClosedProjectTabs(
+  projectIds: string[],
+  sessions: Record<string, ProjectViewSession>,
+  stack: ClosedProjectTab[]
+): ClosedProjectTab[] {
+  const closedIds = new Set(projectIds)
+  const closedTabs = projectIds.map((projectId) => ({
+    projectId,
+    session: sessions[projectId] ? { ...sessions[projectId] } : null,
+  }))
+  return [
+    ...closedTabs,
+    ...stack.filter((tab) => !closedIds.has(tab.projectId)),
+  ].slice(0, MAX_RECENTLY_CLOSED_PROJECT_TABS)
+}
+
 interface AppState {
   workspaces: Workspace[]
   activeWorkspaceId: string | null
   activeProjectId: string | null
+  openProjectTabs: string[]
+  recentlyClosedProjectTabs: ClosedProjectTab[]
+  projectViewSessions: Record<string, ProjectViewSession>
   projects: Project[]
   projectsLoading: boolean
   projectsError: string | null
@@ -92,6 +128,17 @@ interface AppState {
   removeWorkspace: (id: string) => void
   setActiveWorkspaceId: (id: string | null) => void
   setActiveProjectId: (id: string | null) => void
+  setOpenProjectTabs: (ids: string[]) => void
+  activateProjectTabAt: (index: number) => void
+  activateAdjacentProjectTab: (delta: number) => void
+  moveProjectTab: (projectId: string, targetProjectId: string) => void
+  closeProjectTab: (id: string) => void
+  closeOtherProjectTabs: (id: string) => void
+  closeProjectTabsToRight: (id: string) => void
+  reopenClosedProjectTab: () => void
+  pruneProjectTabs: (availableProjectIds: Set<string>) => void
+  setProjectViewSessions: (sessions: Record<string, ProjectViewSession>) => void
+  setProjectViewSession: (projectId: string, patch: Partial<ProjectViewSession>) => void
   setProjects: (projects: Project[]) => void
   setProjectsLoading: (loading: boolean) => void
   setProjectsError: (error: string | null) => void
@@ -140,6 +187,9 @@ export const useAppStore = create<AppState>((set) => ({
   workspaces: [],
   activeWorkspaceId: null,
   activeProjectId: null,
+  openProjectTabs: [],
+  recentlyClosedProjectTabs: [],
+  projectViewSessions: {},
   projects: [],
   projectsLoading: false,
   projectsError: null,
@@ -192,7 +242,228 @@ export const useAppStore = create<AppState>((set) => ({
         ? { activeWorkspaceId: id }
         : { activeWorkspaceId: id, projects: [], projectsError: null }
     ),
-  setActiveProjectId: (id) => set({ activeProjectId: id }),
+  setActiveProjectId: (id) =>
+    set((state) => {
+      if (!id) return { activeProjectId: null }
+      const openProjectTabs = state.openProjectTabs.includes(id)
+        ? state.openProjectTabs
+        : [...state.openProjectTabs, id]
+      return {
+        activeProjectId: id,
+        openProjectTabs,
+        recentlyClosedProjectTabs: withoutClosedProjectTab(state.recentlyClosedProjectTabs, id),
+      }
+    }),
+  setOpenProjectTabs: (ids) =>
+    set((state) => {
+      const deduped = Array.from(new Set(ids.filter(Boolean)))
+      const openIds = new Set(deduped)
+      return {
+        openProjectTabs: deduped,
+        recentlyClosedProjectTabs: state.recentlyClosedProjectTabs.filter(
+          (tab) => !openIds.has(tab.projectId)
+        ),
+      }
+    }),
+  activateProjectTabAt: (index) =>
+    set((state) => {
+      if (index < 0 || index >= state.openProjectTabs.length) return state
+      return {
+        activeProjectId: state.openProjectTabs[index],
+        viewMode: 'project' as ViewMode,
+      }
+    }),
+  activateAdjacentProjectTab: (delta) =>
+    set((state) => {
+      const total = state.openProjectTabs.length
+      if (total === 0) return state
+      const currentIndex = state.activeProjectId
+        ? state.openProjectTabs.indexOf(state.activeProjectId)
+        : -1
+      const baseIndex = currentIndex >= 0 ? currentIndex : 0
+      const nextIndex = ((baseIndex + delta) % total + total) % total
+      return {
+        activeProjectId: state.openProjectTabs[nextIndex],
+        viewMode: 'project' as ViewMode,
+      }
+    }),
+  moveProjectTab: (projectId, targetProjectId) =>
+    set((state) => {
+      if (projectId === targetProjectId) return state
+      if (!state.openProjectTabs.includes(projectId)) return state
+      if (!state.openProjectTabs.includes(targetProjectId)) return state
+
+      const nextTabs = state.openProjectTabs.filter((id) => id !== projectId)
+      const targetIndex = nextTabs.indexOf(targetProjectId)
+      if (targetIndex === -1) return state
+      nextTabs.splice(targetIndex, 0, projectId)
+
+      return { openProjectTabs: nextTabs }
+    }),
+  closeProjectTab: (id) =>
+    set((state) => {
+      const currentIndex = state.openProjectTabs.indexOf(id)
+      if (currentIndex === -1) return state
+      const nextTabs = state.openProjectTabs.filter((tabId) => tabId !== id)
+      const nextSessions = { ...state.projectViewSessions }
+      const closedTab = {
+        projectId: id,
+        session: nextSessions[id] ? { ...nextSessions[id] } : null,
+      }
+      const recentlyClosedProjectTabs = [
+        closedTab,
+        ...withoutClosedProjectTab(state.recentlyClosedProjectTabs, id),
+      ].slice(0, MAX_RECENTLY_CLOSED_PROJECT_TABS)
+      delete nextSessions[id]
+      if (state.activeProjectId !== id) {
+        return {
+          openProjectTabs: nextTabs,
+          projectViewSessions: nextSessions,
+          recentlyClosedProjectTabs,
+        }
+      }
+      const nextActive =
+        nextTabs[currentIndex] ?? nextTabs[currentIndex - 1] ?? null
+      return {
+        openProjectTabs: nextTabs,
+        projectViewSessions: nextSessions,
+        recentlyClosedProjectTabs,
+        activeProjectId: nextActive,
+        viewMode: nextActive ? 'project' : 'all',
+      }
+    }),
+  closeOtherProjectTabs: (id) =>
+    set((state) => {
+      if (!state.openProjectTabs.includes(id)) return state
+      const closedIds = state.openProjectTabs.filter((tabId) => tabId !== id)
+      if (closedIds.length === 0) return state
+      const nextSessions = { ...state.projectViewSessions }
+      for (const tabId of closedIds) {
+        delete nextSessions[tabId]
+      }
+      return {
+        openProjectTabs: [id],
+        projectViewSessions: nextSessions,
+        recentlyClosedProjectTabs: stackClosedProjectTabs(
+          closedIds,
+          state.projectViewSessions,
+          state.recentlyClosedProjectTabs
+        ),
+        activeProjectId: id,
+        viewMode: 'project' as ViewMode,
+      }
+    }),
+  closeProjectTabsToRight: (id) =>
+    set((state) => {
+      const index = state.openProjectTabs.indexOf(id)
+      if (index === -1) return state
+      const closedIds = state.openProjectTabs.slice(index + 1)
+      if (closedIds.length === 0) return state
+      const closedIdSet = new Set(closedIds)
+      const nextSessions = { ...state.projectViewSessions }
+      for (const tabId of closedIds) {
+        delete nextSessions[tabId]
+      }
+      const activeProjectId =
+        state.activeProjectId && !closedIdSet.has(state.activeProjectId)
+          ? state.activeProjectId
+          : id
+      return {
+        openProjectTabs: state.openProjectTabs.slice(0, index + 1),
+        projectViewSessions: nextSessions,
+        recentlyClosedProjectTabs: stackClosedProjectTabs(
+          closedIds,
+          state.projectViewSessions,
+          state.recentlyClosedProjectTabs
+        ),
+        activeProjectId,
+        viewMode: activeProjectId ? 'project' : 'all',
+      }
+    }),
+  reopenClosedProjectTab: () =>
+    set((state) => {
+      const openIds = new Set(state.openProjectTabs)
+      const availableProjectIds = new Set(state.projects.map((project) => project.id))
+      const canReopen = (projectId: string) =>
+        !openIds.has(projectId) &&
+        (availableProjectIds.size === 0 || availableProjectIds.has(projectId))
+      const reopenIndex = state.recentlyClosedProjectTabs.findIndex((tab) => canReopen(tab.projectId))
+      if (reopenIndex === -1) {
+        return {
+          recentlyClosedProjectTabs: state.recentlyClosedProjectTabs.filter((tab) =>
+            canReopen(tab.projectId)
+          ),
+        }
+      }
+
+      const tab = state.recentlyClosedProjectTabs[reopenIndex]
+      const recentlyClosedProjectTabs = state.recentlyClosedProjectTabs.filter(
+        (_, index) => index !== reopenIndex
+      )
+      const projectViewSessions = tab.session
+        ? {
+            ...state.projectViewSessions,
+            [tab.projectId]: { ...tab.session },
+          }
+        : state.projectViewSessions
+
+      return {
+        openProjectTabs: [...state.openProjectTabs, tab.projectId],
+        recentlyClosedProjectTabs,
+        projectViewSessions,
+        activeProjectId: tab.projectId,
+        viewMode: 'project' as ViewMode,
+      }
+    }),
+  pruneProjectTabs: (availableProjectIds) =>
+    set((state) => {
+      const nextTabs = state.openProjectTabs.filter((id) => availableProjectIds.has(id))
+      const recentlyClosedProjectTabs = state.recentlyClosedProjectTabs.filter((tab) =>
+        availableProjectIds.has(tab.projectId)
+      )
+      if (
+        nextTabs.length === state.openProjectTabs.length &&
+        recentlyClosedProjectTabs.length === state.recentlyClosedProjectTabs.length &&
+        (!state.activeProjectId || availableProjectIds.has(state.activeProjectId))
+      ) {
+        return state
+      }
+      const nextSessions = { ...state.projectViewSessions }
+      for (const id of Object.keys(nextSessions)) {
+        if (!availableProjectIds.has(id)) delete nextSessions[id]
+      }
+      const activeProjectId =
+        state.activeProjectId && availableProjectIds.has(state.activeProjectId)
+          ? state.activeProjectId
+          : nextTabs[0] ?? null
+      return {
+        openProjectTabs: nextTabs,
+        recentlyClosedProjectTabs,
+        projectViewSessions: nextSessions,
+        activeProjectId,
+        viewMode: activeProjectId ? state.viewMode : 'all',
+      }
+    }),
+  setProjectViewSessions: (sessions) =>
+    set({
+      projectViewSessions: Object.fromEntries(
+        Object.entries(sessions).map(([projectId, session]) => [projectId, { ...session }])
+      ),
+    }),
+  setProjectViewSession: (projectId, patch) =>
+    set((state) => {
+      const prev = state.projectViewSessions[projectId] ?? {
+        selectedDocPath: null,
+        showWiki: true,
+        scrollTop: 0,
+      }
+      return {
+        projectViewSessions: {
+          ...state.projectViewSessions,
+          [projectId]: { ...prev, ...patch },
+        },
+      }
+    }),
   setProjects: (projects) => set({ projects }),
   setProjectsLoading: (projectsLoading) => set({ projectsLoading }),
   setProjectsError: (projectsError) => set({ projectsError }),
@@ -304,12 +575,16 @@ export const useAppStore = create<AppState>((set) => ({
   openCommandPalette: () => set({ commandPaletteOpen: true }),
   closeCommandPalette: () => set({ commandPaletteOpen: false }),
   openDoc: (projectId, path) =>
-    set({
+    set((state) => ({
       pendingDocOpen: { projectId, path },
       activeProjectId: projectId,
+      openProjectTabs: state.openProjectTabs.includes(projectId)
+        ? state.openProjectTabs
+        : [...state.openProjectTabs, projectId],
+      recentlyClosedProjectTabs: withoutClosedProjectTab(state.recentlyClosedProjectTabs, projectId),
       viewMode: 'project' as ViewMode,
       commandPaletteOpen: false,
-    }),
+    })),
 
   // Composer 액션 — Set 불변 교체 패턴 강제 (shallow equality로 리렌더 보장)
   toggleDocSelection: (absPath) =>

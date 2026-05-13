@@ -11,11 +11,14 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { SshHostKeyPrompt } from './components/SshHostKeyPrompt'
 import { SshWorkspaceAddModal } from './components/SshWorkspaceAddModal'
 import { FirstRunOnboarding } from './components/FirstRunOnboarding'
+import { ProjectTabs } from './components/ProjectTabs'
 import { useWorkspace } from './hooks/useWorkspace'
 import { useViewMode } from './hooks/useViewMode'
 import { useTransportStatusSubscription } from './hooks/useTransportStatus'
 import { useGlobalHotkey } from './hooks/useGlobalHotkey'
+import { useProjectTabHotkeys } from './hooks/useProjectTabHotkeys'
 import { shouldShowInitialOverlay } from './lib/loadingOverlay'
+import { normalizeProjectViewSessions } from './lib/projectViewSessionPrefs'
 import { useAppStore } from './state/store'
 import { classifyAsset } from '../lib/viewable'
 import type { Doc, Project } from '../../src/preload/types'
@@ -64,6 +67,15 @@ export default function App() {
   const { viewMode, setViewMode } = useViewMode()
   const activeProjectId = useAppStore((s) => s.activeProjectId)
   const setActiveProjectId = useAppStore((s) => s.setActiveProjectId)
+  const openProjectTabs = useAppStore((s) => s.openProjectTabs)
+  const projectViewSessions = useAppStore((s) => s.projectViewSessions)
+  const closeProjectTab = useAppStore((s) => s.closeProjectTab)
+  const closeOtherProjectTabs = useAppStore((s) => s.closeOtherProjectTabs)
+  const closeProjectTabsToRight = useAppStore((s) => s.closeProjectTabsToRight)
+  const reopenClosedProjectTab = useAppStore((s) => s.reopenClosedProjectTab)
+  const canReopenClosedProjectTab = useAppStore((s) => s.recentlyClosedProjectTabs.length > 0)
+  const moveProjectTab = useAppStore((s) => s.moveProjectTab)
+  const pruneProjectTabs = useAppStore((s) => s.pruneProjectTabs)
   const projects = useAppStore((s) => s.projects)
 
   // FS-RT-2 — activeProjectId 변경 시 자동 prefs persist. 다음 부팅 / hot-reload 에서
@@ -78,6 +90,19 @@ export default function App() {
     if (!projectPersistArmedRef.current) return
     void window.api.prefs.set('activeProjectId', activeProjectId).catch(() => undefined)
   }, [activeProjectId])
+
+  useEffect(() => {
+    if (!projectPersistArmedRef.current) return
+    void window.api.prefs.set('openProjectTabs', openProjectTabs).catch(() => undefined)
+  }, [openProjectTabs])
+
+  useEffect(() => {
+    if (!projectPersistArmedRef.current) return
+    const id = setTimeout(() => {
+      void window.api.prefs.set('projectViewSessions', projectViewSessions).catch(() => undefined)
+    }, 500)
+    return () => clearTimeout(id)
+  }, [projectViewSessions])
 
   // Composer — 전역 선택 상태 + 설정 prefs
   const docs = useAppStore((s) => s.docs)
@@ -98,9 +123,21 @@ export default function App() {
     // FS-RT-2 — activeProjectId 복원. 미복원 시 viewMode='project' 인데 activeProjectId=null
     // 인 모순 상태가 되어 ProjectView 자체가 mount 안 되고 watcher 'add' 가 트리에 못 들어옴.
     // 복원 완료 시 projectPersistArmedRef = true → 이후 변경부터 prefs.set 동작.
-    window.api.prefs.get('activeProjectId').then((stored) => {
-      if (typeof stored === 'string' && stored.length > 0) {
-        useAppStore.getState().setActiveProjectId(stored)
+    Promise.all([
+      window.api.prefs.get('openProjectTabs'),
+      window.api.prefs.get('activeProjectId'),
+      window.api.prefs.get('projectViewSessions'),
+    ]).then(([storedTabs, storedActive, storedSessions]) => {
+      const store = useAppStore.getState()
+      const sessions = normalizeProjectViewSessions(storedSessions)
+      if (Object.keys(sessions).length > 0) {
+        store.setProjectViewSessions(sessions)
+      }
+      if (Array.isArray(storedTabs) && storedTabs.every((v) => typeof v === 'string')) {
+        store.setOpenProjectTabs(storedTabs as string[])
+      }
+      if (typeof storedActive === 'string' && storedActive.length > 0) {
+        store.setActiveProjectId(storedActive)
       }
     }).catch(() => undefined).finally(() => {
       projectPersistArmedRef.current = true
@@ -213,11 +250,13 @@ export default function App() {
   }, [setComposerOnboardingSeen])
 
   const refreshKey = useAppStore((s) => s.refreshKey)
+  const [scannedWorkspaceId, setScannedWorkspaceId] = useState<string | null>(null)
 
   // 활성 워크스페이스 또는 refreshKey 변경 시 스캔. refreshKey는 사용자 새로고침 버튼이 트리거.
   useEffect(() => {
     if (!activeWorkspaceId) return
     let cancelled = false
+    setScannedWorkspaceId(null)
     const store = useAppStore.getState()
     store.setProjectsLoading(true)
     store.setProjectsError(null)
@@ -251,6 +290,7 @@ export default function App() {
         clearScanTimeout()
         if (cancelled) return
         useAppStore.getState().setProjects(scanned)
+        setScannedWorkspaceId(activeWorkspaceId)
         useAppStore.getState().setProjectsLoading(false)
         // 타임아웃 뒤 뒤늦게 성공한 경우 에러 오버레이 자동 해제.
         useAppStore.getState().setProjectsError(null)
@@ -348,6 +388,56 @@ export default function App() {
     [setPendingDocOpen, setActiveProjectId, setViewMode]
   )
 
+  const handleSelectProjectTab = useCallback(
+    (projectId: string) => {
+      setActiveProjectId(projectId)
+      setViewMode('project')
+    },
+    [setActiveProjectId, setViewMode]
+  )
+
+  const handleCloseProjectTab = useCallback(
+    (projectId: string) => {
+      closeProjectTab(projectId)
+      const nextViewMode = useAppStore.getState().viewMode
+      void window.api.prefs.set('viewMode', nextViewMode).catch(() => undefined)
+    },
+    [closeProjectTab]
+  )
+
+  const handleCloseOtherProjectTabs = useCallback(
+    (projectId: string) => {
+      closeOtherProjectTabs(projectId)
+      const nextViewMode = useAppStore.getState().viewMode
+      void window.api.prefs.set('viewMode', nextViewMode).catch(() => undefined)
+    },
+    [closeOtherProjectTabs]
+  )
+
+  const handleCloseProjectTabsToRight = useCallback(
+    (projectId: string) => {
+      closeProjectTabsToRight(projectId)
+      const nextViewMode = useAppStore.getState().viewMode
+      void window.api.prefs.set('viewMode', nextViewMode).catch(() => undefined)
+    },
+    [closeProjectTabsToRight]
+  )
+
+  const handleReopenClosedProjectTab = useCallback(() => {
+    reopenClosedProjectTab()
+    const nextViewMode = useAppStore.getState().viewMode
+    void window.api.prefs.set('viewMode', nextViewMode).catch(() => undefined)
+  }, [reopenClosedProjectTab])
+
+  const handleReorderProjectTab = useCallback(
+    (projectId: string, targetProjectId: string) => {
+      moveProjectTab(projectId, targetProjectId)
+    },
+    [moveProjectTab]
+  )
+
+  useProjectTabHotkeys()
+
   const handleWorkspaceSelect = useCallback(
     async (id: string) => {
       // store 의 setActiveWorkspaceId 가 id 변경 시 projects 를 자동으로 비운다.
@@ -398,6 +488,11 @@ export default function App() {
   const projectsLoading = useAppStore((s) => s.projectsLoading)
   const projectsError = useAppStore((s) => s.projectsError)
   const docCountProgress = useAppStore((s) => s.docCountProgress)
+
+  useEffect(() => {
+    if (!activeWorkspaceId || projectsLoading || scannedWorkspaceId !== activeWorkspaceId) return
+    pruneProjectTabs(new Set(projects.map((project) => project.id)))
+  }, [activeWorkspaceId, projects, projectsLoading, pruneProjectTabs, scannedWorkspaceId])
 
   // 인덱싱 완료 감지 → ⌘K 힌트 토스트 1회 노출
   const wasIndexingRef = useRef(false)
@@ -527,6 +622,18 @@ export default function App() {
       />
 
       <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' }}>
+        <ProjectTabs
+          projects={projects}
+          openProjectTabs={openProjectTabs}
+          activeProjectId={viewMode === 'project' ? activeProjectId : null}
+          onSelect={handleSelectProjectTab}
+          onClose={handleCloseProjectTab}
+          onReorder={handleReorderProjectTab}
+          onCloseOthers={handleCloseOtherProjectTabs}
+          onCloseToRight={handleCloseProjectTabsToRight}
+          onReopenClosed={handleReopenClosedProjectTab}
+          canReopenClosed={canReopenClosedProjectTab}
+        />
         {showInitialOverlay && (
           <div className="app-loading-overlay" role="status" aria-live="polite">
             <span className="ui-spinner lg" aria-hidden="true" />

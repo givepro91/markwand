@@ -230,6 +230,27 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
     expect(screen.getByRole('button', { name: 'projectWiki.navRisks' })).toBeInTheDocument()
   })
 
+  it('keeps detailed wiki diagnostics collapsed on first view', () => {
+    renderWithProviders(
+      <ProjectWikiPanel
+        projectName="markwand"
+        summary={summary}
+        gitPulse={gitPulse}
+        gitPulseLoading={false}
+        brief={brief}
+        briefLoading={false}
+        docsByPath={new Map([[doc.path, doc]])}
+        onOpenDoc={vi.fn()}
+      />
+    )
+
+    const details = screen.getByText('projectWiki.detailsToggle').closest('details')
+
+    expect(screen.getByText('projectWiki.briefTitle')).toBeInTheDocument()
+    expect(screen.getByText('projectWiki.aiTasksTitle')).toBeInTheDocument()
+    expect(details).not.toHaveAttribute('open')
+  })
+
   it('hides reference audit sections when no verified audit is part of the default summary', () => {
     const quietSummary: ProjectWikiSummary = {
       ...summary,
@@ -678,7 +699,7 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
     expect(screen.getAllByText('projectWiki.riskActionHint.preserve').length).toBeGreaterThan(0)
   })
 
-  it('jumps to wiki sections from the sticky section navigation', () => {
+  it('jumps to wiki sections from the sticky section navigation', async () => {
     renderWithProviders(
       <ProjectWikiPanel
         projectName="markwand"
@@ -693,10 +714,12 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
     fireEvent.click(screen.getByRole('button', { name: 'projectWiki.navToggle' }))
     fireEvent.click(screen.getByRole('button', { name: 'projectWiki.navLinks' }))
 
-    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
+    await waitFor(() => {
+      expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
+    })
   })
 
-  it('respects reduced-motion preference when jumping between wiki sections', () => {
+  it('respects reduced-motion preference when jumping between wiki sections', async () => {
     Object.defineProperty(window, 'matchMedia', {
       configurable: true,
       value: vi.fn(() => ({ matches: true })),
@@ -716,6 +739,8 @@ describe('ProjectWikiPanel — AI task prompt copy', () => {
     fireEvent.click(screen.getByRole('button', { name: 'projectWiki.navToggle' }))
     fireEvent.click(screen.getByRole('button', { name: 'projectWiki.navLinks' }))
 
-    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ behavior: 'auto', block: 'start' })
+    await waitFor(() => {
+      expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ behavior: 'auto', block: 'start' })
+    })
   })
 })

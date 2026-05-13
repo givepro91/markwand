@@ -21,11 +21,21 @@ export interface ExperimentalFeatures {
   sshTransport: boolean
 }
 
+export interface ProjectViewSessionPrefs {
+  selectedDocPath: string | null
+  showWiki: boolean
+  scrollTop: number
+}
+
 export interface StoreSchema {
   workspaces: Workspace[]
   activeWorkspaceId: string | null
   /** FS-RT-2 — 마지막 활성 프로젝트 id. 부팅 / dev hot-reload 후 ProjectView mount 복원 용. */
   activeProjectId: string | null
+  /** Project Tabs — 마지막 열린 프로젝트 탭 id 목록. */
+  openProjectTabs: string[]
+  /** Project Tabs — 프로젝트별 선택 문서/위키/스크롤 상태. */
+  projectViewSessions: Record<string, ProjectViewSessionPrefs>
   viewMode: ViewMode
   theme: ThemeType
   readDocs: Record<string, number>
@@ -54,6 +64,8 @@ export async function getStore(): Promise<import('electron-store').default<Store
       workspaces: [],
       activeWorkspaceId: null,
       activeProjectId: null,
+      openProjectTabs: [],
+      projectViewSessions: {},
       viewMode: 'all',
       theme: 'system',
       readDocs: {},
@@ -99,6 +111,25 @@ export async function getStore(): Promise<import('electron-store').default<Store
       },
       activeWorkspaceId: { type: ['string', 'null'], default: null },
       activeProjectId: { type: ['string', 'null'], default: null },
+      openProjectTabs: {
+        type: 'array',
+        items: { type: 'string' },
+        default: [],
+      },
+      projectViewSessions: {
+        type: 'object',
+        additionalProperties: {
+          type: 'object',
+          properties: {
+            selectedDocPath: { type: ['string', 'null'] },
+            showWiki: { type: 'boolean' },
+            scrollTop: { type: 'number' },
+          },
+          required: ['selectedDocPath', 'showWiki', 'scrollTop'],
+          additionalProperties: false,
+        },
+        default: {},
+      },
       viewMode: { type: 'string', enum: ['all', 'inbox', 'project'], default: 'all' },
       theme: { type: 'string', enum: ['light', 'dark', 'system'], default: 'system' },
       readDocs: { type: 'object', default: {} },

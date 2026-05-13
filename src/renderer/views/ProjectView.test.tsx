@@ -6,8 +6,8 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { installApiMock } from '../__test-utils__/apiMock'
-import { fireEvent, renderWithProviders, screen, userEvent, waitFor } from '../__test-utils__/render'
-import type { Doc, Project, Workspace } from '../../preload/types'
+import { act, fireEvent, renderWithProviders, screen, userEvent, waitFor } from '../__test-utils__/render'
+import type { Doc, Project, ReadDocResult, Workspace } from '../../preload/types'
 import { useAppStore } from '../state/store'
 import { getDocumentRailWidth, getDocumentStickyOffset, getTocActionState, ProjectActionButton, ProjectDocReturnBar, ProjectFindControls, ProjectView } from './ProjectView'
 
@@ -39,6 +39,8 @@ beforeEach(() => {
     projects: [],
     activeWorkspaceId: null,
     activeProjectId: null,
+    openProjectTabs: [],
+    projectViewSessions: {},
     pendingDocOpen: null,
     lastViewedDocs: {},
     readDocs: {},
@@ -397,6 +399,124 @@ describe('ProjectDocReturnBar', () => {
 
     expect(screen.queryByRole('button', { name: 'projectView.documentTools' })).not.toBeInTheDocument()
     expect(document.querySelector('aside[aria-label="projectView.documentTools"]')).not.toBeInTheDocument()
+  })
+
+  it('ignores a stale readDoc response when the user opens another document first', async () => {
+    const docA: Doc = {
+      path: '/project/a.md',
+      projectId: project.id,
+      name: 'a.md',
+      mtime: 1,
+    }
+    const docB: Doc = {
+      path: '/project/b.md',
+      projectId: project.id,
+      name: 'b.md',
+      mtime: 2,
+    }
+    const api = installApiMock()
+    const pendingReads = new Map<string, (result: ReadDocResult) => void>()
+    api.project.scanDocs.mockResolvedValue([docA, docB])
+    const readDocMock = api.fs.readDoc as unknown as {
+      mockImplementation: (impl: (path: unknown) => Promise<ReadDocResult>) => void
+    }
+    readDocMock.mockImplementation((path: unknown) => (
+      new Promise<ReadDocResult>((resolve) => pendingReads.set(String(path), resolve))
+    ))
+
+    useAppStore.setState({
+      workspaces: [workspace],
+      projects: [project],
+      activeWorkspaceId: workspace.id,
+      activeProjectId: project.id,
+      openProjectTabs: [project.id],
+    })
+    useAppStore.getState().setDocs([docA, docB])
+
+    const { rerender } = renderWithProviders(
+      <ProjectView
+        projectId={project.id}
+        projectRoot={project.root}
+        projectName={project.name}
+        initialDocPath={docA.path}
+      />
+    )
+
+    await waitFor(() => expect(api.fs.readDoc).toHaveBeenCalledWith(docA.path))
+    rerender(
+      <ProjectView
+        projectId={project.id}
+        projectRoot={project.root}
+        projectName={project.name}
+        initialDocPath={docB.path}
+      />
+    )
+    await waitFor(() => expect(api.fs.readDoc).toHaveBeenCalledWith(docB.path))
+
+    await act(async () => {
+      pendingReads.get(docB.path)?.({ content: 'Beta body', rawContent: 'Beta body', mtime: 2 })
+    })
+    await waitFor(() => expect(screen.getByText('Beta body')).toBeInTheDocument())
+
+    await act(async () => {
+      pendingReads.get(docA.path)?.({ content: 'Alpha body', rawContent: 'Alpha body', mtime: 1 })
+    })
+
+    expect(screen.getByText('Beta body')).toBeInTheDocument()
+    expect(screen.queryByText('Alpha body')).not.toBeInTheDocument()
+    expect(useAppStore.getState().projectViewSessions[project.id]).toMatchObject({
+      selectedDocPath: docB.path,
+      showWiki: false,
+    })
+  })
+
+  it('restores the saved tab document and scroll position for a project session', async () => {
+    const doc: Doc = {
+      path: '/project/docs/restored.md',
+      projectId: project.id,
+      name: 'restored.md',
+      mtime: 1,
+    }
+    const api = installApiMock()
+    const scrollTo = vi.fn()
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+      configurable: true,
+      value: scrollTo,
+    })
+    api.project.scanDocs.mockResolvedValue([doc])
+    api.fs.readDoc.mockResolvedValue({
+      content: 'Restored body',
+      rawContent: 'Restored body',
+      mtime: 1,
+    })
+
+    useAppStore.setState({
+      workspaces: [workspace],
+      projects: [project],
+      activeWorkspaceId: workspace.id,
+      activeProjectId: project.id,
+      openProjectTabs: [project.id],
+      projectViewSessions: {
+        [project.id]: {
+          selectedDocPath: doc.path,
+          showWiki: false,
+          scrollTop: 88,
+        },
+      },
+    })
+    useAppStore.getState().setDocs([doc])
+
+    renderWithProviders(
+      <ProjectView
+        projectId={project.id}
+        projectRoot={project.root}
+        projectName={project.name}
+      />
+    )
+
+    await waitFor(() => expect(api.fs.readDoc).toHaveBeenCalledWith(doc.path))
+    await waitFor(() => expect(screen.getByText('Restored body')).toBeInTheDocument())
+    await waitFor(() => expect(scrollTo).toHaveBeenCalledWith({ top: 88 }))
   })
 
   it('offers a file-tree refresh button that forces a fresh project doc scan', async () => {
