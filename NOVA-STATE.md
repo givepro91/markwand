@@ -2,10 +2,10 @@
 
 ## Current
 - **Goal**: v0.4.0-beta.14 release — Project Tabs + calmer Project Wiki 배포.
-- **Phase**: **release** — beta.14 검증/ZIP 빌드/해시 산출 완료, GitHub prerelease publish 진행.
+- **Phase**: **done** — beta.14 검증/ZIP 빌드/해시 산출/GitHub prerelease publish 완료.
 - **Blocker**: none
-- **Last Activity**: v0.4.0-beta.14 release prep — Project Tabs, per-project view sessions, closed-tab recovery, tab a11y/context menu/overflow controls, and Project Wiki progressive disclosure included. `pnpm typecheck` PASS · full vitest 566 PASS · `pnpm smoke:layout` PASS · `pnpm dist:mac` PASS · codesign verify PASS · `git diff --check` PASS (2026-05-13).
-- **Remote**: release target `v0.4.0-beta.14`; previous public tag `v0.4.0-beta.13`; Release URL after publish: https://github.com/givepro91/markwand/releases/tag/v0.4.0-beta.14
+- **Last Activity**: v0.4.0-beta.14 release publish — Project Tabs, per-project view sessions, closed-tab recovery, tab a11y/context menu/overflow controls, and Project Wiki progressive disclosure shipped. `pnpm typecheck` PASS · full vitest 566 PASS · `pnpm smoke:layout` PASS · `pnpm dist:mac` PASS · codesign verify PASS · `git diff --check` PASS (2026-05-13).
+- **Remote**: current public tag `v0.4.0-beta.14`; previous public tag `v0.4.0-beta.13`; Release URL: https://github.com/givepro91/markwand/releases/tag/v0.4.0-beta.14
 
 ## Recently Done
 1. v0.4.0-beta.14 release package — Project Tabs + Project Wiki quality pass를 묶어 macOS free ZIP 산출, 해시/설치 문서/릴리스 노트 갱신.
