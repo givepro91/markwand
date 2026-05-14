@@ -1,5 +1,5 @@
 .markdown-viewer {
-  max-width: min(100%, 840px);
+  max-width: min(100%, 920px);
   margin: 0 auto;
   font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Segoe UI', sans-serif;
   font-size: 16px;
@@ -130,6 +130,81 @@
   margin-bottom: 0;
 }
 
+/* GFM alerts */
+.markdown-viewer .markdown-alert {
+  --markdown-alert-color: #0f766e;
+  border: 1px solid color-mix(in srgb, var(--markdown-alert-color) 28%, transparent);
+  border-left: 4px solid var(--markdown-alert-color);
+  border-radius: var(--r-sm);
+  padding: 10px 14px;
+  margin: 12px 0 var(--sp-4) 0;
+  color: var(--text);
+  background: color-mix(in srgb, var(--markdown-alert-color) 8%, transparent);
+}
+
+.markdown-viewer .markdown-alert__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--markdown-alert-color);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  margin-bottom: var(--sp-1);
+}
+
+.markdown-viewer .markdown-alert__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25em;
+  font-weight: var(--fw-bold);
+  line-height: 1;
+}
+
+.markdown-viewer .markdown-alert__body > :first-child {
+  margin-top: 0;
+}
+
+.markdown-viewer .markdown-alert__body > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-viewer .markdown-alert--tip {
+  --markdown-alert-color: #1a7f37;
+}
+
+.markdown-viewer .markdown-alert--important {
+  --markdown-alert-color: #6d28d9;
+}
+
+.markdown-viewer .markdown-alert--warning {
+  --markdown-alert-color: #9a6700;
+}
+
+.markdown-viewer .markdown-alert--caution {
+  --markdown-alert-color: #cf222e;
+}
+
+[data-theme="dark"] .markdown-viewer .markdown-alert--note {
+  --markdown-alert-color: #2dd4bf;
+}
+
+[data-theme="dark"] .markdown-viewer .markdown-alert--tip {
+  --markdown-alert-color: #3fb950;
+}
+
+[data-theme="dark"] .markdown-viewer .markdown-alert--important {
+  --markdown-alert-color: #c084fc;
+}
+
+[data-theme="dark"] .markdown-viewer .markdown-alert--warning {
+  --markdown-alert-color: #d29922;
+}
+
+[data-theme="dark"] .markdown-viewer .markdown-alert--caution {
+  --markdown-alert-color: #ff7b72;
+}
+
 /* Inline code */
 .markdown-viewer code {
   background: var(--code-bg);
@@ -157,14 +232,27 @@
 }
 
 /* Table */
-.markdown-viewer table {
-  display: block;
+.markdown-viewer .markdown-table-scroll {
   max-width: 100%;
   overflow-x: auto;
-  border-collapse: collapse;
   border: 1px solid var(--border);
-  width: 100%;
+  border-radius: var(--r-sm);
   margin-bottom: var(--sp-4);
+}
+
+.markdown-viewer table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  min-width: 100%;
+  font-size: 0.95em;
+  line-height: 1.55;
+  margin-bottom: 0;
+}
+
+.markdown-viewer .markdown-table-scroll:has(table tr > :nth-child(5)) table {
+  table-layout: auto;
+  width: max-content;
 }
 
 .markdown-viewer th,
@@ -172,11 +260,24 @@
   border: 1px solid var(--border);
   padding: var(--sp-2) var(--sp-3);
   text-align: left;
+  vertical-align: top;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .markdown-viewer th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   font-weight: var(--fw-semibold);
   background: var(--bg-elev);
+}
+
+.markdown-viewer th code,
+.markdown-viewer td code {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* Horizontal rule */
@@ -203,10 +304,36 @@
   font-weight: var(--fw-medium);
 }
 
+.markdown-viewer .markdown-safe-details {
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: var(--sp-2) var(--sp-3);
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.markdown-viewer .markdown-safe-details > summary {
+  color: var(--text);
+  font-weight: var(--fw-semibold);
+}
+
+.markdown-viewer .markdown-safe-details__body {
+  padding-top: var(--sp-3);
+}
+
+.markdown-viewer .markdown-safe-details__body > :first-child {
+  margin-top: 0;
+}
+
+.markdown-viewer .markdown-safe-details__body > :last-child {
+  margin-bottom: 0;
+}
+
 /* Task list checkbox */
 .markdown-viewer input[type="checkbox"] {
   margin-right: var(--sp-2);
   vertical-align: middle;
+  accent-color: var(--accent);
+  cursor: default;
 }
 
 /* Task list item */
@@ -214,6 +341,46 @@
   list-style: none;
   margin-left: calc(var(--sp-6) * -1);
   padding-left: var(--sp-6);
+}
+
+.markdown-viewer .task-list-item input[type="checkbox"] {
+  transform: translateY(-1px);
+}
+
+/* Footnotes */
+.markdown-viewer .footnotes,
+.markdown-viewer [data-footnotes="true"] {
+  margin-top: var(--sp-8);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.9em;
+  line-height: var(--lh-loose);
+}
+
+.markdown-viewer .footnotes h2,
+.markdown-viewer [data-footnotes="true"] h2 {
+  margin-top: 0;
+  margin-bottom: var(--sp-3);
+  padding-bottom: 0;
+  border-bottom: 0;
+  color: var(--text);
+  font-size: 1em;
+}
+
+.markdown-viewer .footnotes ol,
+.markdown-viewer [data-footnotes="true"] ol {
+  margin-bottom: 0;
+}
+
+.markdown-viewer .footnotes li,
+.markdown-viewer [data-footnotes="true"] li {
+  padding-left: var(--sp-1);
+}
+
+.markdown-viewer [data-footnote-backref] {
+  color: var(--text-muted);
+  font-size: 0.85em;
 }
 
 /* Mermaid diagram — foreignObject 텍스트가 SVG viewport 에 clip 되지 않도록 overflow visible.
@@ -225,6 +392,39 @@
   overflow-x: auto;
   min-height: 240px;
 }
+
+.mermaid-block--error {
+  min-height: 0;
+  padding: var(--sp-3);
+  margin: var(--sp-4) 0;
+  border: 1px solid color-mix(in srgb, #cf222e 28%, transparent);
+  border-left: 4px solid #cf222e;
+  border-radius: var(--r-sm);
+  color: var(--text);
+  background: color-mix(in srgb, #cf222e 7%, transparent);
+}
+
+.mermaid-block__error-title {
+  color: #cf222e;
+  font-weight: var(--fw-semibold);
+  margin-bottom: var(--sp-2);
+}
+
+.mermaid-block__error-message {
+  margin-bottom: var(--sp-3);
+  white-space: pre-wrap;
+}
+
+[data-theme="dark"] .mermaid-block--error {
+  border-color: color-mix(in srgb, #ff7b72 28%, transparent);
+  border-left-color: #ff7b72;
+  background: color-mix(in srgb, #ff7b72 9%, transparent);
+}
+
+[data-theme="dark"] .mermaid-block__error-title {
+  color: #ff7b72;
+}
+
 .mermaid-block:has(svg) {
   min-height: 0;
 }

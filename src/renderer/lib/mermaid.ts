@@ -1,6 +1,10 @@
 let mermaidModule: typeof import('mermaid').default | null = null
 let currentTheme: 'default' | 'dark' = 'default'
 
+export type MermaidRenderResult =
+  | { ok: true; svg: string }
+  | { ok: false; message: string }
+
 // Mermaid 11.x — 옵션 미지정 시 노드 텍스트 측정과 실제 렌더 폭이 불일치해 text 가 노드 밖으로 잘림.
 // 루트 `htmlLabels: true`(v11.12.3+ 에서 flowchart 하위 옵션이 deprecated) + 앱 CSS 와 일치하는
 // fontFamily/fontSize 로 deterministic 측정. flowchart.padding 상향 + useMaxWidth 유지.
@@ -34,14 +38,14 @@ async function getMermaid() {
   return mermaidModule
 }
 
-export async function renderMermaid(id: string, code: string): Promise<string> {
+export async function renderMermaid(id: string, code: string): Promise<MermaidRenderResult> {
   const m = await getMermaid()
   try {
     const { svg } = await m.render(id, code)
-    return svg
+    return { ok: true, svg }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    return `<pre style="color:red">Mermaid error: ${msg}</pre>`
+    return { ok: false, message: msg }
   }
 }
 

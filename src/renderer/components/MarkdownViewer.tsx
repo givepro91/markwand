@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import { rehypeSanitize, remarkGfm, remarkBreaks, sanitizeSchema } from '../lib/markdown'
 import 'highlight.js/styles/github.css'
 import 'highlight.js/styles/github-dark.css'
-import { renderMermaid, onMermaidThemeChange } from '../lib/mermaid'
+import { renderMermaid, onMermaidThemeChange, type MermaidRenderResult } from '../lib/mermaid'
 import { slugify, extractHeadings } from './TableOfContents'
 import type { Heading } from './TableOfContents'
 import { useAnnotations } from '../hooks/useAnnotations'
@@ -46,15 +46,21 @@ let mermaidCounter = 0
 
 // Mermaid 블록: IntersectionObserver로 viewport 진입 시점에 렌더
 const MermaidBlock = memo(function MermaidBlock({ code }: { code: string }) {
-  const [svg, setSvg] = useState<string>('')
+  const [result, setResult] = useState<MermaidRenderResult | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const renderedRef = useRef(false)
 
   const render = useCallback(async () => {
-    const id = `mermaid-${++mermaidCounter}`
-    const result = await renderMermaid(id, code)
-    setSvg(result)
+    if (renderedRef.current) return
     renderedRef.current = true
+    const id = `mermaid-${++mermaidCounter}`
+    try {
+      const result = await renderMermaid(id, code)
+      setResult(result)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      setResult({ ok: false, message })
+    }
   }, [code])
 
   // mermaid 테마 변경 시 재렌더
@@ -82,13 +88,26 @@ const MermaidBlock = memo(function MermaidBlock({ code }: { code: string }) {
     return () => observer.disconnect()
   }, [render])
 
+  if (result?.ok === false) {
+    return (
+      <div ref={containerRef} className="mermaid-block mermaid-block--error" role="alert">
+        <div className="mermaid-block__error-title">Mermaid diagram failed</div>
+        <pre className="mermaid-block__error-message">{result.message}</pre>
+        <details>
+          <summary>Source</summary>
+          <pre><code>{code}</code></pre>
+        </details>
+      </div>
+    )
+  }
+
   return (
     <div
       ref={containerRef}
       className="mermaid-block"
-      dangerouslySetInnerHTML={svg ? { __html: svg } : undefined}
+      dangerouslySetInnerHTML={result?.ok ? { __html: result.svg } : undefined}
       style={
-        !svg
+        !result
           ? {
               minHeight: '60px',
               background: 'var(--bg-elev)',
@@ -239,6 +258,44 @@ const SshImage = memo(function SshImage({
 
 // 헤딩 레벨 → 태그 이름
 const HEADING_TAGS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const
+const GFM_ALERT_CONFIG = {
+  NOTE: { icon: 'ⓘ', label: 'Note' },
+  TIP: { icon: '✦', label: 'Tip' },
+  IMPORTANT: { icon: '!', label: 'Important' },
+  WARNING: { icon: '⚠', label: 'Warning' },
+  CAUTION: { icon: '⛔', label: 'Caution' },
+} as const
+const GFM_ALERT_RE = /^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*(?:\r?\n|$)/
+
+type GfmAlertType = keyof typeof GFM_ALERT_CONFIG
+type AlertStripResult = {
+  type: GfmAlertType
+  children: React.ReactNode[]
+}
+type MarkdownSegment =
+  | { kind: 'markdown'; content: string; startLine: number }
+  | {
+      kind: 'details'
+      summary: string
+      body: string
+      open: boolean
+      startLine: number
+      summaryLine: number
+      bodyStartLine: number
+      endLine: number
+    }
+type ReactElementWithMarkdownNode = React.ReactElement<{
+  children?: React.ReactNode
+  node?: { tagName?: string }
+}>
+type MarkdownFence = {
+  char: '`' | '~'
+  length: number
+}
+const DETAILS_OPEN_RE = /^<details(?:\s+open)?\s*>$/i
+const DETAILS_CLOSE_RE = /^<\/details>$/i
+const SUMMARY_RE = /^<summary>(.*?)<\/summary>\s*$/i
+const FENCE_RE = /^\s*(`{3,}|~{3,})/
 
 type SourcePositionNode = {
   position?: {
@@ -247,14 +304,111 @@ type SourcePositionNode = {
   }
 }
 
-function sourceLineAttrs(node?: SourcePositionNode): Record<string, number> {
+function sourceLineAttrs(node?: SourcePositionNode, lineOffset = 0): Record<string, number> {
   const start = node?.position?.start?.line
   const end = node?.position?.end?.line
   if (!start || !end) return {}
   return {
-    'data-source-start': start,
-    'data-source-end': end,
+    'data-source-start': start + lineOffset,
+    'data-source-end': end + lineOffset,
   }
+}
+
+function decodeBasicHtmlEntities(value: string): string {
+  return value
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+}
+
+function normalizeSafeSummary(raw: string): string {
+  return decodeBasicHtmlEntities(
+    raw
+      .replace(/<br\s*\/?>/gi, ' ')
+      .replace(/<(?:b|strong|i|em|code)>(.*?)<\/(?:b|strong|i|em|code)>/gi, '$1')
+      .replace(/<[^>]+>/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+  )
+}
+
+function parseMarkdownSegments(content: string): MarkdownSegment[] {
+  const lines = content.split(/\r?\n/)
+  const segments: MarkdownSegment[] = []
+  let pendingLines: string[] = []
+  let pendingStartLine = 1
+  let fence: MarkdownFence | null = null
+
+  const flushPending = () => {
+    if (pendingLines.length === 0) return
+    segments.push({
+      kind: 'markdown',
+      content: pendingLines.join('\n'),
+      startLine: pendingStartLine,
+    })
+    pendingLines = []
+  }
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]
+    const trimmed = line.trim()
+    const fenceMatch = line.match(FENCE_RE)
+    if (fence) {
+      if (pendingLines.length === 0) pendingStartLine = index + 1
+      pendingLines.push(line)
+      if (
+        fenceMatch
+        && fenceMatch[1][0] === fence.char
+        && fenceMatch[1].length >= fence.length
+      ) {
+        fence = null
+      }
+      continue
+    }
+    if (fenceMatch) {
+      const marker = fenceMatch[1]
+      fence = {
+        char: marker[0] as '`' | '~',
+        length: marker.length,
+      }
+      if (pendingLines.length === 0) pendingStartLine = index + 1
+      pendingLines.push(line)
+      continue
+    }
+
+    if (DETAILS_OPEN_RE.test(trimmed)) {
+      const summaryMatch = lines[index + 1]?.trim().match(SUMMARY_RE)
+      if (summaryMatch) {
+        const closeIndex = lines.findIndex((candidate, candidateIndex) => (
+          candidateIndex > index + 1 && DETAILS_CLOSE_RE.test(candidate.trim())
+        ))
+        if (closeIndex > index + 1) {
+          flushPending()
+          segments.push({
+            kind: 'details',
+            summary: normalizeSafeSummary(summaryMatch[1]),
+            body: lines.slice(index + 2, closeIndex).join('\n'),
+            open: /\sopen\s*>\s*$/i.test(trimmed),
+            startLine: index + 1,
+            summaryLine: index + 2,
+            bodyStartLine: index + 3,
+            endLine: closeIndex + 1,
+          })
+          index = closeIndex
+          pendingStartLine = index + 2
+          continue
+        }
+      }
+    }
+
+    if (pendingLines.length === 0) pendingStartLine = index + 1
+    pendingLines.push(line)
+  }
+
+  flushPending()
+  return segments
 }
 
 // React children을 재귀적으로 순회해 텍스트를 수집한다.
@@ -271,8 +425,101 @@ function extractChildText(node: React.ReactNode): string {
   return ''
 }
 
-// id 중복 방지용 카운터 (컴포넌트 인스턴스 스코프는 ref로 관리)
-function makeHeadingComponent(level: 1 | 2 | 3 | 4 | 5 | 6, slugCounter: Map<string, number>) {
+function isParagraphElement(node: React.ReactNode): node is ReactElementWithMarkdownNode {
+  return React.isValidElement<{ children?: React.ReactNode; node?: { tagName?: string } }>(node)
+    && (node.type === 'p' || node.props.node?.tagName === 'p')
+}
+
+function isBreakElement(node: React.ReactNode): boolean {
+  return React.isValidElement(node) && node.type === 'br'
+}
+
+function hasRenderableContent(node: React.ReactNode): boolean {
+  if (node == null || node === false) return false
+  if (typeof node === 'string') return node.trim().length > 0
+  if (typeof node === 'number') return true
+  if (Array.isArray(node)) return node.some(hasRenderableContent)
+  if (isBreakElement(node)) return false
+  if (React.isValidElement<{ children?: React.ReactNode }>(node)) {
+    if (node.props.children == null) return true
+    return hasRenderableContent(node.props.children)
+  }
+  return true
+}
+
+function trimLeadingAlertBreaks(nodes: React.ReactNode[]): React.ReactNode[] {
+  const next = [...nodes]
+  while (next.length > 0) {
+    const first = next[0]
+    if (isBreakElement(first)) {
+      next.shift()
+      continue
+    }
+    if (typeof first === 'string') {
+      const trimmed = first.replace(/^[\r\n]+/, '')
+      if (trimmed.length === 0) {
+        next.shift()
+        continue
+      }
+      if (trimmed !== first) next[0] = trimmed
+    }
+    break
+  }
+  return next
+}
+
+function stripGfmAlertMarkerFromChildren(children: React.ReactNode): AlertStripResult | null {
+  const nodes = React.Children.toArray(children)
+  const markerIndex = nodes.findIndex(hasRenderableContent)
+  if (markerIndex < 0) return null
+
+  const marker = nodes[markerIndex]
+  if (typeof marker !== 'string') return null
+
+  const match = marker.match(GFM_ALERT_RE)
+  if (!match) return null
+
+  const type = match[1] as GfmAlertType
+  const updated = [...nodes]
+  const remainder = marker.slice(match[0].length)
+  if (remainder.length > 0) {
+    updated[markerIndex] = remainder
+  } else {
+    updated.splice(markerIndex, 1)
+  }
+
+  return {
+    type,
+    children: trimLeadingAlertBreaks(updated).filter(hasRenderableContent),
+  }
+}
+
+function parseGfmAlert(children: React.ReactNode): AlertStripResult | null {
+  const blocks = React.Children.toArray(children)
+  const firstBlockIndex = blocks.findIndex(hasRenderableContent)
+  if (firstBlockIndex < 0) return null
+
+  const firstBlock = blocks[firstBlockIndex]
+  if (!isParagraphElement(firstBlock)) return null
+
+  const stripped = stripGfmAlertMarkerFromChildren(firstBlock.props.children)
+  if (!stripped) return null
+
+  const nextBlocks = [...blocks]
+  if (stripped.children.length > 0) {
+    nextBlocks[firstBlockIndex] = React.cloneElement(firstBlock, undefined, stripped.children)
+  } else {
+    nextBlocks.splice(firstBlockIndex, 1)
+  }
+
+  return {
+    type: stripped.type,
+    children: nextBlocks.filter(hasRenderableContent),
+  }
+}
+
+// id 중복 방지용 카운터는 렌더 invocation 단위로 생성해 StrictMode 재렌더와 stale id를 피한다.
+function makeHeadingComponent(level: 1 | 2 | 3 | 4 | 5 | 6, slugCounter: Map<string, number>, lineOffset: number) {
   const Tag = HEADING_TAGS[level - 1]
   return function HeadingNode({ children, id: _ignored, node, ...props }: React.HTMLAttributes<HTMLHeadingElement> & { node?: SourcePositionNode }) {
     // react-markdown의 기본 props에서 id는 무시하고 항상 extractHeadings와 동일한 slug를 부여한다.
@@ -281,7 +528,7 @@ function makeHeadingComponent(level: 1 | 2 | 3 | 4 | 5 | 6, slugCounter: Map<str
     const count = slugCounter.get(base) ?? 0
     slugCounter.set(base, count + 1)
     const id = count === 0 ? base : `${base}-${count}`
-    return <Tag {...props} {...sourceLineAttrs(node)} id={id}>{children}</Tag>
+    return <Tag {...props} {...sourceLineAttrs(node, lineOffset)} id={id}>{children}</Tag>
   }
 }
 
@@ -320,6 +567,26 @@ function MarkdownViewerInner({ content, basePath, onDocNavigate, onHeadings, wor
     [basePath]
   )
 
+  const scrollHashIntoView = useCallback((hash: string): boolean => {
+    const root = containerRef.current
+    if (!root || !hash.startsWith('#')) return false
+    let id: string
+    try {
+      id = decodeURIComponent(hash.slice(1))
+    } catch {
+      return false
+    }
+    if (!id) return false
+    const target = Array.from(root.querySelectorAll<HTMLElement>('[id]')).find((el) => el.id === id)
+    if (!target) return false
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    target.setAttribute('data-drift-jump-target', 'true')
+    window.setTimeout(() => {
+      if (target.isConnected) target.removeAttribute('data-drift-jump-target')
+    }, 1800)
+    return true
+  }, [])
+
   // content 변경 시 헤딩 추출해서 콜백
   useEffect(() => {
     if (onHeadings) {
@@ -327,125 +594,170 @@ function MarkdownViewerInner({ content, basePath, onDocNavigate, onHeadings, wor
     }
   }, [content, onHeadings])
 
-  // slugCounter는 components useMemo 클로저 내부에 두어 factory 호출마다 새로 생성.
-  // 렌더 중 ref mutation을 피하고, StrictMode 이중 렌더에서도 각 invocation이 독립 counter를 받는다.
-  const components: Components = useMemo(() => {
-    const slugCounter = new Map<string, number>()
-    return {
-    h1: makeHeadingComponent(1, slugCounter),
-    h2: makeHeadingComponent(2, slugCounter),
-    h3: makeHeadingComponent(3, slugCounter),
-    h4: makeHeadingComponent(4, slugCounter),
-    h5: makeHeadingComponent(5, slugCounter),
-    h6: makeHeadingComponent(6, slugCounter),
-    p({ node, children, ...props }) {
-      return <p {...props} {...sourceLineAttrs(node)}>{children}</p>
-    },
-    li({ node, children, ...props }) {
-      return <li {...props} {...sourceLineAttrs(node)}>{children}</li>
-    },
-    blockquote({ node, children, ...props }) {
-      return <blockquote {...props} {...sourceLineAttrs(node)}>{children}</blockquote>
-    },
-    pre({ node, children, ...props }) {
-      return <pre {...props} {...sourceLineAttrs(node)}>{children}</pre>
-    },
-    table({ node, children, ...props }) {
-      return <table {...props} {...sourceLineAttrs(node)}>{children}</table>
-    },
-    thead({ node, children, ...props }) {
-      return <thead {...props} {...sourceLineAttrs(node)}>{children}</thead>
-    },
-    tbody({ node, children, ...props }) {
-      return <tbody {...props} {...sourceLineAttrs(node)}>{children}</tbody>
-    },
-    tr({ node, children, ...props }) {
-      return <tr {...props} {...sourceLineAttrs(node)}>{children}</tr>
-    },
-    th({ node, children, ...props }) {
-      return <th {...props} {...sourceLineAttrs(node)}>{children}</th>
-    },
-    td({ node, children, ...props }) {
-      return <td {...props} {...sourceLineAttrs(node)}>{children}</td>
-    },
+  const markdownSegments = useMemo(() => parseMarkdownSegments(content), [content])
+  const rehypePlugins = useMemo(
+    () => [
+      ...rehypeHighlightPlugin,
+      [rehypeSanitize, sanitizeSchema],
+    ] as Parameters<typeof ReactMarkdown>[0]['rehypePlugins'],
+    [rehypeHighlightPlugin]
+  )
 
-    // 링크 처리: 외부 → shell.openExternal, 내부 .md → onDocNavigate, app:// 이미지
-    a({ href, children, ...props }) {
-      if (!href) return <a {...props}>{children}</a>
-
-      const isExternal = href.startsWith('http://') || href.startsWith('https://')
-      if (isExternal) {
+  const componentsForLineOffset = useCallback(
+    (lineOffset: number, slugCounter: Map<string, number>): Components => ({
+      h1: makeHeadingComponent(1, slugCounter, lineOffset),
+      h2: makeHeadingComponent(2, slugCounter, lineOffset),
+      h3: makeHeadingComponent(3, slugCounter, lineOffset),
+      h4: makeHeadingComponent(4, slugCounter, lineOffset),
+      h5: makeHeadingComponent(5, slugCounter, lineOffset),
+      h6: makeHeadingComponent(6, slugCounter, lineOffset),
+      p({ node, children, ...props }) {
+        return <p {...props} {...sourceLineAttrs(node, lineOffset)}>{children}</p>
+      },
+      li({ node, children, ...props }) {
+        return <li {...props} {...sourceLineAttrs(node, lineOffset)}>{children}</li>
+      },
+      blockquote({ node, children, ...props }) {
+        const alert = parseGfmAlert(children)
+        if (alert) {
+          const config = GFM_ALERT_CONFIG[alert.type]
+          const className = ['markdown-alert', `markdown-alert--${alert.type.toLowerCase()}`, props.className]
+            .filter(Boolean)
+            .join(' ')
+          return (
+            <div {...sourceLineAttrs(node, lineOffset)} className={className} data-alert-type={alert.type.toLowerCase()} role="note">
+              <div className="markdown-alert__title">
+                <span className="markdown-alert__icon" aria-hidden="true">{config.icon}</span>
+                <span className="markdown-alert__label">{config.label}</span>
+              </div>
+              <div className="markdown-alert__body">{alert.children}</div>
+            </div>
+          )
+        }
+        return <blockquote {...props} {...sourceLineAttrs(node, lineOffset)}>{children}</blockquote>
+      },
+      pre({ node, children, ...props }) {
+        return <pre {...props} {...sourceLineAttrs(node, lineOffset)}>{children}</pre>
+      },
+      table({ node, children, ...props }) {
         return (
-          <a
-            href={href}
-            onClick={(e) => {
-              e.preventDefault()
-              window.api.shell.openExternal(href)
-            }}
-            {...props}
-          >
-            {children}
-          </a>
+          <div className="markdown-table-scroll" {...sourceLineAttrs(node, lineOffset)}>
+            <table {...props}>{children}</table>
+          </div>
         )
-      }
+      },
+      thead({ node, children, ...props }) {
+        return <thead {...props} {...sourceLineAttrs(node, lineOffset)}>{children}</thead>
+      },
+      tbody({ node, children, ...props }) {
+        return <tbody {...props} {...sourceLineAttrs(node, lineOffset)}>{children}</tbody>
+      },
+      tr({ node, children, ...props }) {
+        return <tr {...props} {...sourceLineAttrs(node, lineOffset)}>{children}</tr>
+      },
+      th({ node, children, ...props }) {
+        return <th {...props} {...sourceLineAttrs(node, lineOffset)}>{children}</th>
+      },
+      td({ node, children, ...props }) {
+        return <td {...props} {...sourceLineAttrs(node, lineOffset)}>{children}</td>
+      },
 
-      if (href.endsWith('.md') || href.includes('.md#')) {
-        const absPath = resolveRelativePath(href.split('#')[0])
-        return (
-          <a
-            href={href}
-            onClick={(e) => {
-              e.preventDefault()
-              onDocNavigate(absPath)
-            }}
-            {...props}
-          >
-            {children}
-          </a>
-        )
-      }
+      // 링크 처리: 외부 → shell.openExternal, 내부 .md → onDocNavigate, app:// 이미지
+      a({ href, children, ...props }) {
+        if (!href) return <a {...props}>{children}</a>
 
-      return <a href={href} {...props}>{children}</a>
-    },
+        const isExternal = href.startsWith('http://') || href.startsWith('https://')
+        if (isExternal) {
+          return (
+            <a
+              href={href}
+              onClick={(e) => {
+                e.preventDefault()
+                window.api.shell.openExternal(href)
+              }}
+              {...props}
+            >
+              {children}
+            </a>
+          )
+        }
 
-    // 이미지 처리: 상대 경로 → app:// 프로토콜(고정 host=local + encoded path).
-    // host에 path 세그먼트를 넣으면 Chromium이 소문자 정규화해서 워크스페이스 비교가 깨진다.
-    // 로드 실패(private repo 배지 404 등) 시 깨진 아이콘 대신 alt 뱃지로 fallback.
-    img({ src, alt, ...props }) {
-      if (!src) return <img alt={alt} {...props} />
-      if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('data:') || src.startsWith('blob:')) {
-        // 외부 URL / data / blob 은 cache busting 적용 X — 외부 서버에 의미 있는 쿼리일 수 있음.
-        return <SafeImage src={src} alt={alt} extraProps={props} />
-      }
-      const abs = src.startsWith('app://') ? src.replace(/^app:\/\/(?:local)?/, '') : resolveRelativePath(src)
-      // FS9-B — SSH workspace 의 이미지는 app:// 로컬 fallthrough 불가 → IPC 스트리밍.
-      if (isSshContext && workspaceId) {
-        return <SshImage workspaceId={workspaceId} path={abs} alt={alt} extraProps={props} refreshKey={refreshKey} />
-      }
-      const resolved = buildLocalImageSrc(abs, refreshKey)
-      return <SafeImage src={resolved} alt={alt} extraProps={props} />
-    },
+        if (href.startsWith('#')) {
+          return (
+            <a
+              href={href}
+              onClick={(e) => {
+                if (scrollHashIntoView(href)) e.preventDefault()
+              }}
+              {...props}
+            >
+              {children}
+            </a>
+          )
+        }
 
-    // 코드 블록: mermaid 분기
-    code({ className, children, ...props }) {
-      const match = /language-(\w+)/.exec(className || '')
-      const lang = match?.[1]
-      const codeStr = String(children).replace(/\n$/, '')
+        if (href.endsWith('.md') || href.includes('.md#')) {
+          const [pathPart, hashPart] = href.split('#')
+          const absPath = resolveRelativePath(pathPart)
+          return (
+            <a
+              href={href}
+              onClick={(e) => {
+                e.preventDefault()
+                if (hashPart && absPath === basePath && scrollHashIntoView(`#${hashPart}`)) return
+                onDocNavigate(absPath)
+              }}
+              {...props}
+            >
+              {children}
+            </a>
+          )
+        }
 
-      if (lang === 'mermaid') {
-        return <MermaidBlock code={codeStr} />
-      }
+        return <a href={href} {...props}>{children}</a>
+      },
 
-      // inline code
-      if (!className) {
+      // 이미지 처리: 상대 경로 → app:// 프로토콜(고정 host=local + encoded path).
+      // host에 path 세그먼트를 넣으면 Chromium이 소문자 정규화해서 워크스페이스 비교가 깨진다.
+      // 로드 실패(private repo 배지 404 등) 시 깨진 아이콘 대신 alt 뱃지로 fallback.
+      img({ src, alt, ...props }) {
+        if (!src) return <img alt={alt} {...props} />
+        if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('data:') || src.startsWith('blob:')) {
+          // 외부 URL / data / blob 은 cache busting 적용 X — 외부 서버에 의미 있는 쿼리일 수 있음.
+          return <SafeImage src={src} alt={alt} extraProps={props} />
+        }
+        const abs = src.startsWith('app://') ? src.replace(/^app:\/\/(?:local)?/, '') : resolveRelativePath(src)
+        // FS9-B — SSH workspace 의 이미지는 app:// 로컬 fallthrough 불가 → IPC 스트리밍.
+        if (isSshContext && workspaceId) {
+          return <SshImage workspaceId={workspaceId} path={abs} alt={alt} extraProps={props} refreshKey={refreshKey} />
+        }
+        const resolved = buildLocalImageSrc(abs, refreshKey)
+        return <SafeImage src={resolved} alt={alt} extraProps={props} />
+      },
+
+      // 코드 블록: mermaid 분기
+      code({ className, children, ...props }) {
+        const match = /language-(\w+)/.exec(className || '')
+        const lang = match?.[1]
+        const codeStr = String(children).replace(/\n$/, '')
+
+        if (lang === 'mermaid') {
+          return <MermaidBlock code={codeStr} />
+        }
+
+        // inline code
+        if (!className) {
+          return <code className={className} {...props}>{children}</code>
+        }
+
+        // block code는 rehypeHighlight가 hast 단계에서 hljs 클래스를 부여하므로 그대로 반환
         return <code className={className} {...props}>{children}</code>
-      }
+      },
+    }),
+    [basePath, resolveRelativePath, scrollHashIntoView, onDocNavigate, isSshContext, workspaceId, refreshKey]
+  )
 
-      // block code는 rehypeHighlight가 hast 단계에서 hljs 클래스를 부여하므로 그대로 반환
-      return <code className={className} {...props}>{children}</code>
-    },
-    }
-  }, [content, resolveRelativePath, onDocNavigate, isSshContext, workspaceId, refreshKey])
+  const slugCounter = new Map<string, number>()
 
   return (
     <div className="markdown-viewer" ref={containerRef} style={{ position: 'relative' }}>
@@ -471,16 +783,46 @@ function MarkdownViewerInner({ content, basePath, onDocNavigate, onHeadings, wor
           {tAnno('annotation.orphanBadge', { count: orphanCount })}
         </div>
       )}
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkBreaks]}
-        rehypePlugins={[
-          ...rehypeHighlightPlugin,
-          [rehypeSanitize, sanitizeSchema],
-        ] as Parameters<typeof ReactMarkdown>[0]['rehypePlugins']}
-        components={components}
-      >
-        {content}
-      </ReactMarkdown>
+      {markdownSegments.map((segment, index) => {
+        if (segment.kind === 'details') {
+          return (
+            <details
+              key={`details-${segment.startLine}-${index}`}
+              className="markdown-safe-details"
+              open={segment.open}
+              data-source-start={segment.startLine}
+              data-source-end={segment.endLine}
+            >
+              <summary
+                data-source-start={segment.summaryLine}
+                data-source-end={segment.summaryLine}
+              >
+                {segment.summary}
+              </summary>
+              <div className="markdown-safe-details__body">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkBreaks]}
+                  rehypePlugins={rehypePlugins}
+                  components={componentsForLineOffset(segment.bodyStartLine - 1, slugCounter)}
+                >
+                  {segment.body}
+                </ReactMarkdown>
+              </div>
+            </details>
+          )
+        }
+
+        return (
+          <ReactMarkdown
+            key={`markdown-${segment.startLine}-${index}`}
+            remarkPlugins={[remarkGfm, remarkBreaks]}
+            rehypePlugins={rehypePlugins}
+            components={componentsForLineOffset(segment.startLine - 1, slugCounter)}
+          >
+            {segment.content}
+          </ReactMarkdown>
+        )
+      })}
       <AnnotationToolbar
         state={toolbar}
         disabled={disabled}

@@ -32,7 +32,7 @@ function contrastRatio(foreground: string, background: string): number {
 
 describe('markdown readability styles', () => {
   it('keeps the reader surface at a proven reading measure', () => {
-    expect(markdownCss).toMatch(/max-width:\s*min\(100%,\s*840px\)/)
+    expect(markdownCss).toMatch(/max-width:\s*min\(100%,\s*920px\)/)
     expect(markdownCss).toMatch(/font-size:\s*16px/)
     expect(markdownCss).toMatch(/line-height:\s*1\.75/)
     expect(markdownCss).toMatch(/letter-spacing:\s*0/)
@@ -51,5 +51,24 @@ describe('markdown readability styles', () => {
     expect(contrastRatio(cssHexVar(dark, '--text-muted'), cssHexVar(dark, '--bg'))).toBeGreaterThanOrEqual(4.5)
     expect(markdownCss).toContain('[data-theme="dark"] .markdown-viewer a')
     expect(contrastRatio(cssHexVar(dark, '--accent-hover'), cssHexVar(dark, '--bg'))).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('keeps high-signal markdown affordances visually distinct', () => {
+    expect(markdownCss).toContain('.markdown-viewer .markdown-alert')
+    expect(markdownCss).toContain('.markdown-viewer .markdown-alert--tip')
+    expect(markdownCss).toContain('[data-theme="dark"] .markdown-viewer .markdown-alert--caution')
+    expect(markdownCss).toContain('.markdown-viewer .markdown-safe-details')
+    expect(markdownCss).toContain('.mermaid-block--error')
+  })
+
+  it('keeps dense state-document tables readable without widening the page', () => {
+    expect(markdownCss).toMatch(/\.markdown-viewer \.markdown-table-scroll\s*{[\s\S]*overflow-x:\s*auto/)
+    expect(markdownCss).toMatch(/\.markdown-viewer table\s*{[\s\S]*table-layout:\s*fixed/)
+    expect(markdownCss).toMatch(/\.markdown-viewer table\s*{[\s\S]*width:\s*100%/)
+    expect(markdownCss).toMatch(/\.markdown-viewer table\s*{[\s\S]*min-width:\s*100%/)
+    expect(markdownCss).toMatch(/\.markdown-viewer \.markdown-table-scroll:has\(table tr > :nth-child\(5\)\) table\s*{[\s\S]*width:\s*max-content/)
+    expect(markdownCss).toMatch(/\.markdown-viewer th\s*{[\s\S]*position:\s*sticky/)
+    expect(markdownCss).toContain('.markdown-viewer th code,\n.markdown-viewer td code')
+    expect(markdownCss).toMatch(/overflow-wrap:\s*anywhere/)
   })
 })

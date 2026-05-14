@@ -43,6 +43,13 @@
 - Terminal/iTerm2/Ghostty처럼 앱별 automation surface가 다른 경우 공통 AppleScript로 묶지 않는다. 각 앱의 실제 지원 방식(AppleScript application name, LaunchServices args, CLI 지원 여부)을 로컬에서 확인하고 테스트에 고정한다.
 - 앱 탐지 IPC가 실패할 때 fallback은 과하게 넓히지 않는다. 기본 fallback은 `VS Code`, `Terminal`, `Finder`까지만 허용하고, iTerm2/Ghostty/Xcode/IntelliJ 등은 실제 설치 감지 성공 시에만 표시한다.
 
+### Codex 앱 UI 검증 / 캡처 규칙
+
+- Codex 앱으로 Markwand UI를 확인할 때 macOS 전체 화면 캡처(`screencapture` 전체 화면, 데스크톱 전체 스크린샷)를 기본 검증 수단으로 쓰지 않는다.
+- 우선순위는 앱 자체 범위 검증이다: Electron CDP(`--remote-debugging-port`)로 앱 창을 띄워 DOM/레이아웃 수치를 측정하거나, 앱 창/브라우저 viewport 단위 캡처만 사용한다.
+- 레이아웃 회귀는 가능하면 `scripts/layout-smoke.mjs` 같은 앱 창 기반 스모크에 fixture와 assertion을 추가해 자동화한다.
+- 사용자에게 시각 증거가 꼭 필요할 때만 앱 창/특정 viewport로 제한한 캡처를 남기고, 전체 데스크톱·다른 앱·개인 정보가 포함될 수 있는 화면 캡처는 피한다.
+
 3. **dogfood 는 마지막 sanity check**
    - 1·2 가 모두 통과한 뒤에만 사용자에게 "확인 부탁드립니다" 요청.
    - 사용자 보고가 들어오면 단순히 fix list 로 받지 말고 "내가 왜 1·2 단계에서 못 잡았는가" 를 같이 분석해 다음 사이클에서 보강.
