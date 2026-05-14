@@ -136,6 +136,7 @@ const inflightScans = new Map<string, Promise<Project[]>>()
 // invalidation: workspace 제거 / refresh / watcher fs:change 이벤트.
 const docsCache = new Map<string, Doc[]>()
 const inflightDocScans = new Map<string, Promise<Doc[]>>()
+const docScanGenerations = new Map<string, number>()
 // projectId → workspaceId 역매핑. watcher fs:change 로 프로젝트 캐시 무효화 시 필요.
 const projectToWorkspace = new Map<string, string>()
 
@@ -156,6 +157,7 @@ function invalidateProjectsCache(workspaceId?: string): void {
       if (wsId === workspaceId) {
         docsCache.delete(pid)
         inflightDocScans.delete(pid)
+        docScanGenerations.set(pid, (docScanGenerations.get(pid) ?? 0) + 1)
         projectToWorkspace.delete(pid)
       }
     }
@@ -164,6 +166,7 @@ function invalidateProjectsCache(workspaceId?: string): void {
     inflightScans.clear()
     docsCache.clear()
     inflightDocScans.clear()
+    docScanGenerations.clear()
     projectToWorkspace.clear()
   }
 }
@@ -172,6 +175,7 @@ function invalidateProjectsCache(workspaceId?: string): void {
 export function invalidateDocsCacheForProject(projectId: string): void {
   docsCache.delete(projectId)
   inflightDocScans.delete(projectId)
+  docScanGenerations.set(projectId, (docScanGenerations.get(projectId) ?? 0) + 1)
 }
 
 /**
@@ -241,8 +245,7 @@ export async function getOrScanDocsForProject(
   const { force = false, allowSshScan = true, onChunk } = opts
 
   if (force) {
-    docsCache.delete(projectId)
-    inflightDocScans.delete(projectId)
+    invalidateDocsCacheForProject(projectId)
   }
 
   const cached = docsCache.get(projectId)
@@ -269,18 +272,30 @@ export async function getOrScanDocsForProject(
   const transport = await getActiveTransport(hostWsId)
 
   const t0 = Date.now()
-  const runScan = (async () => {
+  const scanGeneration = docScanGenerations.get(projectId) ?? 0
+  let runScan!: Promise<Doc[]>
+  runScan = (async () => {
     const allDocs: Doc[] = []
     for await (const chunk of composeDocsFromFileStats(transport, projectId, projectRoot)) {
       onChunk?.(chunk)
       allDocs.push(...chunk)
     }
-    docsCache.set(projectId, allDocs)
-    inflightDocScans.delete(projectId)
+    if (
+      (docScanGenerations.get(projectId) ?? 0) === scanGeneration &&
+      inflightDocScans.get(projectId) === runScan
+    ) {
+      docsCache.set(projectId, allDocs)
+      inflightDocScans.delete(projectId)
+    }
     console.log(`[ipc] project:scan-docs(${projectId.slice(0, 8)}, ${transport.kind}) ${allDocs.length} docs in ${Date.now() - t0}ms`)
     return allDocs
   })().catch((err) => {
-    inflightDocScans.delete(projectId)
+    if (
+      (docScanGenerations.get(projectId) ?? 0) === scanGeneration &&
+      inflightDocScans.get(projectId) === runScan
+    ) {
+      inflightDocScans.delete(projectId)
+    }
     throw err
   })
   inflightDocScans.set(projectId, runScan)

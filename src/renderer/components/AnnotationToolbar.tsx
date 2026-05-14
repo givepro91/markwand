@@ -100,8 +100,8 @@ export function AnnotationToolbar({
       }}
       onMouseDown={(e) => {
         // toolbar 자체 mousedown 은 root mousedown 으로 전파 안 시킴 — root 핸들러가 toolbar hide 하지 않도록.
+        // Electron/React 조합에서 preventDefault() 는 실제 click 액션을 끊을 수 있다.
         e.stopPropagation()
-        e.preventDefault() // selection 보존
       }}
       onClick={(e) => e.stopPropagation() /* root.click 의 caretRangeFromPoint hit 검사 우회 */}
       onKeyDown={(e) => {

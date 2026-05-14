@@ -490,20 +490,25 @@ export const useAppStore = create<AppState>((set) => ({
       // C7: Map 버킷에 append. 새로고침 시 useDocs 가 기존 docs 를 비우지 않고
       // 새 chunk 를 흘려보낼 수 있도록 path 기준 dedup — 같은 path 는 replace.
       // FileTree(react-arborist) unmount/remount 를 막아 좌측 스크롤 위치 보존.
-      const map = state.docsByProject
+      // 프로젝트별 bucket 배열은 변경 프로젝트마다 새 참조로 교체해야 한다.
+      // useDocsOf(projectId)가 bucket 배열 자체를 구독하므로 in-place push/replace는
+      // Zustand selector에 감지되지 않아 FileTree가 갱신되지 않는다.
+      const map = new Map(state.docsByProject)
+      const statuses = new Set(state.frontmatterIndex.statuses)
+      const sources = new Set(state.frontmatterIndex.sources)
       // projectId 별 보조 path→idx 인덱스. 같은 chunk 안에 중복이 있어도 안전.
       const idxByProject = new Map<string, Map<string, number>>()
       for (const doc of newDocs) {
         let bucket = map.get(doc.projectId)
-        if (!bucket) {
-          bucket = []
-          map.set(doc.projectId, bucket)
-        }
         let idx = idxByProject.get(doc.projectId)
         if (!idx) {
+          bucket = bucket ? [...bucket] : []
+          map.set(doc.projectId, bucket)
           idx = new Map<string, number>()
           bucket.forEach((d, i) => idx!.set(d.path, i))
           idxByProject.set(doc.projectId, idx)
+        } else {
+          bucket = map.get(doc.projectId)!
         }
         const existing = idx.get(doc.path)
         if (existing !== undefined) {
@@ -513,17 +518,14 @@ export const useAppStore = create<AppState>((set) => ({
           bucket.push(doc)
         }
         // frontmatterIndex 증분 add (감소는 removeDoc/reconcile 시 재빌드)
-        if (doc.frontmatter?.status) state.frontmatterIndex.statuses.add(doc.frontmatter.status as string)
-        if (doc.frontmatter?.source) state.frontmatterIndex.sources.add(doc.frontmatter.source as string)
+        if (doc.frontmatter?.status) statuses.add(doc.frontmatter.status as string)
+        if (doc.frontmatter?.source) sources.add(doc.frontmatter.source as string)
       }
       cachedFlat = Array.from(map.values()).flat()
       return {
         docs: cachedFlat,
-        docsByProject: new Map(map),
-        frontmatterIndex: {
-          statuses: new Set(state.frontmatterIndex.statuses),
-          sources: new Set(state.frontmatterIndex.sources),
-        },
+        docsByProject: map,
+        frontmatterIndex: { statuses, sources },
       }
     }),
   updateDoc: (path, updates) =>

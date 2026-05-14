@@ -8,9 +8,15 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { useAnnotations } from './useAnnotations'
+import { useAnnotationStore } from '../state/annotationStore'
 
 // window.api mock — preload 가 없는 jsdom 환경.
 beforeEach(() => {
+  useAnnotationStore.setState({
+    annotationsByDoc: new Map(),
+    loading: new Set(),
+    failedSaveDocs: new Set(),
+  })
   ;(window as unknown as { api: unknown }).api = {
     annotation: {
       load: vi.fn().mockResolvedValue(null),
@@ -168,6 +174,70 @@ describe('useAnnotations — drag/mousedown/mouseup lifecycle', () => {
       expect(hookResult.result.current.toolbar.visible).toBe(true)
       expect(hookResult.result.current.toolbar.mode).toBe('create')
     })
+  })
+
+  it('toolbar button focus 로 selection 이 collapse 되어도 create toolbar 를 유지한다', async () => {
+    const originalCloneRange = Range.prototype.cloneRange
+    let clonedRange: Range | null = null
+    Range.prototype.cloneRange = function () {
+      clonedRange = originalCloneRange.call(this)
+      return clonedRange
+    }
+    try {
+      const { container, hookResult } = setupHook(
+        '<p>The quick brown fox jumps over the lazy dog.</p>'
+      )
+
+      act(() => {
+        container.querySelector('p')!.dispatchEvent(
+          new MouseEvent('mousedown', { bubbles: true, clientX: 10, clientY: 10 })
+        )
+      })
+      act(() => {
+        selectText(container, 'quick brown fox')
+      })
+      act(() => {
+        container.querySelector('p')!.dispatchEvent(
+          new MouseEvent('mouseup', { bubbles: true, clientX: 80, clientY: 10 })
+        )
+      })
+      await flushRaf()
+      await waitFor(() => {
+        expect(hookResult.result.current.toolbar.visible).toBe(true)
+        expect(hookResult.result.current.toolbar.mode).toBe('create')
+      })
+
+      act(() => {
+        clearSelection()
+        document.dispatchEvent(new Event('selectionchange'))
+      })
+      await flushRaf()
+
+      expect(hookResult.result.current.toolbar.visible).toBe(true)
+      expect(hookResult.result.current.toolbar.mode).toBe('create')
+
+      // Chromium/Electron 에서는 보관한 Range clone 도 focus 이동 뒤 collapsed 될 수 있다.
+      // Range 객체가 비어도 selection 시점의 selector snapshot 으로 생성이 성공해야 한다.
+      const maybeClonedRange = clonedRange as Range | null
+      maybeClonedRange?.collapse(true)
+
+      act(() => {
+        hookResult.result.current.handleHighlight()
+      })
+
+      await waitFor(() => {
+        expect(hookResult.result.current.annotations).toHaveLength(1)
+      })
+      expect(hookResult.result.current.annotations[0].selector.exact).toBe('quick brown fox')
+      const save = (window as unknown as {
+        api: { annotation: { save: ReturnType<typeof vi.fn> } }
+      }).api.annotation.save
+      await waitFor(() => {
+        expect(save).toHaveBeenCalledTimes(1)
+      })
+    } finally {
+      Range.prototype.cloneRange = originalCloneRange
+    }
   })
 
   it('mouseup 시점 selection 이 collapsed 면 toolbar 안 뜸 (단순 클릭)', async () => {

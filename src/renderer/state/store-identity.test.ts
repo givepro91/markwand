@@ -68,6 +68,20 @@ describe('I2: appendDocs 후 기존 doc 객체 identity 유지', () => {
 
     expect(firstDocAfter).toBe(firstDocRef)
   })
+
+  it('같은 project bucket 배열은 appendDocs 후 새 참조로 바뀐다', () => {
+    const doc1 = makeDoc(1)
+    const doc2 = makeDoc(2)
+
+    useAppStore.getState().appendDocs([doc1])
+    const bucketAfterFirst = useAppStore.getState().docsByProject.get(doc1.projectId)
+
+    useAppStore.getState().appendDocs([doc2])
+    const bucketAfterSecond = useAppStore.getState().docsByProject.get(doc1.projectId)
+
+    expect(bucketAfterFirst).not.toBe(bucketAfterSecond)
+    expect(bucketAfterSecond?.map((doc) => doc.name)).toEqual(['doc-1.md', 'doc-2.md'])
+  })
 })
 
 // I3: updateDoc 시 나머지 요소 identity 유지

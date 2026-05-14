@@ -16,6 +16,8 @@ import {
 import {
   DEFAULT_ANNOTATION_COLOR,
   type Annotation,
+  type TextPositionFallback,
+  type TextQuoteSelector,
 } from '../lib/annotation/types'
 import { toast } from '../components/ui/Toast'
 
@@ -62,6 +64,11 @@ const HIDDEN_TOOLBAR: AnnotationToolbarState = {
   hitAnnotationId: null,
 }
 
+interface SelectionDraft {
+  selector: TextQuoteSelector
+  positionFallback: TextPositionFallback
+}
+
 interface UseAnnotationsResult {
   annotations: Annotation[]
   toolbar: AnnotationToolbarState
@@ -105,9 +112,9 @@ export function useAnnotations(
 
   const [activeRanges, setActiveRanges] = useState<Map<string, Range>>(new Map())
   const [toolbar, setToolbar] = useState<AnnotationToolbarState>(HIDDEN_TOOLBAR)
-  // 마지막 유효 selection Range — toolbar 버튼에 focus 이동 시 selection 이 collapse 되어도
-  // 이 ref 로 보존된 Range 를 사용해 anchor 생성 (Evaluator M-3 보강).
-  const lastSelectionRangeRef = useRef<Range | null>(null)
+  // 마지막 유효 selection 의 selector 스냅샷 — toolbar 버튼 focus 시 Chromium 이
+  // 보관한 Range clone 까지 collapse 시킬 수 있어 Range 객체 대신 정적 anchor 를 저장한다.
+  const lastSelectionDraftRef = useRef<SelectionDraft | null>(null)
   // 이전 cycle 의 docPath. 변경 직후 첫 cycle 은 reanchor skip — content prop 이 stale 한 이전 doc 의 것일 수 있음.
   const prevDocPathRef = useRef<string | null>(null)
   // mousedown ~ mouseup 사이 drag 진행 중 표시. 진행 중 selectionchange 발화는 toolbar 갱신을 trigger 하지 않는다.
@@ -219,7 +226,13 @@ export function useAnnotations(
       if (isDraggingRef.current) return
       const sel = window.getSelection()
       if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
-        setToolbar((prev) => (prev.mode === 'create' ? HIDDEN_TOOLBAR : prev))
+        setToolbar((prev) =>
+          prev.mode === 'create' && prev.visible && lastSelectionDraftRef.current
+            ? prev
+            : prev.mode === 'create'
+              ? HIDDEN_TOOLBAR
+              : prev
+        )
         return
       }
       const range = sel.getRangeAt(0)
@@ -234,7 +247,9 @@ export function useAnnotations(
       }
       const rect = range.getBoundingClientRect()
       if (rect.width === 0 && rect.height === 0) return
-      lastSelectionRangeRef.current = range.cloneRange()
+      const draft = createSelectorFromRange(root, range)
+      if (!draft) return
+      lastSelectionDraftRef.current = draft
       setToolbar({
         visible: true,
         mode: 'create',
@@ -259,7 +274,7 @@ export function useAnnotations(
       if (isToolbarTarget(e.target)) return
       isDraggingRef.current = true
       setToolbar(HIDDEN_TOOLBAR)
-      lastSelectionRangeRef.current = null
+      lastSelectionDraftRef.current = null
     }
     const onMouseUp = (e: MouseEvent) => {
       if (isToolbarTarget(e.target)) return
@@ -358,16 +373,17 @@ export function useAnnotations(
     if (!docPath || isSshContext) return
     const root = containerRef.current
     if (!root) return
-    // button focus 로 selection 이 collapse 됐을 수 있으므로 lastSelectionRangeRef 우선.
+    // button focus 로 selection/Range clone 이 collapse 됐을 수 있으므로
+    // 선택 시점에 만들어둔 selector snapshot 을 fallback 으로 쓴다.
     const sel = window.getSelection()
-    let range: Range | null = null
+    let created: SelectionDraft | null = null
     if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
-      range = sel.getRangeAt(0)
-    } else if (lastSelectionRangeRef.current) {
-      range = lastSelectionRangeRef.current
+      const range = sel.getRangeAt(0)
+      if (!isRangeWithin(root, range)) return
+      created = createSelectorFromRange(root, range)
+    } else if (lastSelectionDraftRef.current) {
+      created = lastSelectionDraftRef.current
     }
-    if (!range || !isRangeWithin(root, range)) return
-    const created = createSelectorFromRange(root, range)
     if (!created) return
     if (created.selector.exact.length > MAX_EXACT_LENGTH) {
       toast.info(t('annotation.tooLong'))
@@ -382,7 +398,7 @@ export function useAnnotations(
     }
     addAnnotation(docPath, annotation)
     sel?.removeAllRanges()
-    lastSelectionRangeRef.current = null
+    lastSelectionDraftRef.current = null
     setToolbar(HIDDEN_TOOLBAR)
     // store 가 즉시 갱신됨 → effect 가 reanchor + Highlight 등록. 저장은 비동기.
     persist(docPath)
@@ -400,7 +416,7 @@ export function useAnnotations(
 
   const dismissToolbar = useCallback(() => {
     setToolbar(HIDDEN_TOOLBAR)
-    lastSelectionRangeRef.current = null
+    lastSelectionDraftRef.current = null
     window.getSelection()?.removeAllRanges()
   }, [])
 

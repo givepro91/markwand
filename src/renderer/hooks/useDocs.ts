@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo, useState } from 'react'
+import { useEffect, useCallback, useMemo, useRef, useState } from 'react'
 import { useAppStore } from '../state/store'
 import type { Doc, FsChangeEvent } from '../../preload/types'
 import { isViewable } from '../../lib/viewable'
@@ -37,6 +37,10 @@ export function useDocs(projectId: string | null) {
   const appendDocs = useAppStore((s) => s.appendDocs)
   const updateDoc = useAppStore((s) => s.updateDoc)
   const removeDoc = useAppStore((s) => s.removeDoc)
+  const activeScanSeqRef = useRef(0)
+  const fsChangeSeqRef = useRef(0)
+  const touchedFsPathsRef = useRef(new Map<string, number>())
+  const mountedRef = useRef(true)
   // Follow-up FS9-B — 좌측 파일 트리 로딩 UI 용. SSH 원격은 수 초 걸려 빈 상태가 버그처럼 보이는 문제 해소.
   const [isScanning, setIsScanning] = useState(false)
 
@@ -59,22 +63,44 @@ export function useDocs(projectId: string | null) {
   // FS-RT-1 — force=true 면 main docsCache 우회. 명시/자동 새로고침에서 신규 파일/폴더 누락 차단.
   const scanDocs = useCallback(
     (pid: string, opts?: { force?: boolean }): (() => void) => {
+      const scanSeq = activeScanSeqRef.current + 1
+      const scanFsChangeSeq = fsChangeSeqRef.current
+      activeScanSeqRef.current = scanSeq
+      let active = true
+      let cleanedUp = false
+      const isCurrentScan = () =>
+        active && mountedRef.current && activeScanSeqRef.current === scanSeq
+      const filterUntouchedScanDocs = (items: Doc[]) => {
+        if (fsChangeSeqRef.current === scanFsChangeSeq) return items
+        return items.filter(
+          (doc) => (touchedFsPathsRef.current.get(doc.path) ?? 0) <= scanFsChangeSeq
+        )
+      }
       setIsScanning(true)
 
       const unsub = window.api.project.onDocsChunk((chunk: Doc[]) => {
-        const relevant = chunk.filter((d) => d.projectId === pid)
+        if (!isCurrentScan()) return
+        const relevant = filterUntouchedScanDocs(chunk.filter((d) => d.projectId === pid))
         if (relevant.length > 0) appendDocs(relevant)
       })
+      const cleanup = () => {
+        if (cleanedUp) return
+        cleanedUp = true
+        unsub()
+      }
 
       window.api.project
         .scanDocs(pid, opts?.force ? { force: true } : undefined)
         .then((result) => {
+          if (!isCurrentScan()) return
+          const safeResult = filterUntouchedScanDocs(result)
           // IPC chunk 이벤트가 누락되거나 watcher가 아직 켜지지 않은 기존 워크스페이스에서도
           // 수동/자동 refresh 결과가 트리에 반영되도록 최종 scan result 자체를 한 번 더 병합한다.
-          if (result.length > 0) appendDocs(result)
+          if (safeResult.length > 0) appendDocs(safeResult)
+          if (fsChangeSeqRef.current !== scanFsChangeSeq) return
           // 스캔 결과(ground truth) 에 없는 path 는 stale — 일괄 제거.
           // result 에는 다른 projectId 가 섞이지 않으므로 path Set 으로 충분.
-          const groundTruth = new Set(result.map((d) => d.path))
+          const groundTruth = new Set(safeResult.map((d) => d.path))
           useAppStore.setState((state) => {
             const map = new Map(state.docsByProject)
             const bucket = map.get(pid)
@@ -87,20 +113,33 @@ export function useDocs(projectId: string | null) {
             for (const b of map.values()) for (const d of b) remaining.push(d)
             return { docs: remaining, docsByProject: map }
           })
+          touchedFsPathsRef.current.clear()
           console.log(`[useDocs] ${pid}: ${result.length} docs`)
         })
         .catch((err) => {
+          if (!isCurrentScan()) return
           console.error('문서 스캔 실패:', err)
         })
         .finally(() => {
-          unsub()
-          setIsScanning(false)
+          cleanup()
+          if (isCurrentScan()) setIsScanning(false)
         })
 
-      return unsub
+      return () => {
+        active = false
+        cleanup()
+      }
     },
     [appendDocs]
   )
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      activeScanSeqRef.current += 1
+    }
+  }, [])
 
   // refreshKey 를 deps 에 포함시켜, 사용자 명시 새로고침(⌘R / Sidebar 버튼) 시
   // 현재 프로젝트의 docs 도 재스캔되도록 한다. scanDocs 자체가 cleanup-aware 라
@@ -119,9 +158,18 @@ export function useDocs(projectId: string | null) {
       // Viewable asset(md + 이미지)만 처리. 그 외 확장자는 watcher에서도 걸러지지만
       // 방어적으로 렌더러에서도 한 번 더 체크한다.
       if (!isViewable(data.path)) return
+      const markTouched = () => {
+        const nextSeq = fsChangeSeqRef.current + 1
+        fsChangeSeqRef.current = nextSeq
+        touchedFsPathsRef.current.set(data.path, nextSeq)
+      }
       if (data.type === 'unlink') {
+        markTouched()
         removeDoc(data.path)
       } else if (data.type === 'change') {
+        const knownDoc = useAppStore.getState().docs.some((doc) => doc.path === data.path)
+        if (!knownDoc) return
+        markTouched()
         // watcher가 stat으로 size를 함께 보내는 경우 Doc.size도 갱신한다.
         // size가 undefined이면(stat 실패 등) 필드 자체를 빼 기존 값을 유지.
         const patch: Partial<Doc> = { mtime: data.mtime ?? Date.now() }
@@ -133,6 +181,7 @@ export function useDocs(projectId: string | null) {
         // (다음 새로고침 또는 force scan 에서 정상 잡힘). main 이 invalidator 도 같이 발화하므로
         // 캐시는 이미 비어 있어 다음 scanDocs 가 fresh.
         if (!data.projectId || !data.name || data.mtime === undefined) return
+        markTouched()
         const doc: Doc = {
           path: data.path,
           projectId: data.projectId,

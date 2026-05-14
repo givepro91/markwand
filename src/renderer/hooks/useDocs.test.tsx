@@ -31,6 +31,7 @@ function makeDoc(name: string, overrides: Partial<Doc> = {}): Doc {
 let lastScanCall: { pid: string; opts?: { force?: boolean } } | null = null
 let fsChangeListener: ((data: FsChangeEvent) => void) | null = null
 let scanResolver: ((docs: Doc[]) => void) | null = null
+let scanResolvers: Array<(docs: Doc[]) => void> = []
 
 beforeEach(() => {
   // store 초기화 — 이전 테스트의 docs / refreshKey 격리
@@ -44,6 +45,7 @@ beforeEach(() => {
   lastScanCall = null
   fsChangeListener = null
   scanResolver = null
+  scanResolvers = []
 
   ;(globalThis as unknown as { window: { api: unknown } }).window = {
     api: {
@@ -52,6 +54,7 @@ beforeEach(() => {
           lastScanCall = { pid, opts }
           return new Promise<Doc[]>((resolve) => {
             scanResolver = resolve
+            scanResolvers.push(resolve)
           })
         }),
         onDocsChunk: vi.fn(() => {
@@ -108,6 +111,145 @@ describe('useDocs — refreshKey → force 전달', () => {
       name: 'fresh.md',
       mtime: 1700000009000,
     })
+  })
+
+  it('늦게 끝난 이전 스캔 결과가 최신 새로고침 결과와 로딩 상태를 덮지 않는다', async () => {
+    const { rerender, result } = renderHook(() => useDocs(PID))
+    const stale = makeDoc('stale.md', { mtime: 1 })
+    const fresh = makeDoc('fresh.md', { mtime: 2 })
+
+    act(() => {
+      useAppStore.getState().bumpRefreshKey()
+    })
+    rerender()
+
+    expect(scanResolvers).toHaveLength(2)
+
+    await act(async () => {
+      scanResolvers[1]([fresh])
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(result.current.isScanning).toBe(false)
+    expect((useAppStore.getState().docsByProject.get(PID) ?? []).map((d) => d.name)).toEqual([
+      'fresh.md',
+    ])
+
+    await act(async () => {
+      scanResolvers[0]([stale])
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect((useAppStore.getState().docsByProject.get(PID) ?? []).map((d) => d.name)).toEqual([
+      'fresh.md',
+    ])
+  })
+
+  it('이전 스캔이 먼저 끝나도 최신 스캔이 진행 중이면 로딩 표시를 유지한다', async () => {
+    const { rerender, result } = renderHook(() => useDocs(PID))
+
+    act(() => {
+      useAppStore.getState().bumpRefreshKey()
+    })
+    rerender()
+
+    await act(async () => {
+      scanResolvers[0]([makeDoc('stale.md')])
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(result.current.isScanning).toBe(true)
+
+    await act(async () => {
+      scanResolvers[1]([makeDoc('fresh.md')])
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(result.current.isScanning).toBe(false)
+  })
+
+  it("스캔 중 도착한 'add' 이벤트가 늦은 스캔 reconcile 에 의해 삭제되지 않는다", async () => {
+    renderHook(() => useDocs(PID))
+    const existingDoc = makeDoc('existing.md', { mtime: 5 })
+    const liveDoc = makeDoc('live.md', { mtime: 10 })
+
+    act(() => {
+      fsChangeListener!({
+        type: 'add',
+        path: liveDoc.path,
+        projectId: PID,
+        name: liveDoc.name,
+        mtime: liveDoc.mtime,
+      })
+    })
+
+    await act(async () => {
+      scanResolvers[0]([existingDoc])
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect((useAppStore.getState().docsByProject.get(PID) ?? []).map((d) => d.name).sort()).toEqual([
+      'existing.md',
+      'live.md',
+    ])
+  })
+
+  it("스캔 중 도착한 'unlink' 이벤트가 늦은 스캔 결과에 의해 되살아나지 않는다", async () => {
+    const seed = makeDoc('deleted.md')
+    const kept = makeDoc('kept.md')
+    useAppStore.setState((state) => {
+      const map = new Map(state.docsByProject)
+      map.set(PID, [seed])
+      return { docs: [seed], docsByProject: map }
+    })
+
+    renderHook(() => useDocs(PID))
+
+    act(() => {
+      fsChangeListener!({
+        type: 'unlink',
+        path: seed.path,
+      })
+    })
+
+    await act(async () => {
+      scanResolvers[0]([seed, kept])
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect((useAppStore.getState().docsByProject.get(PID) ?? []).map((d) => d.name)).toEqual([
+      'kept.md',
+    ])
+  })
+
+  it("스캔 중 unknown path 'change' 이벤트가 먼저 와도 스캔 결과의 신규 파일을 버리지 않는다", async () => {
+    renderHook(() => useDocs(PID))
+    const newDoc = makeDoc('change-before-add.md', { mtime: 11 })
+
+    act(() => {
+      fsChangeListener!({
+        type: 'change',
+        path: newDoc.path,
+        mtime: 12,
+        size: 100,
+      })
+    })
+
+    await act(async () => {
+      scanResolvers[0]([newDoc])
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect((useAppStore.getState().docsByProject.get(PID) ?? []).map((d) => d.name)).toEqual([
+      'change-before-add.md',
+    ])
   })
 })
 
