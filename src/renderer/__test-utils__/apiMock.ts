@@ -21,6 +21,8 @@ export function createApiMock(overrides: Record<string, unknown> = {}) {
       add: vi.fn(() => ok()),
       addSsh: vi.fn(() => ok()),
       remove: vi.fn(() => ok()),
+      scan: vi.fn(() => ok([])),
+      refresh: vi.fn(() => ok([])),
       setActive: vi.fn(() => ok()),
       browseFolder: vi.fn(() => ok(null)),
     },

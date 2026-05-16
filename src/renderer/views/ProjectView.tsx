@@ -812,11 +812,17 @@ export function ProjectView({ projectId, projectRoot, projectName, initialDocPat
   const showTocRail = showRightRail && activeRightTool === 'toc' && hasTocTool
   const scheduleScrollRestore = useCallback((scrollTop: number) => {
     pendingScrollRestoreRef.current = scrollTop
-    requestAnimationFrame(() => {
+    const restore = () => {
       const next = pendingScrollRestoreRef.current
       if (next === null) return
-      pendingScrollRestoreRef.current = null
       scrollContainerTo(scrollContainerRef.current, next)
+    }
+    requestAnimationFrame(() => {
+      restore()
+      requestAnimationFrame(() => {
+        restore()
+        pendingScrollRestoreRef.current = null
+      })
     })
   }, [])
   const handleReturnToWiki = useCallback(() => {

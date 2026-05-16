@@ -32,12 +32,17 @@ contextBridge.exposeInMainWorld('api', {
   },
 
   project: {
-    scanDocs: (projectId: string, opts?: { force?: boolean }) =>
+    scanDocs: (projectId: string, opts?: { force?: boolean; workspaceId?: string }) =>
       ipcRenderer.invoke('project:scan-docs', {
         projectId,
         ...(opts?.force ? { force: true } : {}),
+        ...(opts?.workspaceId ? { workspaceId: opts.workspaceId } : {}),
       }),
-    getDocCount: (projectId: string) => ipcRenderer.invoke('project:get-doc-count', { projectId }),
+    getDocCount: (projectId: string, opts?: { workspaceId?: string }) =>
+      ipcRenderer.invoke('project:get-doc-count', {
+        projectId,
+        ...(opts?.workspaceId ? { workspaceId: opts.workspaceId } : {}),
+      }),
     gitSummary: (projectRoot: string) => ipcRenderer.invoke('project:git-summary', { projectRoot }),
     // raw IpcRendererEvent 노출 차단 — data-only wrapper
     onDocsChunk: (cb: (data: Doc[]) => void) => {

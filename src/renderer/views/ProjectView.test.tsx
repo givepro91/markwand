@@ -545,11 +545,18 @@ describe('ProjectDocReturnBar', () => {
       />
     )
 
-    await waitFor(() => expect(api.project.scanDocs).toHaveBeenCalledWith(project.id, undefined))
+    await waitFor(() =>
+      expect(api.project.scanDocs).toHaveBeenCalledWith(project.id, { workspaceId: workspace.id })
+    )
     api.project.scanDocs.mockClear()
 
     fireEvent.click(screen.getByRole('button', { name: 'fileTree.refreshAria' }))
 
-    await waitFor(() => expect(api.project.scanDocs).toHaveBeenCalledWith(project.id, { force: true }))
+    await waitFor(() =>
+      expect(api.project.scanDocs).toHaveBeenCalledWith(project.id, {
+        force: true,
+        workspaceId: workspace.id,
+      })
+    )
   })
 })

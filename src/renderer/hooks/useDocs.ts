@@ -46,6 +46,9 @@ export function useDocs(projectId: string | null) {
 
   // B: useDocsOf를 내부 위임으로 사용
   const projectDocs = useDocsOf(projectId ?? '')
+  const projectWorkspaceId = useAppStore((s) =>
+    projectId ? s.projects.find((project) => project.id === projectId)?.workspaceId ?? null : null
+  )
   const filteredDocs = useMemo(
     () => (projectId ? projectDocs : []),
     [projectDocs, projectId]
@@ -62,7 +65,7 @@ export function useDocs(projectId: string | null) {
   // unmount 되지 않아 사용자 스크롤 위치가 유지된다. appendDocs 의 path-dedup 가 전제.
   // FS-RT-1 — force=true 면 main docsCache 우회. 명시/자동 새로고침에서 신규 파일/폴더 누락 차단.
   const scanDocs = useCallback(
-    (pid: string, opts?: { force?: boolean }): (() => void) => {
+    (pid: string, opts?: { force?: boolean; workspaceId?: string | null }): (() => void) => {
       const scanSeq = activeScanSeqRef.current + 1
       const scanFsChangeSeq = fsChangeSeqRef.current
       activeScanSeqRef.current = scanSeq
@@ -88,9 +91,15 @@ export function useDocs(projectId: string | null) {
         cleanedUp = true
         unsub()
       }
+      const workspaceId = opts?.workspaceId ?? projectWorkspaceId
 
       window.api.project
-        .scanDocs(pid, opts?.force ? { force: true } : undefined)
+        .scanDocs(pid, opts?.force || workspaceId
+          ? {
+              ...(opts?.force ? { force: true } : {}),
+              ...(workspaceId ? { workspaceId } : {}),
+            }
+          : undefined)
         .then((result) => {
           if (!isCurrentScan()) return
           const safeResult = filterUntouchedScanDocs(result)
@@ -130,7 +139,7 @@ export function useDocs(projectId: string | null) {
         cleanup()
       }
     },
-    [appendDocs]
+    [appendDocs, projectWorkspaceId]
   )
 
   useEffect(() => {
@@ -149,9 +158,12 @@ export function useDocs(projectId: string | null) {
   const refreshKey = useAppStore((s) => s.refreshKey)
   useEffect(() => {
     if (!projectId) return
-    const unsub = scanDocs(projectId, refreshKey > 0 ? { force: true } : undefined)
+    const unsub = scanDocs(projectId, {
+      ...(refreshKey > 0 ? { force: true } : {}),
+      ...(projectWorkspaceId ? { workspaceId: projectWorkspaceId } : {}),
+    })
     return unsub
-  }, [projectId, scanDocs, refreshKey])
+  }, [projectId, projectWorkspaceId, scanDocs, refreshKey])
 
   useEffect(() => {
     const unsubscribe = window.api.fs.onChange((data: FsChangeEvent) => {

@@ -82,9 +82,17 @@ export function parseScanInput(raw: unknown): { workspaceId: string } {
   return z.object({ workspaceId: WorkspaceIdInput }).parse(raw)
 }
 
-export function parseScanDocsInput(raw: unknown): { projectId: string; force?: boolean } {
+export function parseScanDocsInput(raw: unknown): {
+  projectId: string
+  force?: boolean
+  workspaceId?: string
+} {
   return z
-    .object({ projectId: ProjectIdInput, force: z.boolean().optional() })
+    .object({
+      projectId: ProjectIdInput,
+      force: z.boolean().optional(),
+      workspaceId: WorkspaceIdInput.optional(),
+    })
     .parse(raw)
 }
 

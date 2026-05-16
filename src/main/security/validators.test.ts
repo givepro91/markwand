@@ -3,6 +3,7 @@ import path from 'node:path'
 import {
   assertInWorkspace,
   isValidSshRoot,
+  parseScanDocsInput,
   parseWorkspaceAddSshInput,
   parsePrefsGetInput,
   parsePrefsSetInput,
@@ -151,6 +152,24 @@ describe('parseWorkspaceAddSshInput — root 필수 + depth 검증', () => {
     expect(() =>
       parseWorkspaceAddSshInput({ ...baseInput, root: '/home/alice', mode: 'invalid' }),
     ).toThrow()
+  })
+})
+
+describe('parseScanDocsInput — workspaceId hint', () => {
+  it('project scan/count 입력에서 workspaceId 힌트를 허용한다', () => {
+    const parsed = parseScanDocsInput({
+      projectId: 'abcdef1234567890',
+      workspaceId: '11111111-1111-4111-8111-111111111111',
+    })
+    expect(parsed.workspaceId).toBe('11111111-1111-4111-8111-111111111111')
+  })
+
+  it('SSH workspaceId 힌트도 허용한다', () => {
+    const parsed = parseScanDocsInput({
+      projectId: 'abcdef1234567890',
+      workspaceId: 'ssh:aaaaaaaaaaaaaaaa',
+    })
+    expect(parsed.workspaceId).toBe('ssh:aaaaaaaaaaaaaaaa')
   })
 })
 

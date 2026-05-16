@@ -347,8 +347,8 @@ export interface WindowApi {
      * 명시 새로고침(⌘R / Sidebar 버튼) 또는 fs:project-change 자동 새로고침 시 사용.
      * 첫 진입(refreshKey === 0) 은 force 미지정 → 기존 캐시 hit 유지.
      */
-    scanDocs: (projectId: string, opts?: { force?: boolean }) => Promise<Doc[]>
-    getDocCount: (projectId: string) => Promise<number>
+    scanDocs: (projectId: string, opts?: { force?: boolean; workspaceId?: string }) => Promise<Doc[]>
+    getDocCount: (projectId: string, opts?: { workspaceId?: string }) => Promise<number>
     gitSummary: (projectRoot: string) => Promise<GitPulseSummary>
     onDocsChunk: (cb: (data: Doc[]) => void) => () => void
   }

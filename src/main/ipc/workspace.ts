@@ -212,13 +212,28 @@ export function findProjectIdByPath(filePath: string): string | null {
   return findProjectIdByPathIn(projectsCache, filePath)
 }
 
-async function locateProjectForScan(projectId: string, opts: { allowSshProjectScan?: boolean } = {}): Promise<{
+async function locateProjectForScan(projectId: string, opts: {
+  allowSshProjectScan?: boolean
+  workspaceId?: string
+} = {}): Promise<{
   projectRoot: string
   hostWsId: string
 } | null> {
-  const { allowSshProjectScan = true } = opts
+  const { allowSshProjectScan = true, workspaceId: hintedWorkspaceId } = opts
   const store = await getStore()
   const workspaces = store.get('workspaces')
+
+  if (hintedWorkspaceId) {
+    const ws = workspaces.find((w) => w.id === hintedWorkspaceId)
+    if (!ws) return null
+    if (!allowSshProjectScan && ws.id.startsWith('ssh:')) return null
+    let projects = projectsCache.get(ws.id)
+    if (!projects) {
+      projects = await getOrScanProjects(ws.id, ws.root, ws.mode ?? 'container')
+    }
+    const found = projects.find((p) => p.id === projectId)
+    return found ? { projectRoot: found.root, hostWsId: ws.id } : null
+  }
 
   for (const ws of workspaces) {
     let projects = projectsCache.get(ws.id)
@@ -239,10 +254,11 @@ export async function getOrScanDocsForProject(
   opts: {
     force?: boolean
     allowSshScan?: boolean
+    workspaceId?: string
     onChunk?: (chunk: Doc[]) => void
   } = {}
 ): Promise<Doc[]> {
-  const { force = false, allowSshScan = true, onChunk } = opts
+  const { force = false, allowSshScan = true, workspaceId, onChunk } = opts
 
   if (force) {
     invalidateDocsCacheForProject(projectId)
@@ -261,7 +277,10 @@ export async function getOrScanDocsForProject(
     return docs
   }
 
-  const located = await locateProjectForScan(projectId, { allowSshProjectScan: allowSshScan })
+  const located = await locateProjectForScan(projectId, {
+    allowSshProjectScan: allowSshScan,
+    workspaceId,
+  })
   if (!located) throw new Error('PROJECT_NOT_FOUND')
   const { projectRoot, hostWsId } = located
   if (!allowSshScan && hostWsId.startsWith('ssh:')) {
@@ -302,6 +321,19 @@ export async function getOrScanDocsForProject(
   return runScan
 }
 
+export async function getDocCountForProject(
+  projectId: string,
+  opts: { workspaceId?: string } = {},
+): Promise<number> {
+  const cachedDocs = docsCache.get(projectId)
+  if (cachedDocs) return cachedDocs.length
+
+  const located = await locateProjectForScan(projectId, { workspaceId: opts.workspaceId })
+  if (!located) return 0
+  const transport = await getActiveTransport(located.hostWsId)
+  return transport.scanner.countDocs(located.projectRoot, [VIEWABLE_GLOB], WORKSPACE_SCAN_IGNORE_PATTERNS)
+}
+
 async function getOrScanProjects(
   workspaceId: string,
   root: string,
@@ -319,6 +351,9 @@ async function getOrScanProjects(
     : scanProjects(workspaceId, root, mode)
   const promise = scanPromise
     .then((projects) => {
+      for (const project of projects) {
+        projectToWorkspace.set(project.id, workspaceId)
+      }
       projectsCache.set(workspaceId, projects)
       inflightScans.delete(workspaceId)
       console.log(`[ipc] scanProjects(${workspaceId.slice(0, 8)}, ${mode}, ${isSsh ? 'ssh' : 'local'}) ${projects.length} projects in ${Date.now() - t0}ms`)
@@ -649,35 +684,16 @@ export function registerWorkspaceHandlers(): void {
   })
 
   ipcMain.handle('project:get-doc-count', async (_event, raw: unknown) => {
-    const { projectId } = parseScanDocsInput(raw)
-
-    // Follow-up FS7 — docsCache 에 이미 있으면 SSH 왕복 없이 length 만 반환.
-    const cachedDocs = docsCache.get(projectId)
-    if (cachedDocs) return cachedDocs.length
-
-    const store = await getStore()
-    const workspaces = store.get('workspaces')
-    let projectRoot: string | null = null
-    let hostWsId: string | null = null
-    for (const ws of workspaces) {
-      const projects = await getOrScanProjects(ws.id, ws.root, ws.mode ?? 'container')
-      const found = projects.find((p) => p.id === projectId)
-      if (found) {
-        projectRoot = found.root
-        hostWsId = ws.id
-        break
-      }
-    }
-    if (!projectRoot || !hostWsId) return 0
-    const transport = await getActiveTransport(hostWsId)
-    return transport.scanner.countDocs(projectRoot, [VIEWABLE_GLOB], WORKSPACE_SCAN_IGNORE_PATTERNS)
+    const { projectId, workspaceId } = parseScanDocsInput(raw)
+    return getDocCountForProject(projectId, { workspaceId })
   })
 
   ipcMain.handle('project:scan-docs', async (event, raw: unknown) => {
-    const { projectId, force } = parseScanDocsInput(raw)
+    const { projectId, force, workspaceId } = parseScanDocsInput(raw)
 
     return getOrScanDocsForProject(projectId, {
       force,
+      workspaceId,
       onChunk: (chunk) => event.sender.send('project:docs-chunk', chunk),
     })
   })

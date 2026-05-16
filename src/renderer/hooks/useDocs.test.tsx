@@ -28,7 +28,7 @@ function makeDoc(name: string, overrides: Partial<Doc> = {}): Doc {
   }
 }
 
-let lastScanCall: { pid: string; opts?: { force?: boolean } } | null = null
+let lastScanCall: { pid: string; opts?: { force?: boolean; workspaceId?: string } } | null = null
 let fsChangeListener: ((data: FsChangeEvent) => void) | null = null
 let scanResolver: ((docs: Doc[]) => void) | null = null
 let scanResolvers: Array<(docs: Doc[]) => void> = []
@@ -37,6 +37,7 @@ beforeEach(() => {
   // store 초기화 — 이전 테스트의 docs / refreshKey 격리
   useAppStore.setState({
     refreshKey: 0,
+    projects: [],
     docs: [],
     docsByProject: new Map(),
     frontmatterIndex: { statuses: new Set(), sources: new Set() },
@@ -50,7 +51,7 @@ beforeEach(() => {
   ;(globalThis as unknown as { window: { api: unknown } }).window = {
     api: {
       project: {
-        scanDocs: vi.fn((pid: string, opts?: { force?: boolean }) => {
+        scanDocs: vi.fn((pid: string, opts?: { force?: boolean; workspaceId?: string }) => {
           lastScanCall = { pid, opts }
           return new Promise<Doc[]>((resolve) => {
             scanResolver = resolve
@@ -95,6 +96,28 @@ describe('useDocs — refreshKey → force 전달', () => {
     rerender()
 
     expect(lastScanCall?.opts?.force).toBe(true)
+  })
+
+  it('프로젝트가 속한 workspaceId 를 scanDocs 에 함께 전달한다', () => {
+    const workspaceId = '11111111-1111-4111-8111-111111111111'
+    useAppStore.setState({
+      projects: [{
+        id: PID,
+        workspaceId,
+        name: 'p1',
+        root: ROOT,
+        markers: [],
+        docCount: -1,
+        lastModified: 1,
+      }],
+    })
+
+    renderHook(() => useDocs(PID))
+
+    expect(lastScanCall).toEqual({
+      pid: PID,
+      opts: { workspaceId },
+    })
   })
 
   it('docs-chunk 이벤트가 없어도 최종 scan 결과를 store 에 병합한다', async () => {

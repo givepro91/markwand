@@ -255,6 +255,7 @@ export default function App() {
   // 활성 워크스페이스 또는 refreshKey 변경 시 스캔. refreshKey는 사용자 새로고침 버튼이 트리거.
   useEffect(() => {
     if (!activeWorkspaceId) return
+    const workspaceId = activeWorkspaceId
     let cancelled = false
     setScannedWorkspaceId(null)
     const store = useAppStore.getState()
@@ -263,8 +264,8 @@ export default function App() {
     store.setDocCountProgress({ done: 0, total: 0 })
     // 새로고침 키 변경 시는 캐시 무효화된 refresh 호출. 첫 진입은 cache hit OK.
     const scanCall = refreshKey > 0
-      ? window.api.workspace.refresh(activeWorkspaceId)
-      : window.api.workspace.scan(activeWorkspaceId)
+      ? window.api.workspace.refresh(workspaceId)
+      : window.api.workspace.scan(workspaceId)
     // 렌더러 안전망 — main 측 readyTimeout 20s 가 삼켜지는 엣지(pool/SFTP stuck) 대비.
     // SSH 만 적용: 로컬 스캔은 chokidar 초기 walk 와 경쟁해 합법적으로 분 단위로 걸릴 수 있음
     // (실측: swk 128s). 로컬은 "오래 걸림" 이지 "hang" 이 아니므로 타임아웃 불요 — 대신
@@ -290,7 +291,7 @@ export default function App() {
         clearScanTimeout()
         if (cancelled) return
         useAppStore.getState().setProjects(scanned)
-        setScannedWorkspaceId(activeWorkspaceId)
+        setScannedWorkspaceId(workspaceId)
         useAppStore.getState().setProjectsLoading(false)
         // 타임아웃 뒤 뒤늦게 성공한 경우 에러 오버레이 자동 해제.
         useAppStore.getState().setProjectsError(null)
@@ -304,7 +305,7 @@ export default function App() {
           while (queue.length > 0 && !cancelled) {
             const id = queue.shift()!
             try {
-              const n = await window.api.project.getDocCount(id)
+              const n = await window.api.project.getDocCount(id, { workspaceId })
               if (cancelled) return
               useAppStore.setState((s) => ({
                 projects: s.projects.map((p) => (p.id === id ? { ...p, docCount: n } : p)),
